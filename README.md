@@ -53,7 +53,7 @@ pip install -e .
 
 ```bash
 harness --version
-# harness-orchestrator 0.2.7
+# harness-orchestrator 1.0.0
 ```
 
 ### 五步上手

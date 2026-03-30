@@ -6,7 +6,7 @@ from harness import __version__
 
 app = typer.Typer(
     name="harness",
-    help="GAN 三角架构多 Agent 自主开发框架",
+    help="合同驱动的多 Agent 自主开发编排框架",
     no_args_is_help=True,
 )
 
