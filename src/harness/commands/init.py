@@ -33,6 +33,19 @@ def _prompt_choice(prompt_text: str, n_options: int, default: int = 1) -> int:
         typer.echo(t("init.enter_range", n=n_options))
 
 
+# ── Step 0: language selection ────────────────────────────────────
+
+def _step_language() -> str:
+    """Prompt user to choose language; returns 'en' or 'zh'."""
+    typer.echo("\n  Language / 语言:")
+    typer.echo("  1. English (default)")
+    typer.echo("  2. 中文")
+    choice = _prompt_choice("  Choose / 选择", 2, default=1)
+    lang = "zh" if choice == 2 else "en"
+    set_lang(lang)
+    return lang
+
+
 # ── Step 1: project info ──────────────────────────────────────────
 
 def _step_project_info(
@@ -250,15 +263,17 @@ def run_init(
     *,
     name: str = "",
     ci_command: str = "",
-    lang: str = "en",
     non_interactive: bool = False,
 ) -> None:
     """Run the smart initialization wizard."""
-    lang_norm = lang if lang in ("en", "zh") else "en"
-    set_lang(lang_norm)
-
     project_root = Path.cwd()
     agents_dir = project_root / ".agents"
+
+    if non_interactive:
+        lang_norm = "en"
+        set_lang(lang_norm)
+    else:
+        lang_norm = _step_language()
 
     if (agents_dir / "config.toml").exists():
         overwrite = typer.confirm(

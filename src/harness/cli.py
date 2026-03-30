@@ -46,14 +46,13 @@ def install(
 def init(
     name: str = typer.Option("", "--name", "-n", help="Project name"),
     ci_command: str = typer.Option("", "--ci", help="CI command (e.g. make test)"),
-    lang: str = typer.Option("en", "--lang", "-l", help="Language (en/zh)"),
     non_interactive: bool = typer.Option(
         False, "--non-interactive", "-y", help="Skip interactive wizard, use defaults",
     ),
 ) -> None:
     """Initialize harness configuration in the current project (interactive wizard)"""
     from harness.commands.init import run_init
-    run_init(name=name, ci_command=ci_command, lang=lang, non_interactive=non_interactive)
+    run_init(name=name, ci_command=ci_command, non_interactive=non_interactive)
 
 
 @app.command()
