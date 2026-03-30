@@ -1,0 +1,201 @@
+"""Codex CLI subprocess 驱动"""
+
+from __future__ import annotations
+
+import shutil
+import subprocess
+import sys
+import tempfile
+import threading
+import time
+import tomllib
+from pathlib import Path
+from typing import Callable
+
+from harness.drivers.base import AgentResult
+
+_ROLE_FILES = {
+    "harness-planner": "planner.toml",
+    "harness-evaluator": "evaluator.toml",
+    "harness-strategist": "strategist.toml",
+    "harness-reflector": "reflector.toml",
+}
+
+_STREAM_PREFIX = "    │ "
+_HEARTBEAT_INTERVAL = 15
+
+
+class CodexDriver:
+    """通过 Codex CLI 调用 agent。
+
+    当前 Codex CLI 已移除 `codex exec --agent` 入口，因此在框架内
+    解析角色定义并将 developer instructions 拼接进 prompt。
+    """
+
+    @property
+    def name(self) -> str:
+        return "codex"
+
+    def is_available(self) -> bool:
+        return shutil.which("codex") is not None
+
+    def invoke(
+        self,
+        agent_name: str,
+        prompt: str,
+        cwd: Path,
+        *,
+        readonly: bool = False,
+        timeout: int = 600,
+        on_output: Callable[[str], None] | None = None,
+    ) -> AgentResult:
+        full_prompt = self._compose_prompt(agent_name, prompt, readonly=readonly)
+
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".txt", delete=False, encoding="utf-8"
+        ) as f:
+            output_file = f.name
+
+        cmd = [
+            "codex",
+            "exec",
+            "--full-auto",
+            "--color",
+            "never",
+            "--output-last-message",
+            output_file,
+            "-C",
+            str(cwd),
+            "-",
+        ]
+
+        try:
+            return self._run_streaming(cmd, full_prompt, output_file, cwd, timeout, on_output)
+        except FileNotFoundError:
+            return AgentResult(success=False, output="Codex CLI 未找到", exit_code=-1)
+        finally:
+            Path(output_file).unlink(missing_ok=True)
+
+    def _run_streaming(
+        self,
+        cmd: list[str],
+        input_text: str,
+        output_file: str,
+        cwd: Path,
+        timeout: int,
+        on_output: Callable[[str], None] | None = None,
+    ) -> AgentResult:
+        """流式执行 subprocess，通过 on_output 或 stderr 输出"""
+        start = time.monotonic()
+        lines: list[str] = []
+
+        proc = subprocess.Popen(
+            cmd,
+            stdin=subprocess.PIPE,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            cwd=str(cwd),
+        )
+
+        if proc.stdin:
+            proc.stdin.write(input_text)
+            proc.stdin.close()
+
+        last_output_time = time.monotonic()
+        heartbeat_stop = threading.Event()
+
+        # 有 on_output 回调时不需要心跳（UI 层已展示时间）
+        if not on_output:
+            def _heartbeat() -> None:
+                while not heartbeat_stop.is_set():
+                    heartbeat_stop.wait(_HEARTBEAT_INTERVAL)
+                    if heartbeat_stop.is_set():
+                        break
+                    elapsed = time.monotonic() - start
+                    idle = time.monotonic() - last_output_time
+                    if idle >= _HEARTBEAT_INTERVAL:
+                        sys.stderr.write(
+                            f"{_STREAM_PREFIX}⏳ 运行中 {elapsed:.0f}s...\n"
+                        )
+                        sys.stderr.flush()
+
+            heartbeat_thread = threading.Thread(target=_heartbeat, daemon=True)
+            heartbeat_thread.start()
+
+        try:
+            assert proc.stdout is not None
+            for line in proc.stdout:
+                last_output_time = time.monotonic()
+                lines.append(line)
+                if on_output:
+                    on_output(line)
+                else:
+                    sys.stderr.write(f"{_STREAM_PREFIX}{line}")
+                    sys.stderr.flush()
+
+            proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+            return AgentResult(success=False, output="Codex agent 超时", exit_code=-1)
+        finally:
+            heartbeat_stop.set()
+            if not on_output:
+                heartbeat_thread.join(timeout=2)
+
+        if not on_output:
+            elapsed = time.monotonic() - start
+            sys.stderr.write(f"{_STREAM_PREFIX}✓ 完成 ({elapsed:.0f}s)\n")
+            sys.stderr.flush()
+
+        final_output = ""
+        try:
+            final_output = Path(output_file).read_text(encoding="utf-8").strip()
+        except OSError:
+            pass
+
+        combined_output = final_output or "".join(lines)
+        return AgentResult(
+            success=proc.returncode == 0,
+            output=combined_output,
+            exit_code=proc.returncode or 0,
+        )
+
+    def _compose_prompt(self, agent_name: str, prompt: str, *, readonly: bool) -> str:
+        developer_instructions = self._load_developer_instructions(agent_name)
+        readonly_block = (
+            "\n\n## 执行约束\n你当前是只读角色，不要修改代码或执行会改变工作区的操作。"
+            if readonly
+            else ""
+        )
+        if not developer_instructions:
+            return prompt + readonly_block
+
+        return (
+            "## System Context\n"
+            "以下内容是 Harness 为当前角色注入的 developer instructions。"
+            " 这些约束优先于后续任务描述。\n\n"
+            f"{developer_instructions.strip()}"
+            "\n\n## Task Input\n"
+            f"{prompt.strip()}"
+            f"{readonly_block}\n"
+        )
+
+    def _load_developer_instructions(self, agent_name: str) -> str:
+        role_file = _ROLE_FILES.get(agent_name)
+        if not role_file:
+            return ""
+
+        agents_dir = Path(__file__).resolve().parents[3] / "agents" / "codex"
+        path = agents_dir / role_file
+        if not path.exists():
+            return ""
+
+        try:
+            data = tomllib.loads(path.read_text(encoding="utf-8"))
+        except (tomllib.TOMLDecodeError, OSError):
+            return ""
+
+        instructions = data.get("developer_instructions", "")
+        return instructions.strip() if isinstance(instructions, str) else ""
