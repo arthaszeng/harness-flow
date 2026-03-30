@@ -1,4 +1,4 @@
-"""项目扫描器 — 分析项目结构，发现 CI 相关配置并生成建议"""
+"""Project scanner — analyze layout, detect CI-related config, and suggest commands."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ from pathlib import Path
 
 @dataclass
 class ProjectScan:
-    """项目扫描结果"""
+    """Results of a project scan."""
     has_makefile: bool = False
     make_targets: list[str] = field(default_factory=list)
     has_pytest: bool = False
@@ -24,7 +24,7 @@ class ProjectScan:
 
 
 def scan_project(project_root: Path) -> ProjectScan:
-    """扫描项目结构，返回 CI 相关发现"""
+    """Scan project layout and return CI-related findings."""
     scan = ProjectScan()
 
     _detect_makefile(project_root, scan)
@@ -45,12 +45,12 @@ def _detect_makefile(root: Path, scan: ProjectScan) -> None:
     scan.has_makefile = True
     content = makefile.read_text(encoding="utf-8", errors="ignore")
 
-    # 解析 .PHONY targets
+    # Parse .PHONY targets
     for m in re.finditer(r"\.PHONY:\s*(.+)", content):
         targets = m.group(1).split()
         scan.make_targets.extend(targets)
 
-    # 也解析独立 target 定义行（target: deps 形式）
+    # Also parse standalone target lines (target: deps)
     for m in re.finditer(r"^([a-zA-Z_][\w-]*):", content, re.MULTILINE):
         t = m.group(1)
         if t not in scan.make_targets:
@@ -72,7 +72,7 @@ def _detect_pytest(root: Path, scan: ProjectScan) -> None:
 def _detect_npm(root: Path, scan: ProjectScan) -> None:
     pkg = root / "package.json"
     if not pkg.exists():
-        # 检查 frontend/ 子目录
+        # Check frontend/ subdirectory
         pkg = root / "frontend" / "package.json"
     if not pkg.exists():
         return
@@ -106,41 +106,41 @@ def _detect_architecture_check(root: Path, scan: ProjectScan) -> None:
 
 
 def _build_suggestions(scan: ProjectScan) -> None:
-    """根据扫描结果生成 CI 命令建议，按推荐度排序"""
+    """Build CI command suggestions from scan results, sorted by preference."""
     suggestions: list[tuple[int, str, str]] = []  # (priority, command, description)
 
     targets = set(scan.make_targets)
 
     if scan.has_makefile:
-        # make check test（架构+测试）是最佳组合
+        # make check test (arch + tests) is the best combo when both exist
         if "check" in targets and "test" in targets:
-            suggestions.append((10, "make check test", "架构检查 + 单元测试"))
-        # make ci 如果存在（可能包含 smoke，较重）
+            suggestions.append((10, "make check test", "architecture check + unit tests"))
+        # make ci if present (may include smoke, heavier)
         if "ci" in targets:
-            suggestions.append((5, "make ci", "完整 CI（可能含冒烟测试，较慢）"))
-        # 单独 make test
+            suggestions.append((5, "make ci", "full CI (may include smoke tests, slower)"))
+        # make test alone
         if "test" in targets and not ("check" in targets):
-            suggestions.append((8, "make test", "单元测试"))
+            suggestions.append((8, "make test", "unit tests"))
         elif "test" in targets:
-            suggestions.append((6, "make test", "仅单元测试"))
+            suggestions.append((6, "make test", "unit tests only"))
         # make lint
         if "lint" in targets:
-            suggestions.append((4, "make lint", "代码检查"))
+            suggestions.append((4, "make lint", "linting"))
 
     if scan.has_pytest:
         dir_arg = f" {scan.pytest_dir}/" if scan.pytest_dir else ""
-        suggestions.append((3, f"python -m pytest{dir_arg} -v", "pytest 直接运行"))
+        suggestions.append((3, f"python -m pytest{dir_arg} -v", "run pytest directly"))
 
     if scan.has_tox:
-        suggestions.append((2, "tox", "tox 测试"))
+        suggestions.append((2, "tox", "tox tests"))
 
-    # 按 priority 降序排列
+    # Sort by priority descending
     suggestions.sort(key=lambda x: -x[0])
     scan.suggested_commands = [(cmd, desc) for _, cmd, desc in suggestions]
 
 
 def format_scan_report(scan: ProjectScan) -> list[str]:
-    """格式化扫描发现为展示行"""
+    """Format scan findings as display lines."""
     lines: list[str] = []
     if scan.has_makefile:
         relevant = [t for t in scan.make_targets if t in {

@@ -1,4 +1,4 @@
-"""harness-orchestrator: 合同驱动的多 Agent 自主开发编排框架"""
+"""harness-orchestrator: contract-driven multi-agent autonomous development orchestration framework."""
 
 from importlib.metadata import version as _pkg_version
 

@@ -64,8 +64,8 @@ def test_invalid_transition(tmp_path: Path):
     sm.start_session("run")
     sm.start_task("t1", "test", "agent/test")
 
-    with pytest.raises(ValueError, match="非法转换"):
-        sm.transition(TaskState.EVALUATING)  # IDLE → EVALUATING 非法
+    with pytest.raises(ValueError, match="Illegal transition"):
+        sm.transition(TaskState.EVALUATING)  # IDLE → EVALUATING invalid
 
 
 def test_stop_signal(tmp_path: Path):

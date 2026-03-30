@@ -1,4 +1,4 @@
-"""结构化事件日志 — 每个 agent 调用、CI 执行和状态转换写入 events.jsonl"""
+"""Structured event log — each agent call, CI run, and state transition appends to events.jsonl."""
 
 from __future__ import annotations
 

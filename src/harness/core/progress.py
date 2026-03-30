@@ -1,4 +1,4 @@
-"""进展报告生成器 — 维护 .agents/progress.md"""
+"""Progress report generator — maintains .agents/progress.md."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from harness.core.state import CompletedTask, SessionState
 
 
 def update_progress(agents_dir: Path, state: SessionState) -> None:
-    """根据当前 state 重新生成 progress.md"""
+    """Regenerate progress.md from the current session state."""
     path = agents_dir / "progress.md"
     lines: list[str] = []
 
@@ -16,7 +16,7 @@ def update_progress(agents_dir: Path, state: SessionState) -> None:
     lines.append(f"# Progress Report\n")
     lines.append(f"## Session {state.session_id}\n")
 
-    # 已完成
+    # Completed
     lines.append("### Completed Tasks\n")
     if state.completed:
         lines.append("| # | Task | Score | Iterations | Time |")
@@ -30,7 +30,7 @@ def update_progress(agents_dir: Path, state: SessionState) -> None:
     else:
         lines.append("(none)\n")
 
-    # 进行中
+    # In progress
     lines.append("\n### In Progress\n")
     if state.current_task:
         t = state.current_task
@@ -38,7 +38,7 @@ def update_progress(agents_dir: Path, state: SessionState) -> None:
     else:
         lines.append("(none)")
 
-    # 阻塞
+    # Blocked
     lines.append("\n### Blocked\n")
     if state.blocked:
         for task in state.blocked:
@@ -46,7 +46,7 @@ def update_progress(agents_dir: Path, state: SessionState) -> None:
     else:
         lines.append("(none)")
 
-    # 统计
+    # Stats
     lines.append("\n### Stats\n")
     s = state.stats
     total = s.completed + s.blocked
@@ -60,7 +60,7 @@ def update_progress(agents_dir: Path, state: SessionState) -> None:
 
 
 def _fmt_elapsed(seconds: float) -> str:
-    """格式化耗时"""
+    """Format elapsed duration for display."""
     if seconds < 60:
         return f"{seconds:.0f}s"
     mins = seconds / 60

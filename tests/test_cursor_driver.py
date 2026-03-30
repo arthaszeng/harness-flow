@@ -111,7 +111,7 @@ def test_compose_prompt_includes_instructions_for_builder() -> None:
 def test_compose_prompt_readonly_adds_constraint() -> None:
     driver = CursorDriver()
     prompt = driver._compose_prompt("harness-builder", "review", readonly=True)
-    assert "只读角色" in prompt
+    assert "read-only mode" in prompt
 
 
 def test_compose_prompt_unknown_role_passthrough() -> None:

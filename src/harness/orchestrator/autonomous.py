@@ -1,4 +1,4 @@
-"""自治循环 — Strategist 驱动的多任务自主开发"""
+"""Autonomous loop — multi-task development driven by Strategist."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from harness.core.progress import update_progress
 from harness.core.state import StateMachine
 from harness.core.ui import get_ui
 from harness.drivers.resolver import DriverResolver
+from harness.i18n import t
 from harness.integrations.memverse import create_memverse
 from harness.orchestrator.safety import check_safety
 from harness.orchestrator.workflow import WorkflowResult, run_single_task
@@ -24,7 +25,7 @@ def run_autonomous(
     *,
     resume: bool = False,
 ) -> list[WorkflowResult]:
-    """自治循环：Strategist 产出任务 → 执行 → Reflector 总结"""
+    """Autonomous loop: Strategist proposes tasks → execute → Reflector summarizes."""
     ui = get_ui()
     results: list[WorkflowResult] = []
     consecutive_blocked = 0
@@ -48,7 +49,7 @@ def run_autonomous(
             ui.safety_stop(safety.reason)
             break
 
-        # Strategist: 决定下一个任务
+        # Strategist: pick the next task
         t0 = time.monotonic()
         with ui.agent_step("[strategist] scanning project state", "codex") as on_out:
             task_requirement = _invoke_strategist(config, sm, resolver, on_output=on_out)
@@ -60,7 +61,7 @@ def run_autonomous(
 
         ui.strategist_result(task_requirement, elapsed)
 
-        # 执行单任务
+        # Run single-task workflow
         result = run_single_task(config, sm, resolver, task_requirement, events=ev)
         results.append(result)
 
@@ -70,7 +71,7 @@ def run_autonomous(
         else:
             consecutive_blocked += 1
 
-        # Reflector: 定期总结
+        # Reflector: periodic summary
         if completed_count > 0 and completed_count % config.autonomous.progress_report_interval == 0:
             t0 = time.monotonic()
             with ui.agent_step("[reflector] generating summary", "codex") as on_out:
@@ -78,7 +79,7 @@ def run_autonomous(
             elapsed = time.monotonic() - t0
             ui.step_done("[reflector]", elapsed, True, "synced")
 
-    # 最终总结
+    # Final session summary
     if results:
         passed = [r for r in results if r.verdict == "PASS"]
         avg = sum(r.score for r in passed) / len(passed) if passed else 0.0
@@ -94,7 +95,7 @@ def _invoke_strategist(
     *,
     on_output=None,
 ) -> str | None:
-    """调用 Strategist agent，返回下一个任务描述或 None"""
+    """Invoke Strategist agent; return the next task description or None."""
     driver = resolver.resolve("strategist")
     agent_name = resolver.agent_name("strategist")
 
@@ -108,20 +109,13 @@ def _invoke_strategist(
     if progress_path.exists():
         progress = progress_path.read_text(encoding="utf-8")[:3000]
 
-    prompt = f"""\
-## 项目愿景
-{vision}
-
-## 当前进展
-{progress}
-
-## 已完成任务数: {len(sm.state.completed)}
-## 已阻塞任务: {[t.requirement for t in sm.state.blocked]}
-
-请决定下一个最有价值的任务。
-如果所有愿景目标已达成，输出 VISION_COMPLETE。
-否则，按格式输出下一个任务的需求描述。
-"""
+    prompt = t(
+        "prompt.strategist",
+        vision=vision,
+        progress=progress,
+        completed=len(sm.state.completed),
+        blocked=[task.requirement for task in sm.state.blocked],
+    )
 
     result = driver.invoke(
         agent_name, prompt, config.project_root,
@@ -141,8 +135,9 @@ def _invoke_strategist(
 
 
 def _extract_requirement(output: str) -> str | None:
-    """从 Strategist 输出中提取需求"""
-    m = re.search(r"##\s*需求\s*\n+(.+?)(?=\n##|\Z)", output, re.DOTALL)
+    """Extract the requirement line or section from Strategist output."""
+    pattern = t("prompt.requirement_regex")
+    m = re.search(pattern + r"\n+(.+?)(?=\n##|\Z)", output, re.DOTALL)
     if m:
         return m.group(1).strip().split("\n")[0].strip()
 
@@ -162,7 +157,7 @@ def _invoke_reflector(
     *,
     on_output=None,
 ) -> None:
-    """调用 Reflector agent 总结进展，并检测 vision drift"""
+    """Invoke Reflector to summarize progress and detect vision drift."""
     ui = get_ui()
     driver = resolver.resolve("reflector")
     agent_name = resolver.agent_name("reflector")
@@ -177,21 +172,15 @@ def _invoke_reflector(
     if progress_path.exists():
         progress = progress_path.read_text(encoding="utf-8")[:5000]
 
-    prompt = f"""\
-## 项目愿景
-{vision}
-
-## 当前进展
-{progress}
-
-## 会话统计
-- 已完成: {sm.state.stats.completed}
-- 已阻塞: {sm.state.stats.blocked}
-- 平均得分: {sm.state.stats.avg_score:.1f}
-- 总迭代: {sm.state.stats.total_iterations}
-
-请按格式生成反思总结，包括 Vision 对齐度评估。
-"""
+    prompt = t(
+        "prompt.reflector",
+        vision=vision,
+        progress=progress,
+        completed=sm.state.stats.completed,
+        blocked=sm.state.stats.blocked,
+        avg_score=sm.state.stats.avg_score,
+        total_iterations=sm.state.stats.total_iterations,
+    )
 
     result = driver.invoke(
         agent_name, prompt, config.project_root,
@@ -211,7 +200,7 @@ def _invoke_reflector(
 
 
 def detect_vision_drift(reflector_output: str) -> str | None:
-    """从 Reflector 输出中检测 vision drift/stale 标记"""
+    """Detect VISION_DRIFT / VISION_STALE markers in Reflector output."""
     for line in reflector_output.split("\n"):
         line = line.strip()
         if line.startswith("VISION_DRIFT:"):

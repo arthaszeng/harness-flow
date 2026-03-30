@@ -1,4 +1,4 @@
-"""Codex CLI subprocess 驱动"""
+"""Codex CLI subprocess driver."""
 
 from __future__ import annotations
 
@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Callable
 
 from harness.drivers.base import AgentResult
+from harness.i18n import get_lang, t
 
 _ROLE_FILES = {
     "harness-planner": "planner.toml",
@@ -35,10 +36,10 @@ class DriverProbe:
 
 
 class CodexDriver:
-    """通过 Codex CLI 调用 agent。
+    """Invoke agents via Codex CLI.
 
-    当前 Codex CLI 已移除 `codex exec --agent` 入口，因此在框架内
-    解析角色定义并将 developer instructions 拼接进 prompt。
+    Codex CLI no longer exposes `codex exec --agent`, so this driver parses
+    role definitions and concatenates developer instructions into the prompt.
     """
 
     def __init__(self) -> None:
@@ -120,7 +121,7 @@ class CodexDriver:
         try:
             return self._run_streaming(cmd, full_prompt, output_file, cwd, timeout, on_output)
         except FileNotFoundError:
-            return AgentResult(success=False, output="Codex CLI 未找到", exit_code=-1)
+            return AgentResult(success=False, output=t("driver.codex_not_found"), exit_code=-1)
         finally:
             Path(output_file).unlink(missing_ok=True)
 
@@ -133,7 +134,7 @@ class CodexDriver:
         timeout: int,
         on_output: Callable[[str], None] | None = None,
     ) -> AgentResult:
-        """流式执行 subprocess，通过 on_output 或 stderr 输出"""
+        """Run subprocess with streaming; forward lines via on_output or stderr."""
         start = time.monotonic()
         lines: list[str] = []
 
@@ -153,7 +154,7 @@ class CodexDriver:
         last_output_time = time.monotonic()
         heartbeat_stop = threading.Event()
 
-        # 有 on_output 回调时不需要心跳（UI 层已展示时间）
+        # No heartbeat when on_output is set (UI already shows progress)
         if not on_output:
             def _heartbeat() -> None:
                 while not heartbeat_stop.is_set():
@@ -164,7 +165,7 @@ class CodexDriver:
                     idle = time.monotonic() - last_output_time
                     if idle >= _HEARTBEAT_INTERVAL:
                         sys.stderr.write(
-                            f"{_STREAM_PREFIX}⏳ 运行中 {elapsed:.0f}s...\n"
+                            f"{_STREAM_PREFIX}{t('driver.heartbeat', elapsed=elapsed)}\n"
                         )
                         sys.stderr.flush()
 
@@ -186,7 +187,7 @@ class CodexDriver:
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait()
-            return AgentResult(success=False, output="Codex agent 超时", exit_code=-1)
+            return AgentResult(success=False, output=t("driver.codex_timeout"), exit_code=-1)
         finally:
             heartbeat_stop.set()
             if not on_output:
@@ -194,7 +195,7 @@ class CodexDriver:
 
         if not on_output:
             elapsed = time.monotonic() - start
-            sys.stderr.write(f"{_STREAM_PREFIX}✓ 完成 ({elapsed:.0f}s)\n")
+            sys.stderr.write(f"{_STREAM_PREFIX}{t('driver.done', elapsed=elapsed)}\n")
             sys.stderr.flush()
 
         final_output = ""
@@ -212,22 +213,15 @@ class CodexDriver:
 
     def _compose_prompt(self, agent_name: str, prompt: str, *, readonly: bool) -> str:
         developer_instructions = self._load_developer_instructions(agent_name)
-        readonly_block = (
-            "\n\n## 执行约束\n你当前是只读角色，不要修改代码或执行会改变工作区的操作。"
-            if readonly
-            else ""
-        )
+        readonly_block = t("driver.readonly_block") if readonly else ""
         if not developer_instructions:
             return prompt + readonly_block
 
-        return (
-            "## System Context\n"
-            "以下内容是 Harness 为当前角色注入的 developer instructions。"
-            " 这些约束优先于后续任务描述。\n\n"
-            f"{developer_instructions.strip()}"
-            "\n\n## Task Input\n"
-            f"{prompt.strip()}"
-            f"{readonly_block}\n"
+        return t(
+            "driver.system_context",
+            instructions=developer_instructions.strip(),
+            prompt=prompt.strip(),
+            readonly_block=readonly_block,
         )
 
     def _load_developer_instructions(self, agent_name: str) -> str:
@@ -236,6 +230,19 @@ class CodexDriver:
             return ""
 
         agents_dir = Path(__file__).resolve().parents[3] / "agents" / "codex"
+        lang = get_lang()
+
+        if lang != "en":
+            lang_path = agents_dir / lang / role_file
+            if lang_path.exists():
+                try:
+                    data = tomllib.loads(lang_path.read_text(encoding="utf-8"))
+                    instructions = data.get("developer_instructions", "")
+                    if instructions and isinstance(instructions, str):
+                        return instructions.strip()
+                except (tomllib.TOMLDecodeError, OSError):
+                    pass
+
         path = agents_dir / role_file
         if not path.exists():
             return ""

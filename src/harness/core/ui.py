@@ -1,8 +1,8 @@
-"""赛博朋克风格终端 UI — 统一输出层
+"""Cyberpunk-style terminal UI — unified output layer.
 
-所有 Harness 终端输出通过 HarnessUI 类统一管理。
-默认模式下 agent 子进程输出以滚动尾部展示（最新 5 行），
-完成后自动收起为一行摘要。--verbose 恢复完整流式输出。
+All Harness terminal output goes through HarnessUI.
+By default, agent subprocess output is shown as a scrolling tail (last 5 lines),
+then collapses to a one-line summary when done. --verbose restores full streaming.
 """
 
 from __future__ import annotations
@@ -22,7 +22,7 @@ from rich.theme import Theme
 if TYPE_CHECKING:
     pass
 
-# ── 赛博配色 ──────────────────────────────────────────────────────
+# ── Cyber color theme ───────────────────────────────────────────
 
 CYBER_THEME = Theme({
     "cyber.cyan": "bold #00ffff",
@@ -52,10 +52,10 @@ _BANNER = r"""
 _TAIL_LINES = 5
 
 
-# ── 滚动尾部 Renderable ──────────────────────────────────────────
+# ── Scrolling-tail Rich renderable ──────────────────────────────
 
 class _TailRenderable:
-    """Rich Live 中使用的滚动尾部渲染对象"""
+    """Rich Live renderable for the scrolling tail of agent output."""
 
     def __init__(self, label: str, driver_name: str, start: float) -> None:
         self.label = label
@@ -79,10 +79,10 @@ class _TailRenderable:
         )
 
 
-# ── 主 UI 类 ─────────────────────────────────────────────────────
+# ── Main UI class ───────────────────────────────────────────────
 
 class HarnessUI:
-    """Harness 赛博朋克终端 UI"""
+    """Harness cyberpunk terminal UI."""
 
     def __init__(self, verbose: bool = False) -> None:
         self.verbose = verbose
@@ -165,16 +165,16 @@ class HarnessUI:
         )
         self.console.print(Rule(style="cyber.red"))
 
-    # ── Agent Steps ──
+    # ── Agent steps ──
 
     @contextmanager
     def agent_step(
         self, label: str, driver_name: str,
     ) -> Generator[Callable[[str], None] | None, None, None]:
-        """agent 执行的上下文管理器。
+        """Context manager for an agent step.
 
-        默认模式：Rich Live 展示滚动尾部，完成后自动擦除。
-        verbose 模式：yield None，driver 原样输出到 stderr。
+        Default mode: Rich Live shows a scrolling tail, then clears when done.
+        Verbose mode: yields None; the driver writes raw stderr.
         """
         self.console.print(
             f"  [cyber.magenta]▸[/] [cyber.label]{label}[/] "
@@ -222,7 +222,7 @@ class HarnessUI:
                 for line in fail_tail[-3:]:
                     self.console.print(f"    [cyber.dim]┊ {line.rstrip()}[/]")
 
-    # ── Strategist / Reflector 结果 ──
+    # ── Strategist / Reflector output ──
 
     def strategist_result(self, requirement: str, elapsed: float) -> None:
         self.console.print(
@@ -238,7 +238,7 @@ class HarnessUI:
             f"[cyber.dim]({elapsed:.0f}s)[/]",
         )
 
-    # ── 通用消息 ──
+    # ── Generic messages ──
 
     def info(self, msg: str) -> None:
         self.console.print(f"  [cyber.dim]{msg}[/]")
@@ -253,20 +253,20 @@ class HarnessUI:
         self.console.print(f"\n  [cyber.yellow]▪ [safety][/] {reason}")
 
 
-# ── 单例管理 ─────────────────────────────────────────────────────
+# ── Singleton ─────────────────────────────────────────────────────
 
 _ui: HarnessUI | None = None
 
 
 def init_ui(verbose: bool = False) -> HarnessUI:
-    """初始化全局 UI 单例（由 CLI 入口调用）"""
+    """Initialize the global UI singleton (called from CLI entry)."""
     global _ui
     _ui = HarnessUI(verbose=verbose)
     return _ui
 
 
 def get_ui() -> HarnessUI:
-    """获取全局 UI（未初始化时创建默认实例）"""
+    """Return the global UI; create a default instance if unset."""
     global _ui
     if _ui is None:
         _ui = HarnessUI()

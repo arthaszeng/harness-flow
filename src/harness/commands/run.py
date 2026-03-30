@@ -1,4 +1,4 @@
-"""harness run — 执行单个开发任务"""
+"""harness run — execute a single development task"""
 
 from __future__ import annotations
 
@@ -11,11 +11,12 @@ from harness.core.config import HarnessConfig
 from harness.core.state import SessionState, StateMachine
 from harness.core.ui import get_ui, init_ui
 from harness.drivers.resolver import DriverResolver
+from harness.i18n import set_lang, t
 from harness.orchestrator.workflow import run_single_task
 
 
 def run_task(*, requirement: str, resume: bool = False, verbose: bool = False) -> None:
-    """执行单个任务的完整工作流"""
+    """Run the full workflow for a single task."""
     init_ui(verbose=verbose)
     ui = get_ui()
 
@@ -23,10 +24,11 @@ def run_task(*, requirement: str, resume: bool = False, verbose: bool = False) -
     agents_dir = project_root / ".agents"
 
     if not (agents_dir / "config.toml").exists():
-        ui.error("未找到 .agents/config.toml，请先运行 `harness init`")
+        ui.error(t("run.no_config"))
         raise typer.Exit(1)
 
     config = HarnessConfig.load(project_root)
+    set_lang(config.project.lang)
     sm = StateMachine(project_root)
 
     if resume:
@@ -41,7 +43,7 @@ def run_task(*, requirement: str, resume: bool = False, verbose: bool = False) -
     resolver = DriverResolver(config)
     avail = resolver.available_drivers
     if not any(avail.values()):
-        ui.error("未检测到 Cursor 或 Codex CLI")
+        ui.error(t("run.no_ide"))
         raise typer.Exit(1)
 
     ui.banner("run", __version__)

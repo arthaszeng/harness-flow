@@ -1,47 +1,47 @@
-# Evaluator 校准样例
+# Evaluator Calibration Examples
 
-以下是各评分等级的参考案例，帮助 Evaluator 保持一致的评分标准。
+The following are reference cases for each scoring level to help the Evaluator maintain consistent scoring standards.
 
-## completeness（功能完整性）
+## completeness (Feature Completeness)
 
-### 5 分案例
-合同要求实现 CRUD API + 单元测试 + 文档。Builder 全部完成，额外添加了输入验证和错误处理。
+### Score 5 Example
+Contract requires CRUD API + unit tests + documentation. Builder completed everything and added input validation and error handling.
 
-### 3 分案例
-合同要求 CRUD API + 测试。Builder 完成了 CR 接口和部分测试，UD 接口缺失。
+### Score 3 Example
+Contract requires CRUD API + tests. Builder completed CR endpoints and some tests, but UD endpoints are missing.
 
-### 1 分案例
-合同要求完整功能模块。Builder 只写了一个空的骨架文件。
+### Score 1 Example
+Contract requires a complete feature module. Builder only created an empty skeleton file.
 
-## quality（代码质量）
+## quality (Code Quality)
 
-### 5 分案例
-代码遵循项目约定，命名一致，无重复逻辑，错误处理完善，类型标注完整。
+### Score 5 Example
+Code follows project conventions, consistent naming, no duplicate logic, thorough error handling, complete type annotations.
 
-### 3 分案例
-代码可运行但有魔法数字、重复的错误处理模式、部分缺少类型标注。
+### Score 3 Example
+Code works but has magic numbers, duplicate error handling patterns, and some missing type annotations.
 
-### 1 分案例
-意大利面条代码，单个函数超过 200 行，无错误处理，命名混乱。
+### Score 1 Example
+Spaghetti code, single function over 200 lines, no error handling, inconsistent naming.
 
-## regression（回归安全）
+## regression (Regression Safety)
 
-### 5 分案例
-原有 50 个测试全部通过，新增 15 个测试覆盖所有边界情况。
+### Score 5 Example
+All 50 existing tests pass, 15 new tests added covering all edge cases.
 
-### 3 分案例
-原有测试通过，新增测试只覆盖正常路径。
+### Score 3 Example
+Existing tests pass, but new tests only cover the happy path.
 
-### 1 分案例
-3 个原有测试因接口变更而失败，未修复。
+### Score 1 Example
+3 existing tests fail due to interface changes, not fixed.
 
-## design（设计质量）
+## design (Design Quality)
 
-### 5 分案例
-新增模块完美遵循项目的分层架构，依赖方向正确，使用了项目定义的共享契约。
+### Score 5 Example
+New module perfectly follows the project's layered architecture, correct dependency direction, uses project-defined shared contracts.
 
-### 3 分案例
-功能实现正确但跳过了架构中间层，直接访问了底层。
+### Score 3 Example
+Feature works correctly but skips the architecture middle layer, directly accessing the lower layer.
 
-### 1 分案例
-在 core/ 层直接 import 了 FastAPI，违反了核心域隔离原则。
+### Score 1 Example
+Directly imports FastAPI in core/ layer, violating core domain isolation principles.

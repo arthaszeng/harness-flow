@@ -1,4 +1,4 @@
-"""角色 → 驱动路由"""
+"""Role → driver routing."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from harness.drivers.base import AgentDriver
 from harness.drivers.codex import CodexDriver
 from harness.drivers.cursor import CursorDriver
 
-# 角色 → agent 名称映射
+# Role → agent name
 ROLE_AGENT_MAP = {
     "planner": "harness-planner",
     "builder": "harness-builder",
@@ -22,7 +22,7 @@ ROLE_AGENT_MAP = {
 
 
 class DriverResolver:
-    """根据配置为每个角色选择合适的驱动"""
+    """Pick a driver per role from config and availability."""
 
     def __init__(self, config: HarnessConfig) -> None:
         self._config = config
@@ -48,10 +48,10 @@ class DriverResolver:
                 sys.stderr.write(f"[harness] warning ({label}): {w}\n")
 
     def resolve(self, role: str) -> AgentDriver:
-        """为指定角色返回合适的驱动"""
+        """Return the driver for the given role."""
         mode = self._config.drivers.default
 
-        # 显式配置的角色覆盖
+        # Per-role override
         role_override = getattr(self._config.drivers.roles, role, "")
         if role_override:
             if role_override == "cursor" and self._cursor_ok:
@@ -59,13 +59,13 @@ class DriverResolver:
             if role_override == "codex" and self._codex_ok:
                 return self._codex
 
-        # 模式级路由
+        # Mode-level routing
         if mode == "cursor":
             return self._cursor
         if mode == "codex":
             return self._codex
 
-        # auto 模式: Builder→Cursor, 其余→Codex（如果两者都可用）
+        # auto: builder → Cursor if both exist; otherwise Codex
         if self._cursor_ok and self._codex_ok:
             return self._cursor if role == "builder" else self._codex
         if self._cursor_ok:
@@ -73,14 +73,14 @@ class DriverResolver:
         if self._codex_ok:
             return self._codex
 
-        raise RuntimeError("未检测到 Cursor 或 Codex CLI")
+        raise RuntimeError("Neither Cursor nor Codex CLI detected")
 
     def agent_name(self, role: str) -> str:
-        """返回角色对应的 agent 名称"""
+        """Agent name for a role."""
         return ROLE_AGENT_MAP.get(role, role)
 
     def get_driver_by_name(self, name: str) -> AgentDriver | None:
-        """按驱动名（cursor / codex）直接获取，不存在或不可用返回 None"""
+        """Resolve by driver name (cursor / codex); None if missing or unavailable."""
         if name == "cursor" and self._cursor_ok:
             return self._cursor
         if name == "codex" and self._codex_ok:
@@ -88,7 +88,7 @@ class DriverResolver:
         return None
 
     def first_available_driver(self) -> AgentDriver | None:
-        """返回第一个可用的驱动"""
+        """First available driver (codex preferred, then cursor)."""
         if self._codex_ok:
             return self._codex
         if self._cursor_ok:

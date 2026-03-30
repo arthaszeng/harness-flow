@@ -1,4 +1,4 @@
-"""harness install — 安装 agent 定义到本地 IDE"""
+"""harness install — install agent definitions to local IDE"""
 
 from __future__ import annotations
 
@@ -8,7 +8,10 @@ from pathlib import Path
 
 import typer
 
-# agent 文件 → 目标路径的映射
+from harness.core.config import HarnessConfig
+from harness.i18n import get_lang, t
+
+# agent file → target path mapping
 _CURSOR_AGENTS = {
     "builder.md": "harness-builder.md",
     "reflector.md": "harness-reflector.md",
@@ -19,39 +22,58 @@ _CODEX_AGENTS = {
     "strategist.toml": "harness-strategist.toml",
     "reflector.toml": "harness-reflector.toml",
     "advisor.toml": "harness-advisor.toml",
+    "alignment_evaluator.toml": "harness-alignment-evaluator.toml",
 }
 
 
 def _agents_pkg_dir() -> Path:
-    """获取打包在项目中的 agents/ 目录路径"""
+    """Return the packaged agents/ directory path."""
     pkg = importlib.resources.files("harness")
-    # src/harness/ → 向上两级到项目根 → agents/
     return Path(str(pkg)).parent.parent / "agents"
 
 
+def _resolve_install_lang(lang: str | None) -> str:
+    """Pick install language: explicit arg, then config, then UI lang, else en."""
+    if lang is not None:
+        return lang if lang in ("en", "zh") else "en"
+    try:
+        cfg = HarnessConfig.load()
+        pl = cfg.project.lang
+        if pl in ("en", "zh"):
+            return pl
+    except Exception:
+        pass
+    gl = get_lang()
+    return gl if gl in ("en", "zh") else "en"
+
+
 def _detect_ide() -> dict[str, bool]:
-    """检测本地安装的 IDE CLI"""
+    """Detect locally installed IDE CLIs."""
     return {
         "cursor": shutil.which("cursor") is not None,
         "codex": shutil.which("codex") is not None,
     }
 
 
-def _install_cursor_agents(source_dir: Path, *, force: bool) -> int:
-    """安装 Cursor agent 定义"""
+def _install_cursor_agents(source_dir: Path, *, force: bool, lang: str) -> int:
+    """Install Cursor agent definitions."""
     target_dir = Path.home() / ".cursor" / "agents"
     target_dir.mkdir(parents=True, exist_ok=True)
 
     installed = 0
     src_dir = source_dir / "cursor"
+    if lang == "zh":
+        zh_dir = src_dir / "zh"
+        if zh_dir.is_dir():
+            src_dir = zh_dir
     for src_name, dst_name in _CURSOR_AGENTS.items():
         src = src_dir / src_name
         dst = target_dir / dst_name
         if not src.exists():
-            typer.echo(f"  [warn] 源文件不存在: {src}", err=True)
+            typer.echo(t("install.warn_missing", src=src), err=True)
             continue
         if dst.exists() and not force:
-            typer.echo(f"  [skip] 已存在: {dst} (用 --force 覆盖)")
+            typer.echo(t("install.skip_exists", dst=dst))
             continue
         shutil.copy2(src, dst)
         typer.echo(f"  [ok] {dst}")
@@ -59,21 +81,25 @@ def _install_cursor_agents(source_dir: Path, *, force: bool) -> int:
     return installed
 
 
-def _install_codex_agents(source_dir: Path, *, force: bool) -> int:
-    """安装 Codex agent 定义"""
+def _install_codex_agents(source_dir: Path, *, force: bool, lang: str) -> int:
+    """Install Codex agent definitions."""
     target_dir = Path.home() / ".codex" / "agents"
     target_dir.mkdir(parents=True, exist_ok=True)
 
     installed = 0
     src_dir = source_dir / "codex"
+    if lang == "zh":
+        zh_dir = src_dir / "zh"
+        if zh_dir.is_dir():
+            src_dir = zh_dir
     for src_name, dst_name in _CODEX_AGENTS.items():
         src = src_dir / src_name
         dst = target_dir / dst_name
         if not src.exists():
-            typer.echo(f"  [warn] 源文件不存在: {src}", err=True)
+            typer.echo(t("install.warn_missing", src=src), err=True)
             continue
         if dst.exists() and not force:
-            typer.echo(f"  [skip] 已存在: {dst} (用 --force 覆盖)")
+            typer.echo(t("install.skip_exists", dst=dst))
             continue
         shutil.copy2(src, dst)
         typer.echo(f"  [ok] {dst}")
@@ -81,34 +107,34 @@ def _install_codex_agents(source_dir: Path, *, force: bool) -> int:
     return installed
 
 
-def run_install(*, force: bool = False) -> None:
-    """执行安装流程：预检 → 复制 agent 文件"""
-    typer.echo("harness install — 安装 agent 定义\n")
+def run_install(*, force: bool = False, lang: str | None = None) -> None:
+    """Run install: preflight, then copy agent files."""
+    resolved = _resolve_install_lang(lang)
+    typer.echo(t("install.title"))
 
-    # 环境预检
     ides = _detect_ide()
-    typer.echo("环境检测:")
-    typer.echo(f"  Cursor CLI: {'✓' if ides['cursor'] else '✗ 未找到'}")
-    typer.echo(f"  Codex CLI:  {'✓' if ides['codex'] else '✗ 未找到'}")
+    typer.echo(t("install.env_check"))
+    typer.echo(t("install.cursor_ok") if ides["cursor"] else t("install.cursor_missing"))
+    typer.echo(t("install.codex_ok") if ides["codex"] else t("install.codex_missing"))
 
     if not any(ides.values()):
-        typer.echo("\n[error] 未检测到 Cursor 或 Codex CLI，至少需要安装一个。", err=True)
+        typer.echo(t("install.no_ide"), err=True)
         raise typer.Exit(1)
 
     source_dir = _agents_pkg_dir()
     if not source_dir.exists():
-        typer.echo(f"\n[error] agent 源文件目录不存在: {source_dir}", err=True)
+        typer.echo(t("install.no_source", path=source_dir), err=True)
         raise typer.Exit(1)
 
     total = 0
     typer.echo()
 
     if ides["cursor"]:
-        typer.echo("安装 Cursor agents:")
-        total += _install_cursor_agents(source_dir, force=force)
+        typer.echo(t("install.cursor_agents"))
+        total += _install_cursor_agents(source_dir, force=force, lang=resolved)
 
     if ides["codex"]:
-        typer.echo("安装 Codex agents:")
-        total += _install_codex_agents(source_dir, force=force)
+        typer.echo(t("install.codex_agents"))
+        total += _install_codex_agents(source_dir, force=force, lang=resolved)
 
-    typer.echo(f"\n完成: {total} 个 agent 定义已安装。")
+    typer.echo(t("install.done", count=total))

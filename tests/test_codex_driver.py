@@ -18,10 +18,10 @@ def test_compose_prompt_includes_role_instructions_for_known_agent() -> None:
         readonly=True,
     )
 
-    assert "Harness 为当前角色注入的 developer instructions" in prompt
-    assert "你是 Harness 框架的 Planner 角色" in prompt
+    assert "developer instructions injected by Harness for the current role" in prompt
+    assert "You are the Planner role" in prompt
     assert "请生成合同" in prompt
-    assert "你当前是只读角色" in prompt
+    assert "read-only mode" in prompt
 
 
 def test_compose_prompt_falls_back_when_role_is_unknown() -> None:

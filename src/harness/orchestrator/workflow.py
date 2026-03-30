@@ -1,4 +1,4 @@
-"""单任务工作流: plan → contract → build → eval"""
+"""Single-task workflow: plan → contract → build → eval."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from harness.core.state import StateMachine, TaskState
 from harness.core.ui import get_ui
 from harness.drivers.base import AgentResult
 from harness.drivers.resolver import DriverResolver
+from harness.i18n import t
 from harness.methodology.contracts import parse_contract, write_contract_sidecar
 from harness.methodology.evaluation import parse_evaluation, run_ci_check
 from harness.methodology.scoring import write_evaluation_sidecar
@@ -53,7 +54,7 @@ def run_single_task(
     resume: bool = False,
     events: EventEmitter | None = None,
 ) -> WorkflowResult:
-    """执行完整的 plan→contract→build→eval 循环"""
+    """Run the full plan → contract → build → eval loop."""
     from harness.integrations import git_ops
 
     ui = get_ui()
@@ -98,7 +99,7 @@ def run_single_task(
 
         current_state = sm.state.current_task.state if sm.state.current_task else TaskState.IDLE
 
-        # === Phase 1: Planning ===
+        # Phase 1: Planning
         if current_state in (TaskState.IDLE, TaskState.EVALUATING):
             ui.iteration_header(iteration, max_iter)
             sm.transition(TaskState.PLANNING)
@@ -153,7 +154,7 @@ def run_single_task(
             parsed_contract.iteration = iteration
             write_contract_sidecar(parsed_contract, contract_md_path)
 
-        # === Phase 2: Contracted → Building ===
+        # Phase 2: Contracted → Building
         if sm.state.current_task.state == TaskState.PLANNING:
             sm.transition(TaskState.CONTRACTED)
 
@@ -192,18 +193,18 @@ def run_single_task(
                 )
                 if _is_driver_error(elapsed, build_result):
                     abort_reason = f"builder driver error (exit {build_result.exit_code}, {elapsed:.0f}s)"
-                    ui.error(f"[abort] {abort_reason} — 驱动级错误，重试无意义")
+                    ui.error(f"[abort] {abort_reason} — {t('prompt.driver_error')}")
                     break
-                # 代码级失败：跳过 eval，用 builder 错误做 feedback 进入下一轮
-                last_feedback = f"Builder 执行失败:\n{build_result.output[-2000:]}"
+                # Code-level failure: skip eval, feed builder error into next iteration
+                last_feedback = t("prompt.builder_fail_feedback", output=build_result.output[-2000:])
                 sm.transition(TaskState.EVALUATING)
                 continue
 
-        # === Phase 3: Evaluating ===
+        # Phase 3: Evaluating
         if sm.state.current_task.state == TaskState.BUILDING:
             sm.transition(TaskState.EVALUATING)
 
-            # Stage 1: CI 门禁
+            # Stage 1: CI gate
             t0 = time.monotonic()
             with ui.agent_step("[3/3 eval] CI gate", "local") as on_out:
                 ci_result = run_ci_check(config.ci.command, project_root, on_output=on_out)
@@ -220,9 +221,9 @@ def run_single_task(
                     "[3/3 eval] CI gate", elapsed, False, "failed",
                     fail_tail=ci_result.feedback.split("\n"),
                 )
-                last_feedback = f"CI 失败:\n{ci_result.feedback}"
+                last_feedback = t("prompt.ci_fail_feedback", feedback=ci_result.feedback)
                 (task_dir / f"evaluation-r{iteration}.md").write_text(
-                    f"# CI 失败\n\n{ci_result.feedback}", encoding="utf-8"
+                    f"{t('prompt.ci_fail_heading')}\n\n{ci_result.feedback}", encoding="utf-8"
                 )
                 sm.state.current_task.artifacts.evaluation = str(
                     task_dir / f"evaluation-r{iteration}.md"
@@ -339,7 +340,7 @@ def run_single_task(
 
             last_feedback = alignment_feedback if alignment_feedback else parsed.feedback
 
-    # 达到最大迭代、被中断或 abort
+    # Max iterations, interrupt, or abort
     final_score = 0.0
     total_iterations = iteration - start_iteration + 1
     sm.transition(TaskState.BLOCKED)
@@ -367,14 +368,16 @@ _CONTRACT_MARKERS = [
 
 
 def _is_driver_error(elapsed: float, result: AgentResult) -> bool:
-    """判断是否为驱动级错误（非代码问题，重试无意义）"""
+    """Return True if the failure looks like a driver-level error (retry unlikely to help)."""
     output_len = len(result.output.strip())
     return elapsed < _DRIVER_ERROR_THRESHOLD_SECS and output_len < _DRIVER_ERROR_OUTPUT_LEN
 
 
 def _split_spec_contract(text: str) -> tuple[str, str]:
-    """按 '# Contract' 标记拆分 planner 输出为 (spec, contract)。
-    找不到标记时 spec=全文, contract=全文（兼容旧行为）。"""
+    """Split planner output into (spec, contract) at a '# Contract' marker.
+
+    If no marker is found, returns (full text, full text) for backward compatibility.
+    """
     for pattern in _CONTRACT_MARKERS:
         m = pattern.search(text)
         if m:
@@ -385,7 +388,7 @@ def _split_spec_contract(text: str) -> tuple[str, str]:
 
 
 def _git_branch_summary(project_root: Path, branch: str) -> str:
-    """获取分支相对于 main 的 diff stat 和 commit log"""
+    """Summarize diff stat and commit log for the branch vs main."""
     parts: list[str] = []
     try:
         stat = subprocess.run(
@@ -407,7 +410,7 @@ def _git_branch_summary(project_root: Path, branch: str) -> str:
     except Exception:
         pass
 
-    return "\n\n".join(parts) if parts else "(无法获取分支差异)"
+    return "\n\n".join(parts) if parts else t("prompt.git_diff_unavailable")
 
 
 def _build_plan_prompt(requirement: str, project_root: Path) -> str:
@@ -417,36 +420,24 @@ def _build_plan_prompt(requirement: str, project_root: Path) -> str:
         agents_md = agents_file.read_text(encoding="utf-8")[:3000]
 
     file_tree = _get_file_tree(project_root)
-    tree_block = f"\n## 项目文件树\n```\n{file_tree}\n```" if file_tree else ""
+    tree_block = t("prompt.file_tree_heading", tree=file_tree) if file_tree else ""
 
-    return f"""\
-项目根目录: {project_root}
-
-## 需求
-{requirement}
-
-## 项目规范（摘要）
-{agents_md if agents_md else '（未找到 AGENTS.md）'}
-{tree_block}
-
-请分析需求，输出 Spec（技术规格）和首次迭代的 Contract（合同）。
-严格按照你的 agent 指令中定义的格式输出。
-"""
+    return t(
+        "prompt.plan",
+        project_root=project_root,
+        requirement=requirement,
+        agents_md=agents_md if agents_md else t("prompt.plan_no_agents"),
+        tree_block=tree_block,
+    )
 
 
 def _build_iterate_prompt(requirement: str, feedback: str, project_root: Path) -> str:
-    return f"""\
-项目根目录: {project_root}
-
-## 原始需求
-{requirement}
-
-## Evaluator 反馈
-{feedback}
-
-请根据反馈调整合同，只关注反馈中提到的问题。
-严格按照 Contract 格式输出。
-"""
+    return t(
+        "prompt.iterate",
+        project_root=project_root,
+        requirement=requirement,
+        feedback=feedback,
+    )
 
 
 def _build_builder_prompt(
@@ -465,21 +456,18 @@ def _build_builder_prompt(
     context_sections: list[str] = []
 
     if project_root:
-        # AGENTS.md
         agents_file = project_root / "AGENTS.md"
         if agents_file.exists():
             try:
                 content = agents_file.read_text(encoding="utf-8")[:3000]
-                context_sections.append(f"### AGENTS.md（项目规范）\n{content}")
+                context_sections.append(t("prompt.agents_md_heading", content=content))
             except OSError:
                 pass
 
-        # 文件树快照
         file_tree = _get_file_tree(project_root)
         if file_tree:
-            context_sections.append(f"### 项目文件树\n```\n{file_tree}\n```")
+            context_sections.append(t("prompt.file_tree_section", tree=file_tree))
 
-        # 从 contract 提取引用的文件路径并预读内容
         if contract:
             referenced = _extract_file_refs(contract, project_root)
             if referenced:
@@ -487,25 +475,13 @@ def _build_builder_prompt(
 
     context_block = "\n\n".join(context_sections)
 
-    return f"""\
-## 任务
-{requirement}
-
-## 技术规格（Planner 的分析结果，供参考）
-{spec if spec else '（无）'}
-
-## 合同（你的交付清单）
-{contract}
-
-## 项目上下文（已预读，不要重复读取这些文件）
-{context_block if context_block else '（无预读上下文）'}
-
-## 执行要求
-- 按合同交付物逐项实现，完成后提交代码
-- 上方已提供项目规范和关键文件内容，**跳过探索阶段，直接开始编码**
-- 只在需要查看 prompt 未包含的文件时才调用 read/glob
-- 遵守项目的编码规范和架构约束
-"""
+    return t(
+        "prompt.builder",
+        requirement=requirement,
+        spec=spec if spec else t("prompt.builder_no_spec"),
+        contract=contract,
+        context=context_block if context_block else t("prompt.builder_no_context"),
+    )
 
 
 _FILE_TREE_MAX_LINES = 80
@@ -515,7 +491,7 @@ _FILE_REF_MAX_TOTAL = 20000
 
 
 def _get_file_tree(project_root: Path) -> str:
-    """生成项目文件树快照（3 层深度，排除常见噪音目录）"""
+    """Build a shallow project file tree snapshot (depth 3, excluding common noise dirs)."""
     try:
         result = subprocess.run(
             [
@@ -542,7 +518,7 @@ def _get_file_tree(project_root: Path) -> str:
 
 
 def _extract_file_refs(contract: str, project_root: Path) -> str:
-    """从 contract 文本中提取文件路径引用，预读存在的文件内容"""
+    """Extract file path references from contract text and pre-read existing files."""
     matches = _FILE_REF_PATTERN.findall(contract)
     seen: set[str] = set()
     parts: list[str] = []
@@ -568,14 +544,14 @@ def _extract_file_refs(contract: str, project_root: Path) -> str:
 
         chunk = f"#### {ref}\n```\n{content}\n```"
         if total_len + len(chunk) > _FILE_REF_MAX_TOTAL:
-            parts.append("... (更多文件已省略，请自行读取)")
+            parts.append(t("prompt.contract_refs_overflow"))
             break
         parts.append(chunk)
         total_len += len(chunk)
 
     if not parts:
         return ""
-    return "### 合同引用的关键文件\n" + "\n\n".join(parts)
+    return t("prompt.contract_refs_heading") + "\n\n".join(parts)
 
 
 def _build_alignment_eval_prompt(
@@ -593,29 +569,14 @@ def _build_alignment_eval_prompt(
 
     branch_summary = _git_branch_summary(project_root, branch)
 
-    return f"""\
-项目根目录: {project_root}
-
-## 原始需求
-{requirement}
-
-## 合同
-{contract}
-
-## Builder 分支变更
-分支: {branch}
-
-{branch_summary}
-
-## 对齐评估指引
-请评估实现是否与原始需求和合同对齐。关注：
-1. 需求中的每个要点是否被覆盖
-2. 合同的每个交付物和验收标准是否被满足
-3. 实现是否偏离需求的核心意图
-4. 合同本身是否遗漏了需求中的关键点
-
-严格按照你的 agent 指令中定义的格式输出。
-"""
+    return t(
+        "prompt.alignment",
+        project_root=project_root,
+        requirement=requirement,
+        contract=contract,
+        branch=branch,
+        branch_summary=branch_summary,
+    )
 
 
 def _build_eval_prompt(
@@ -631,36 +592,20 @@ def _build_eval_prompt(
     if contract_file.exists():
         contract = contract_file.read_text(encoding="utf-8")[:5000]
 
-    # 注入分支变更摘要，让 evaluator 看到 builder 的实际 commit
     branch_summary = _git_branch_summary(project_root, branch)
 
-    # 注入 build log 摘要
     build_log = ""
     build_log_file = task_dir / f"build-r{iteration}.log"
     if build_log_file.exists():
         raw = build_log_file.read_text(encoding="utf-8")
         build_log = raw[-2000:] if len(raw) > 2000 else raw
 
-    return f"""\
-项目根目录: {project_root}
-
-## 原始需求
-{requirement}
-
-## 合同
-{contract}
-
-## Builder 分支变更（重要：请用此数据评估，不要依赖 working tree diff）
-分支: {branch}
-
-{branch_summary}
-
-## Builder 工作日志（摘要）
-{build_log if build_log else '（无日志）'}
-
-## 评估指引
-- **关键**：Builder 会 commit 代码，因此 `git diff`（working tree）可能为空。
-  请使用上方的分支变更摘要，或执行 `git diff main..HEAD` 来查看实际变更。
-- 检查测试状态，按四维标准打分。
-- 严格按照你的 agent 指令中定义的 Evaluation 格式输出。
-"""
+    return t(
+        "prompt.eval",
+        project_root=project_root,
+        requirement=requirement,
+        contract=contract,
+        branch=branch,
+        branch_summary=branch_summary,
+        build_log=build_log if build_log else t("prompt.eval_no_log"),
+    )

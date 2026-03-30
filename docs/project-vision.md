@@ -1,43 +1,45 @@
+[中文版](zh-CN/project-vision.md)
+
 # Vision — harness-orchestrator
 
-## 愿景陈述
+## Vision statement
 
-harness-orchestrator 的长期目标，是成为一个面向真实代码仓库的本地优先开发编排层：它不直接替代工程师，也不试图重新发明 IDE，而是把多种 agent 能力组织进一个可执行、可审计、可恢复的工程闭环中。对于使用 Cursor、Codex 等工具的团队和个人来说，这个项目的价值不在于“再多一个 AI 入口”，而在于把分散的 agent 行为收束为统一方法论，让需求推进、代码实现和质量把关能够持续协同。
+The long-term goal of harness-orchestrator is to be a local-first development orchestration layer for real codebases: it does not replace engineers outright or try to reinvent the IDE, but organizes multiple agent capabilities into an executable, auditable, recoverable engineering loop. For teams and individuals using Cursor, Codex, and similar tools, the value is not “yet another AI entry point,” but converging scattered agent behavior into a single methodology so requirement progress, implementation, and quality gates stay aligned over time.
 
-## 项目目标
+## Project goals
 
-项目希望解决的核心问题，是当前 agent 编码虽然局部能力很强，但在连续开发任务中仍然容易出现目标漂移、上下文断裂、质量门禁缺失和过程不可追踪。harness-orchestrator 要提供一个清晰的执行框架，把愿景、任务选择、方案设计、实现、评估和反思连接起来，使 agent 能够围绕同一项目目标稳定工作，而不是一次次从零开始。
+The core problem is that agent coding is strong locally but still prone to goal drift, broken context, missing quality gates, and opaque processes across continuous work. harness-orchestrator should provide a clear execution framework connecting vision, task selection, design, implementation, evaluation, and reflection, so agents can work steadily toward one project goal instead of restarting from scratch each time.
 
-在理想状态下，用户可以在任意仓库中初始化 harness，写下简洁的 vision，然后通过统一命令驱动多角色 agent 持续推进项目。每一次任务都应留下足够的工件和状态记录，便于人类审查、恢复执行、比较方案，并逐步建立对自治开发流程的信任。
+In the ideal case, users initialize harness in any repo, write a concise vision, and drive multi-role agents forward with unified commands. Every task should leave enough artifacts and state for human review, resuming execution, comparing options, and building trust in autonomous development.
 
-## 关键功能
+## Key capabilities
 
-1. 提供低摩擦接入能力。用户能够通过简单初始化把 harness 嵌入现有仓库，而不是为使用框架重构工程结构。
-2. 提供稳定的多角色协作机制。Planner、Builder、Evaluator、Strategist、Reflector 的职责边界明确，避免“一个 agent 包打天下”带来的失控。
-3. 提供从愿景到执行的闭环。Strategist 根据 vision 与进展选择任务，工作流通过 plan -> contract -> build -> eval 推进，并把结果写回进度系统。
-4. 提供可观测和可恢复的运行过程。任务工件、状态机、评分结果、日志和归档都应能支持中断恢复和事后审计。
-5. 提供跨 agent 实现的统一抽象。无论底层使用 Cursor 还是 Codex，用户感知到的都应是统一方法，而不是碎片化脚本集合。
-6. 在质量上建立硬约束。CI 门禁、独立评审、通过阈值和安全停止条件应成为默认能力，而不是可有可无的附加项。
+1. **Low-friction onboarding** — Embed harness in an existing repo with simple initialization, without restructuring the project for the framework.
+2. **Stable multi-role collaboration** — Clear boundaries for Planner, Builder, Evaluator, Strategist, and Reflector, avoiding “one agent does everything” loss of control.
+3. **Vision-to-execution loop** — Strategist picks tasks from vision and progress; the workflow advances plan → contract → build → eval and writes results back to the progress system.
+4. **Observable, recoverable runs** — Task artifacts, state machine, scores, logs, and archives should support resume after interruption and post-hoc audit.
+5. **Unified abstraction across agent backends** — Whether the backend is Cursor or Codex, users experience one methodology, not a pile of ad hoc scripts.
+6. **Hard quality constraints** — CI gates, independent review, pass thresholds, and safe stop conditions should be defaults, not optional extras.
 
-## 技术约束
+## Technical constraints
 
-1. 本地优先。优先使用本地文件、分支和目录保存状态与工件，不依赖复杂服务端组件才能工作。
-2. 轻量实现。核心保持为 Python CLI，控制依赖和部署复杂度，确保个人开发者也能直接使用。
-3. 可组合扩展。驱动层、集成层和方法论层需要清晰分离，以便后续增加更多 agent 后端或外部系统。
-4. 结构化输入输出。vision、spec、contract、evaluation 等关键文档都应保持简洁、模板化、机器可消费。
-5. 安全优先。自治能力的增强不能以牺牲可控性为代价，任何自动推进都要受边界、阈值和停止条件约束。
+1. **Local-first** — Prefer local files, branches, and directories for state and artifacts; no heavy server stack required to operate.
+2. **Lightweight core** — Stay a Python CLI with controlled dependencies and deployment complexity so individual developers can adopt it directly.
+3. **Composable extension** — Drivers, integrations, and methodology should be clearly separated so more agent backends or external systems can be added later.
+4. **Structured I/O** — vision, spec, contract, evaluation, and other key documents stay concise, templated, and machine-consumable.
+5. **Safety first** — Stronger autonomy must not sacrifice controllability; any automatic advance is bounded by limits, thresholds, and stop conditions.
 
-## 非目标
+## Non-goals
 
-1. 不把项目做成一个通用的企业级工作流平台，去覆盖审批、发布、数据编排等与核心场景无关的问题。
-2. 不追求“完全自动写完一个产品”的宣传式目标，重点是提升真实工程任务的连续推进能力。
-3. 不试图用一个超大而模糊的 agent 替代角色分工，方法论清晰比表面智能更重要。
-4. 不把可视化、SaaS 化或云端托管作为当前阶段的主线目标；这些能力只有在核心编排闭环稳定后才有意义。
+1. Not a generic enterprise workflow platform for approvals, releases, data orchestration, and other concerns outside the core scenario.
+2. Not chasing a marketing goal of “fully auto-build an entire product”; the focus is sustainable progress on real engineering tasks.
+3. Not replacing clear role split with one oversized vague agent; methodology clarity matters more than surface “intelligence.”
+4. Not making visualization, SaaS, or cloud hosting the main line of this phase; those only make sense after the core orchestration loop is stable.
 
-## 成功标准
+## Success criteria
 
-如果这个项目做对了，用户会明显感受到三件事：
+If the project succeeds, users should feel three things clearly:
 
-1. 初始化一个新仓库后，可以很快进入可持续的 agent 协作状态，而不是手工拼接 prompt 和脚本。
-2. 多轮开发任务之后，项目仍然围绕 vision 持续收敛，任务选择、实现质量和失败恢复都有一致机制。
-3. 当用户回看整个过程时，能够清楚回答“为什么做这个任务、谁做了什么、为什么通过或被阻塞、下一步该做什么”。
+1. After initializing a new repo, they quickly reach a sustainable multi-agent collaboration mode instead of hand-gluing prompts and scripts.
+2. After many development rounds, the project still converges on vision with consistent mechanisms for task choice, implementation quality, and failure recovery.
+3. When reviewing the whole process, they can answer plainly: why this task, who did what, why it passed or blocked, and what to do next.

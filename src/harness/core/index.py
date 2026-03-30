@@ -1,4 +1,4 @@
-"""索引维护 — 自动更新 .agents/index.md"""
+"""Index maintenance — keep .agents/index.md up to date."""
 
 from __future__ import annotations
 
@@ -8,23 +8,23 @@ from harness.core.state import SessionState
 
 
 def update_index(agents_dir: Path, state: SessionState) -> None:
-    """更新 .agents/index.md — 所有任务的快速索引"""
+    """Rewrite .agents/index.md as a quick index of all tasks."""
     path = agents_dir / "index.md"
     lines = ["# Task Index\n"]
 
-    # 活跃任务
+    # Active task
     if state.current_task:
         t = state.current_task
         lines.append("## Active\n")
         lines.append(f"- **{t.id}**: {t.requirement} [{t.state.value}]\n")
 
-    # 已完成
+    # Completed
     if state.completed:
         lines.append("## Completed\n")
         for t in state.completed:
             lines.append(f"- **{t.id}**: {t.requirement} — {t.score:.1f} ({t.verdict})")
 
-    # 阻塞
+    # Blocked
     if state.blocked:
         lines.append("\n## Blocked\n")
         for t in state.blocked:

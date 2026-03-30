@@ -1,86 +1,86 @@
 # Benchmark: TODO API
 
-对比 Harness 编排模式与直接使用 Codex / Cursor 的效果差异。
+Compare Harness orchestration with using Codex or Cursor directly.
 
-## 测试项目
+## Test project
 
-一个简单的 Python TODO API（FastAPI + SQLite），从空项目开始。
+A minimal Python TODO API (FastAPI + SQLite), starting from an empty project.
 
-## 5 个递增任务
+## Five incremental tasks
 
-| # | 任务 | 预期复杂度 |
+| # | Task | Expected complexity |
 |---|------|-----------|
-| 1 | 初始化 FastAPI 项目，添加健康检查端点和基础项目结构 | simple |
-| 2 | 实现 TODO CRUD API（创建、读取、更新、删除）+ SQLite 存储 | medium |
-| 3 | 添加输入验证、错误处理和 Pydantic 模型 | medium |
-| 4 | 实现分页、过滤（按状态）和排序功能 | medium |
-| 5 | 添加完整的 pytest 测试套件，覆盖所有端点和边界情况 | complex |
+| 1 | Bootstrap FastAPI project, health check endpoint, basic project layout | simple |
+| 2 | Implement TODO CRUD API (create, read, update, delete) + SQLite storage | medium |
+| 3 | Add input validation, error handling, and Pydantic models | medium |
+| 4 | Implement pagination, filtering (by status), and sorting | medium |
+| 5 | Add a full pytest suite covering all endpoints and edge cases | complex |
 
-## 三种模式
+## Three modes
 
-### A. 直接 Codex
+### A. Codex only
 ```bash
-codex exec --full-auto - <<< "任务描述"
+codex exec --full-auto - <<< "task description"
 ```
 
-### B. 直接 Cursor
+### B. Cursor only
 ```bash
-cursor agent --print --force "任务描述"
+cursor agent --print --force "task description"
 ```
 
-### C. Harness 编排
+### C. Harness orchestration
 ```bash
 harness init --name todo-api --ci "pytest" -y
-harness run "任务描述"
+harness run "task description"
 ```
 
-## 对比指标
+## Comparison metrics
 
-| 指标 | 说明 |
+| Metric | Description |
 |------|------|
-| **完成率** | 5 个任务中成功完成的比例 |
-| **平均迭代次数** | 每个任务从开始到通过的迭代轮数 |
-| **CI 首次通过率** | 第一轮 build 后 CI 即通过的比例 |
-| **人工干预次数** | 需要人工修改代码才能继续的次数 |
-| **可回放性** | 事后能否完整追溯每个决策的原因 |
+| **Completion rate** | Share of the 5 tasks completed successfully |
+| **Average iterations** | Rounds per task from start to pass |
+| **CI first-pass rate** | Share where CI passes after the first build round |
+| **Manual interventions** | Times human code edits were needed to proceed |
+| **Replayability** | Whether decisions can be fully traced afterward |
 
-## 运行步骤
+## How to run
 
-### 准备
+### Setup
 ```bash
 mkdir /tmp/todo-benchmark && cd /tmp/todo-benchmark
 git init && git commit --allow-empty -m "init"
 ```
 
-### 模式 C: Harness（推荐先跑这个，生成完整 artifacts）
+### Mode C: Harness (recommended first — produces full artifacts)
 ```bash
 pip install harness-orchestrator
 harness install
 harness init --name todo-api --ci "pytest" -y
 
-# 逐任务执行
-harness run "初始化 FastAPI 项目，添加健康检查端点和基础项目结构"
-harness run "实现 TODO CRUD API（创建、读取、更新、删除）+ SQLite 存储"
-harness run "添加输入验证、错误处理和 Pydantic 模型"
-harness run "实现分页、过滤（按状态）和排序功能"
-harness run "添加完整的 pytest 测试套件，覆盖所有端点和边界情况"
+# Run tasks one by one
+harness run "Bootstrap FastAPI project, health check endpoint, basic project layout"
+harness run "Implement TODO CRUD API (create, read, update, delete) + SQLite storage"
+harness run "Add input validation, error handling, and Pydantic models"
+harness run "Implement pagination, filtering by status, and sorting"
+harness run "Add a full pytest suite covering all endpoints and edge cases"
 ```
 
-### 演示亮点
+### Demo highlights
 
-- **中途 Ctrl+C 后 resume**：在任务 3 执行中按 Ctrl+C，然后 `harness run "..." --resume`
-- **查看 artifacts**：`ls .agents/tasks/` 查看每轮的 spec、contract、evaluation
-- **查看 events**：`cat .agents/runs/*/events.jsonl | python -m json.tool`
-- **JSON sidecar**：`cat .agents/tasks/task-001/contract-r1.json`
+- **Resume after Ctrl+C mid-task**: During task 3, press Ctrl+C, then `harness run "..." --resume`
+- **Inspect artifacts**: `ls .agents/tasks/` for per-round spec, contract, evaluation
+- **Inspect events**: `cat .agents/runs/*/events.jsonl | python -m json.tool`
+- **JSON sidecar**: `cat .agents/tasks/task-001/contract-r1.json`
 
-## 结果记录模板
+## Results template
 
 ```markdown
-| 指标 | Codex | Cursor | Harness |
-|------|-------|--------|---------|
-| 完成率 | ?/5 | ?/5 | ?/5 |
-| 平均迭代次数 | N/A | N/A | ? |
-| CI 首次通过率 | ?% | ?% | ?% |
-| 人工干预 | ? 次 | ? 次 | ? 次 |
-| 可回放性 | 无 | 无 | 完整 |
+| Metric | Codex | Cursor | Harness |
+|--------|-------|--------|---------|
+| Completion rate | ?/5 | ?/5 | ?/5 |
+| Avg. iterations | N/A | N/A | ? |
+| CI first-pass rate | ?% | ?% | ?% |
+| Manual interventions | ? | ? | ? |
+| Replayability | None | None | Full |
 ```

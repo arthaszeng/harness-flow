@@ -1,7 +1,7 @@
-"""Cursor CLI subprocess 驱动
+"""Cursor CLI subprocess driver.
 
-使用 `cursor agent --print --output-format stream-json --stream-partial-output`
-获取流式 JSON 事件，实时展示进度。
+Uses `cursor agent --print --output-format stream-json --stream-partial-output`
+for streaming JSON events and live progress.
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Callable
 
 from harness.drivers.base import AgentResult
+from harness.i18n import get_lang, t
 
 _ROLE_FILES = {
     "harness-builder": "builder.md",
@@ -28,11 +29,11 @@ _HEARTBEAT_INTERVAL = 10
 
 
 def _format_event(evt: dict) -> str | None:
-    """将 cursor stream-json 事件转为可读的单行文本，无关事件返回 None"""
-    t = evt.get("type", "")
+    """Turn a cursor stream-json event into one readable line; unrelated -> None."""
+    evt_type = evt.get("type", "")
     sub = evt.get("subtype", "")
 
-    if t == "tool_call" and sub == "started":
+    if evt_type == "tool_call" and sub == "started":
         tc = evt.get("tool_call", {})
         # MCP tool call
         mcp = tc.get("mcpToolCall", {})
@@ -51,7 +52,7 @@ def _format_event(evt: dict) -> str | None:
             return f"[read] {file_read.get('filePath', '?')}"
         return f"[tool] {list(tc.keys())}"
 
-    if t == "tool_call" and sub == "completed":
+    if evt_type == "tool_call" and sub == "completed":
         tc = evt.get("tool_call", {})
         mcp = tc.get("mcpToolCall", {})
         if mcp and mcp.get("result", {}).get("rejected"):
@@ -59,7 +60,7 @@ def _format_event(evt: dict) -> str | None:
             return f"[tool] rejected: {reason[:60]}"
         return None
 
-    if t == "assistant":
+    if evt_type == "assistant":
         content = evt.get("message", {}).get("content", [])
         texts = [c.get("text", "") for c in content if c.get("type") == "text"]
         text = " ".join(texts).strip()
@@ -68,7 +69,7 @@ def _format_event(evt: dict) -> str | None:
             return f"[out] {first_line}"
         return None
 
-    if t == "result":
+    if evt_type == "result":
         ok = "ok" if not evt.get("is_error") else "error"
         dur = evt.get("duration_ms", 0) / 1000
         return f"[result] {ok} ({dur:.0f}s)"
@@ -77,7 +78,7 @@ def _format_event(evt: dict) -> str | None:
 
 
 def _compose_full_output(event_log: list[str], final_result: str) -> str:
-    """将事件日志和最终结果合并为完整的 build log 输出"""
+    """Merge event log and final result into a full build log string."""
     parts: list[str] = []
     if event_log:
         parts.append("== EVENT LOG ==")
@@ -96,7 +97,7 @@ class DriverProbe:
 
 
 class CursorDriver:
-    """通过 Cursor CLI (stream-json) 调用 agent"""
+    """Invoke agents via Cursor CLI (stream-json)."""
 
     def __init__(self) -> None:
         self._probe_result: DriverProbe | None = None
@@ -175,7 +176,7 @@ class CursorDriver:
         try:
             return self._run_stream_json(cmd, cwd, timeout, on_output)
         except FileNotFoundError:
-            return AgentResult(success=False, output="Cursor CLI 未找到", exit_code=-1)
+            return AgentResult(success=False, output=t("driver.cursor_not_found"), exit_code=-1)
 
     def _run_stream_json(
         self,
@@ -184,7 +185,7 @@ class CursorDriver:
         timeout: int,
         on_output: Callable[[str], None] | None = None,
     ) -> AgentResult:
-        """解析 stream-json 事件流，实时输出进度，并记录完整事件日志"""
+        """Parse stream-json, stream progress, and keep a full event log."""
         start = time.monotonic()
         final_result = ""
         event_log: list[str] = []
@@ -207,7 +208,7 @@ class CursorDriver:
                 sys.stderr.write(f"{_STREAM_PREFIX}{text}\n")
                 sys.stderr.flush()
 
-        # 心跳线程：Cursor 冷启动时无 stream 事件，避免用户以为卡住
+        # Heartbeat: Cursor cold start may emit no events for a while
         def _heartbeat() -> None:
             while not heartbeat_stop.is_set():
                 heartbeat_stop.wait(_HEARTBEAT_INTERVAL)
@@ -215,7 +216,7 @@ class CursorDriver:
                     break
                 if not got_first_event.is_set():
                     elapsed = time.monotonic() - start
-                    _emit(f"[thinking] {elapsed:.0f}s...")
+                    _emit(t("driver.heartbeat", elapsed=elapsed))
 
         heartbeat_thread = threading.Thread(target=_heartbeat, daemon=True)
         heartbeat_thread.start()
@@ -251,14 +252,14 @@ class CursorDriver:
         except subprocess.TimeoutExpired:
             proc.kill()
             proc.wait()
-            return AgentResult(success=False, output="Cursor agent 超时", exit_code=-1)
+            return AgentResult(success=False, output=t("driver.cursor_timeout"), exit_code=-1)
         finally:
             heartbeat_stop.set()
             heartbeat_thread.join(timeout=2)
 
         if not on_output:
             elapsed = time.monotonic() - start
-            sys.stderr.write(f"{_STREAM_PREFIX}✓ 完成 ({elapsed:.0f}s)\n")
+            sys.stderr.write(f"{_STREAM_PREFIX}{t('driver.done', elapsed=elapsed)}\n")
             sys.stderr.flush()
 
         is_error = proc.returncode != 0
@@ -270,26 +271,17 @@ class CursorDriver:
             exit_code=proc.returncode or 0,
         )
 
-    # ── prompt 组装 ──────────────────────────────────────────────
-
     def _compose_prompt(self, agent_name: str, prompt: str, *, readonly: bool) -> str:
         developer_instructions = self._load_developer_instructions(agent_name)
-        readonly_block = (
-            "\n\n## 执行约束\n你当前是只读角色，不要修改代码或执行会改变工作区的操作。"
-            if readonly
-            else ""
-        )
+        readonly_block = t("driver.readonly_block") if readonly else ""
         if not developer_instructions:
             return prompt + readonly_block
 
-        return (
-            "## System Context\n"
-            "以下内容是 Harness 为当前角色注入的 developer instructions。"
-            " 这些约束优先于后续任务描述。\n\n"
-            f"{developer_instructions.strip()}"
-            "\n\n## Task Input\n"
-            f"{prompt.strip()}"
-            f"{readonly_block}\n"
+        return t(
+            "driver.system_context",
+            instructions=developer_instructions.strip(),
+            prompt=prompt.strip(),
+            readonly_block=readonly_block,
         )
 
     def _load_developer_instructions(self, agent_name: str) -> str:
@@ -298,6 +290,16 @@ class CursorDriver:
             return ""
 
         agents_dir = Path(__file__).resolve().parents[3] / "agents" / "cursor"
+        lang = get_lang()
+
+        if lang != "en":
+            lang_path = agents_dir / lang / role_file
+            if lang_path.exists():
+                try:
+                    return lang_path.read_text(encoding="utf-8").strip()
+                except OSError:
+                    pass
+
         path = agents_dir / role_file
         if not path.exists():
             return ""

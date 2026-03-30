@@ -1,4 +1,4 @@
-"""harness status — Rich 终端面板"""
+"""harness status — Rich terminal dashboard"""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from harness.core.ui import get_ui
 
 
 def run_status() -> None:
-    """读取 state.json 并渲染 Rich 面板"""
+    """Load state.json and render a Rich panel."""
     ui = get_ui()
     console = ui.console
 

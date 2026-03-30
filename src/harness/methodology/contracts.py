@@ -1,4 +1,4 @@
-"""迭代合同引擎 — 解析、验证、交付物检查、JSON sidecar"""
+"""Iteration contract engine — parse, validate, deliverable checks, JSON sidecar."""
 
 from __future__ import annotations
 
@@ -34,15 +34,15 @@ class Contract:
 
 
 def parse_contract(markdown: str) -> Contract:
-    """从 Markdown 文本解析合同"""
+    """Parse a contract from Markdown text."""
     contract = Contract()
 
-    # 解析迭代号
+    # Parse iteration number
     m = re.search(r"Iteration\s+(\d+)", markdown)
     if m:
         contract.iteration = int(m.group(1))
 
-    # 解析交付物
+    # Parse deliverables
     for match in re.finditer(r"-\s*\[([ xX])\]\s*(.+)", markdown):
         done = match.group(1).strip().lower() == "x"
         contract.deliverables.append(Deliverable(
@@ -50,11 +50,11 @@ def parse_contract(markdown: str) -> Contract:
             done=done,
         ))
 
-    # 解析验收标准（数字列表）
+    # Parse acceptance criteria (numbered list) — bilingual heading match
     in_criteria = False
     for line in markdown.split("\n"):
         stripped = line.strip()
-        if "验收标准" in stripped or "acceptance" in stripped.lower():
+        if "acceptance" in stripped.lower() or "\u9a8c\u6536\u6807\u51c6" in stripped:
             in_criteria = True
             continue
         if in_criteria:
@@ -65,13 +65,19 @@ def parse_contract(markdown: str) -> Contract:
             if m:
                 contract.acceptance_criteria.append(m.group(1).strip())
 
-    # 解析技术摘要
-    m = re.search(r"技术摘要\s*\n+(.+?)(?=\n##|\n#|\Z)", markdown, re.DOTALL)
+    # Parse technical summary — bilingual heading match
+    m = re.search(
+        r"(?:technical\s+summary|\u6280\u672f\u6458\u8981)\s*\n+(.+?)(?=\n##|\n#|\Z)",
+        markdown, re.DOTALL | re.IGNORECASE,
+    )
     if m:
         contract.technical_summary = m.group(1).strip()
 
-    # 解析复杂度
-    m = re.search(r"复杂度\s*\n+\s*(simple|medium|complex)", markdown, re.IGNORECASE)
+    # Parse complexity — bilingual heading match
+    m = re.search(
+        r"(?:complexity|\u590d\u6742\u5ea6)\s*\n+\s*(simple|medium|complex)",
+        markdown, re.IGNORECASE,
+    )
     if m:
         contract.complexity = m.group(1).lower()
 
@@ -89,6 +95,6 @@ def write_contract_sidecar(contract: Contract, md_path: Path) -> Path:
 
 
 def verify_deliverables(contract: Contract) -> tuple[int, int]:
-    """返回 (已完成数, 总数)"""
+    """Return (completed count, total count)."""
     done = sum(1 for d in contract.deliverables if d.done)
     return done, len(contract.deliverables)

@@ -1,36 +1,38 @@
+[中文版](zh-CN/state-machine.md)
+
 # State Machine
 
-Harness 使用显式状态机管理任务的生命周期。所有合法转换在 `src/harness/core/state.py` 中声明，任何违反转换约束的操作将抛出 `ValueError`。
+Harness uses an explicit state machine for the task lifecycle. All valid transitions are declared in `src/harness/core/state.py`; any operation that violates transition constraints raises `ValueError`.
 
-## 状态定义
+## State definitions
 
-| 状态 | 含义 |
+| State | Meaning |
 |------|------|
-| `idle` | 无活跃任务 |
-| `planning` | Planner 正在生成 spec 和 contract |
-| `contracted` | 合同已生成，等待 Builder 执行 |
-| `building` | Builder 正在编写代码 |
-| `evaluating` | Evaluator 正在审查（含 CI 门禁） |
-| `done` | 任务通过，已归档 |
-| `blocked` | 任务阻塞（达最大迭代 / 驱动错误 / 手动停止） |
+| `idle` | No active task |
+| `planning` | Planner is producing spec and contract |
+| `contracted` | Contract is ready; waiting for Builder |
+| `building` | Builder is writing code |
+| `evaluating` | Evaluator is reviewing (including CI gate) |
+| `done` | Task passed; archived |
+| `blocked` | Task blocked (max iterations / driver error / manual stop) |
 
-## 合法转换
+## Valid transitions
 
 ```
 idle ──────────► planning
 planning ──────► contracted
-planning ──────► blocked         (planner 失败)
+planning ──────► blocked         (planner failure)
 contracted ────► building
 building ──────► evaluating
-building ──────► blocked         (驱动级错误)
+building ──────► blocked         (driver-level error)
 evaluating ────► done            (PASS)
-evaluating ────► planning        (ITERATE — 进入下一轮)
-evaluating ────► blocked         (达最大迭代 / evaluator 失败 / stop 信号)
-done ──────────► idle            (任务完成，清理)
-blocked ───────► idle            (任务结束，清理)
+evaluating ────► planning        (ITERATE — next round)
+evaluating ────► blocked         (max iterations / evaluator failure / stop signal)
+done ──────────► idle            (task finished, cleanup)
+blocked ───────► idle            (task ended, cleanup)
 ```
 
-### 流程图
+### Flow diagram
 
 ```
         ┌──────┐
@@ -66,23 +68,23 @@ blocked ───────► idle            (任务结束，清理)
      └─────────┘
 ```
 
-## Resume 行为
+## Resume behavior
 
-`harness run --resume` 从 `.agents/state.json` 恢复上次会话：
+`harness run --resume` restores the last session from `.agents/state.json`:
 
-- 如果中断发生在 `planning` 或之后，resume 从当前 `iteration` 继续，不重置计数器
-- artifact 文件名使用 `spec-r{N}.md` / `contract-r{N}.md` / `evaluation-r{N}.md`，其中 N 是迭代号
-- resume 不会覆盖之前迭代的 artifact（迭代号递增）
+- If interruption happened at `planning` or later, resume continues from the current `iteration` without resetting the counter
+- Artifact filenames use `spec-r{N}.md` / `contract-r{N}.md` / `evaluation-r{N}.md`, where N is the iteration number
+- Resume does not overwrite artifacts from prior iterations (iteration number increases)
 
-## Stop 信号
+## Stop signal
 
-- `harness stop` 写入 `.agents/.stop` 文件
-- 正在运行的任务在完成**当前阶段**（plan / build / eval）后检测到信号并优雅退出
-- 任务转为 `blocked` 状态
-- `Ctrl+C`（SIGINT）会立即保存 checkpoint 后退出（exit code 130）
+- `harness stop` writes the `.agents/.stop` file
+- A running task detects the signal after finishing the **current phase** (plan / build / eval) and exits gracefully
+- The task transitions to `blocked`
+- `Ctrl+C` (SIGINT) saves a checkpoint immediately then exits (exit code 130)
 
-## BLOCKED 处理
+## BLOCKED handling
 
-- `blocked` 任务不会自动重试
-- `blocked → idle` 转换在 `complete_task()` 中自动完成
-- 要重试被阻塞的任务，使用 `harness run "<需求>"` 重新提交（不带 `--resume`）
+- `blocked` tasks are not automatically retried
+- The `blocked → idle` transition completes automatically in `complete_task()`
+- To retry a blocked task, run `harness run "<requirement>"` again (without `--resume`)

@@ -1,4 +1,4 @@
-"""任务归档 — active → archive + summary"""
+"""Task archival — move finished work from tasks/ to archive/."""
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from pathlib import Path
 
 
 def archive_task(agents_dir: Path, task_id: str) -> Path:
-    """将已完成的任务从 tasks/ 移到 archive/"""
+    """Move a completed task directory from tasks/ to archive/."""
     src = agents_dir / "tasks" / task_id
     if not src.exists():
         return src
@@ -22,7 +22,7 @@ def archive_task(agents_dir: Path, task_id: str) -> Path:
 
 
 def ensure_task_dir(agents_dir: Path, task_id: str) -> Path:
-    """确保任务目录存在"""
+    """Ensure the task directory exists under tasks/."""
     task_dir = agents_dir / "tasks" / task_id
     task_dir.mkdir(parents=True, exist_ok=True)
     return task_dir

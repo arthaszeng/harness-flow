@@ -1,4 +1,4 @@
-"""四维评分 + 短板加权算法 + JSON sidecar"""
+"""Four-dimension scoring, weakest-dimension weighting, and JSON sidecar."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ class Scores:
 
     @property
     def weighted(self) -> float:
-        """短板加权：最低分权重 2x，其余 1x"""
+        """Weakest-dimension weighting: minimum score gets 2x weight, others 1x."""
         vals = self.values
         if not vals or all(v == 0 for v in vals):
             return 0.0
@@ -35,7 +35,7 @@ class Scores:
         return min(self.values) if self.values else 0.0
 
     def verdict(self, threshold: float = 3.5) -> str:
-        """PASS / ITERATE 判定"""
+        """PASS vs ITERATE verdict."""
         if self.weighted >= threshold and self.min_score > 1.0:
             return "PASS"
         return "ITERATE"
@@ -50,7 +50,7 @@ class Scores:
 
 
 def parse_scores(markdown: str) -> Scores:
-    """从 Evaluator 输出的 Markdown 中解析评分"""
+    """Parse scores from evaluator Markdown output."""
     scores = Scores()
 
     patterns = {

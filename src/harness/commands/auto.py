@@ -1,4 +1,4 @@
-"""harness auto — 启动自治开发循环"""
+"""harness auto — start the autonomous development loop"""
 
 from __future__ import annotations
 
@@ -10,11 +10,12 @@ from harness.core.config import HarnessConfig
 from harness.core.state import SessionState, StateMachine
 from harness.core.ui import get_ui, init_ui
 from harness.drivers.resolver import DriverResolver
+from harness.i18n import set_lang, t
 from harness.orchestrator.autonomous import run_autonomous
 
 
 def run_auto(*, resume: bool = False, verbose: bool = False) -> None:
-    """启动 Strategist 驱动的自治循环"""
+    """Run the Strategist-driven autonomous loop."""
     init_ui(verbose=verbose)
     ui = get_ui()
 
@@ -22,21 +23,22 @@ def run_auto(*, resume: bool = False, verbose: bool = False) -> None:
     agents_dir = project_root / ".agents"
 
     if not (agents_dir / "config.toml").exists():
-        ui.error("未找到 .agents/config.toml，请先运行 `harness init`")
+        ui.error(t("auto.no_config"))
         raise typer.Exit(1)
 
     if not (agents_dir / "vision.md").exists():
-        ui.error("未找到 .agents/vision.md，请先编辑项目愿景")
+        ui.error(t("auto.no_vision"))
         raise typer.Exit(1)
 
     config = HarnessConfig.load(project_root)
+    set_lang(config.project.lang)
     sm = StateMachine(project_root)
 
     if not resume:
         incomplete = SessionState.detect_incomplete(agents_dir)
         if incomplete:
             do_resume = typer.confirm(
-                f"检测到未完成的会话 ({incomplete.session_id})，是否恢复?",
+                t("auto.resume_confirm", session_id=incomplete.session_id),
                 default=True,
             )
             if do_resume:
@@ -47,7 +49,7 @@ def run_auto(*, resume: bool = False, verbose: bool = False) -> None:
     resolver = DriverResolver(config)
     avail = resolver.available_drivers
     if not any(avail.values()):
-        ui.error("未检测到 Cursor 或 Codex CLI")
+        ui.error(t("auto.no_ide"))
         raise typer.Exit(1)
 
     if not resume:

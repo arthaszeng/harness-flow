@@ -1,11 +1,11 @@
-"""Memverse 集成 — disabled by default, failure non-blocking, clear fallback.
+"""Memverse integration — disabled by default, failure non-blocking, clear fallback.
 
-设计决策：
-  Memverse 的实际 search/add 操作通过 reflector agent 的 MCP 工具间接完成，
-  Python 端不直接调用 MCP。因此：
-  - NullMemverse 始终安全返回空结果
-  - SafeMemverse 包装任何实现，确保异常不阻塞主流程
-  - 未来如需 Python 直接调用 MCP，在 SafeMemverse 内实现并保持异常隔离
+Design:
+  Actual Memverse search/add runs indirectly via the reflector agent's MCP tools;
+  Python does not call MCP directly. Therefore:
+  - NullMemverse always returns empty results safely
+  - SafeMemverse wraps any implementation so failures do not block the main flow
+  - If Python should call MCP directly later, implement it inside SafeMemverse with isolated exceptions
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ class MemverseClient(Protocol):
 
 
 class NullMemverse:
-    """Memverse 关闭时的空实现"""
+    """No-op implementation when Memverse is disabled."""
 
     @property
     def enabled(self) -> bool:

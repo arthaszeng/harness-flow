@@ -1,6 +1,7 @@
 [project]
 name = "{{ project_name }}"
 description = "{{ description }}"
+lang = "{{ lang }}"
 
 [ci]
 command = "{{ ci_command }}"
@@ -21,7 +22,7 @@ default = "{{ driver_mode }}"  # auto / cursor / codex
 # evaluator = "codex"
 {% endif %}
 [models]
-default = ""  # 留空 = IDE 默认最强
+default = ""  # empty = IDE default model
 
 [workflow]
 max_iterations = 3

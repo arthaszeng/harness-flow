@@ -1,4 +1,4 @@
-"""Agent 驱动基础协议"""
+"""Base protocol for agent drivers."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ class AgentResult:
 
 @runtime_checkable
 class AgentDriver(Protocol):
-    """IDE agent 调用接口"""
+    """Interface for invoking IDE agents."""
 
     def invoke(
         self,
@@ -28,17 +28,17 @@ class AgentDriver(Protocol):
         timeout: int = 600,
         on_output: Callable[[str], None] | None = None,
     ) -> AgentResult:
-        """调用 agent 执行任务
+        """Run an agent with the given prompt.
 
-        on_output: 每行子进程输出的回调。提供时 driver 不直接写 stderr。
+        on_output: callback per line of subprocess output; when set, the driver should not write stderr directly.
         """
         ...
 
     def is_available(self) -> bool:
-        """检测 IDE CLI 是否可用"""
+        """Whether the IDE CLI is available."""
         ...
 
     @property
     def name(self) -> str:
-        """驱动名称"""
+        """Driver name."""
         ...

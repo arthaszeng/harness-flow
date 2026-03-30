@@ -1,4 +1,4 @@
-"""项目配置模型 — 基于 Pydantic"""
+"""Project configuration model — Pydantic-based."""
 
 from __future__ import annotations
 
@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 class ProjectConfig(BaseModel):
     name: str = ""
     description: str = ""
+    lang: str = "en"  # en / zh
 
 
 class CIConfig(BaseModel):
@@ -56,7 +57,7 @@ class AutonomousConfig(BaseModel):
 
 class MemverseConfig(BaseModel):
     enabled: bool = False
-    driver: str = "auto"  # auto / cursor / codex — 跟随 drivers.default 或独立指定
+    driver: str = "auto"  # auto / cursor / codex
     domain_prefix: str = ""
 
 
@@ -65,7 +66,7 @@ class IntegrationsConfig(BaseModel):
 
 
 class HarnessConfig(BaseModel):
-    """harness 完整配置"""
+    """Complete harness configuration."""
     project: ProjectConfig = Field(default_factory=ProjectConfig)
     ci: CIConfig = Field(default_factory=CIConfig)
     drivers: DriversConfig = Field(default_factory=DriversConfig)
@@ -74,12 +75,12 @@ class HarnessConfig(BaseModel):
     autonomous: AutonomousConfig = Field(default_factory=AutonomousConfig)
     integrations: IntegrationsConfig = Field(default_factory=IntegrationsConfig)
 
-    # 运行时注入，不序列化
+    # Runtime-injected, excluded from serialization
     project_root: Path = Field(default_factory=Path.cwd, exclude=True)
 
     @classmethod
     def load(cls, project_root: Path | None = None) -> HarnessConfig:
-        """从 .agents/config.toml 加载配置，逐级合并"""
+        """Load config from .agents/config.toml with cascading merge."""
         root = project_root or Path.cwd()
         config_path = root / ".agents" / "config.toml"
 
@@ -87,11 +88,11 @@ class HarnessConfig(BaseModel):
         if config_path.exists():
             data = tomllib.loads(config_path.read_text(encoding="utf-8"))
 
-        # 全局配置兜底
+        # Global config fallback
         global_path = Path.home() / ".harness" / "config.toml"
         if global_path.exists():
             global_data = tomllib.loads(global_path.read_text(encoding="utf-8"))
-            # 项目配置优先，全局兜底
+            # Project config takes priority over global
             data = _deep_merge(global_data, data)
 
         cfg = cls.model_validate(data)
@@ -100,7 +101,7 @@ class HarnessConfig(BaseModel):
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
-    """深合并：override 覆盖 base"""
+    """Deep merge: override wins over base."""
     result = base.copy()
     for key, val in override.items():
         if key in result and isinstance(result[key], dict) and isinstance(val, dict):
