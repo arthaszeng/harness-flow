@@ -24,3 +24,7 @@ htmlcov/
 # 包含 state.json、.stop、tasks/、archive/ 等运行时产物
 # config.toml 和 vision.md 如需团队共享，可通过 git add -f 手动添加
 .agents/
+
+# harness — do not track runtime state
+.agents/state.json
+.agents/.stop
