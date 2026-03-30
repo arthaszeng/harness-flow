@@ -61,7 +61,7 @@ def _step_project_info(
 
 # ── Step 2: IDE environment ───────────────────────────────────────
 
-def _step_ide_setup() -> dict[str, bool]:
+def _step_ide_setup(lang: str) -> dict[str, bool]:
     typer.echo(t("init.step2_title"))
     ides = {
         "cursor": shutil.which("cursor") is not None,
@@ -79,7 +79,7 @@ def _step_ide_setup() -> dict[str, bool]:
     do_install = typer.confirm(t("init.install_agents_confirm"), default=True)
     if do_install:
         from harness.commands.install import run_install
-        run_install(force=True)
+        run_install(force=True, lang=lang)
 
     return ides
 
@@ -299,7 +299,7 @@ def run_init(
         launch_vision = False
     else:
         proj_name, description = _step_project_info(project_root, name_override=name)
-        ides = _step_ide_setup()
+        ides = _step_ide_setup(lang_norm)
         driver_mode, roles = _step_driver_mode(ides)
         ci = _step_ci_command(project_root, ides, ci_override=ci_command)
         memverse_enabled, memverse_driver, memverse_domain = _step_memverse(

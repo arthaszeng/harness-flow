@@ -22,6 +22,7 @@ _ROLE_FILES = {
     "harness-alignment-evaluator": "alignment_evaluator.toml",
     "harness-strategist": "strategist.toml",
     "harness-reflector": "reflector.toml",
+    "harness-advisor": "advisor.toml",
 }
 
 _STREAM_PREFIX = "    │ "
