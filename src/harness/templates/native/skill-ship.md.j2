@@ -44,6 +44,19 @@ means DO IT. Run straight through and output the PR URL at the end.
 
 ---
 
+## Step 1.5: Distribution Pipeline Check
+
+If the diff introduces new distributable artifacts (new packages, binaries, Docker images, etc.):
+
+1. Check `.github/workflows/` for publish/release workflows
+2. Check `Makefile` / `pyproject.toml` / `package.json` for build/publish targets
+3. If a new artifact type is introduced but no release pipeline exists: flag as INFORMATIONAL warning
+4. If existing — verify version tag format consistency across VERSION file, git tags, and publish scripts
+
+This is informational — does not block shipping.
+
+---
+
 ## Step 2: Rebase onto the base branch (BEFORE tests)
 
 Fetch and rebase onto the base branch so tests run against the latest state:
@@ -255,6 +268,22 @@ unresolved findings.
 
 ---
 
+## Step 5.5: TODOS.md Management
+
+If a `TODOS.md` file exists in the project root:
+
+1. Read `TODOS.md` and parse all TODO items
+2. Cross-reference against `git diff {{ trunk_branch }}...HEAD` to detect completed items:
+   - If a TODO references a file/function that was modified/added in the diff, check if the work is done
+   - If a TODO describes functionality that is now implemented, mark as completed
+3. Move completed items to a `## Completed` section at the bottom
+4. Output summary: "TODOS: N items marked complete, M remaining"
+5. If any items were updated, commit: `git add TODOS.md && git commit -m "chore: update TODOS.md"`
+
+If no `TODOS.md` exists: skip silently.
+
+---
+
 ## Step 6: Version + Commit (bisectable chunks)
 
 Once evaluation PASSES:
@@ -278,14 +307,27 @@ Once evaluation PASSES:
 
 ---
 
-## Step 7: Verification Gate
+## Step 7: Verification Gate — IRON LAW
 
-**Before pushing, verify if code changed during Steps 4-6:**
+```
+IRON LAW: NO COMPLETION CLAIMS WITHOUT FRESH VERIFICATION EVIDENCE.
+
+Rationalization prevention:
+- "Should work now" → RUN IT.
+- "I'm confident" → Confidence is not evidence.
+- "I already tested earlier" → Code changed since then. Test again.
+- "It's a trivial change" → Trivial changes break production.
+- "Only docs changed" → Docs can have broken links, bad paths.
+
+Claiming work is complete without verification is dishonesty, not efficiency.
+```
+
+**Before pushing, verify:**
 
 1. If ANY code changed after Step 3's test run (review fixes, version bumps don't count),
-   re-run `{{ ci_command }}`. Paste fresh output.
-2. **"Should work now" is not evidence. Run it.**
-3. If tests fail: STOP. Fix and return to Step 3.
+   re-run `{{ ci_command }}`. Paste fresh output — not a summary, the actual output.
+2. If tests fail: STOP. Fix and return to Step 3.
+3. Verify git status is clean (no stray untracked files).
 
 ---
 
@@ -296,7 +338,14 @@ Once evaluation PASSES:
    git push -u origin HEAD
    ```
 
-2. Create PR:
+2. **PR Idempotency Check** — detect existing PR before creating a new one:
+   ```bash
+   EXISTING_PR=$(gh pr view --json url,number,state -q 'select(.state == "OPEN") | .number' 2>/dev/null || echo "")
+   ```
+   - If `EXISTING_PR` is non-empty: update the existing PR body with `gh pr edit $EXISTING_PR --body "..."`
+   - If empty: create a new PR
+
+3. Create or update PR:
    ```bash
    gh pr create --base {{ trunk_branch }} --title "<type>: <summary>" --body "$(cat <<'EOF'
    ## Summary
@@ -322,6 +371,12 @@ Once evaluation PASSES:
    ## Scope Check
    <CLEAN or list drift/missing items>
 
+   ## Test Coverage
+   <ASCII coverage diagram summary, or "No coverage audit">
+
+   ## TODOS
+   <N completed, M remaining, or "No TODOS.md">
+
    ## Test Results
    - [x] All tests pass (N tests)
 
@@ -331,7 +386,33 @@ Once evaluation PASSES:
 
    If `gh` is not available: print branch name and remote URL for manual PR creation.
 
-3. Output the PR URL.
+4. Output the PR URL.
+
+---
+
+## Step 8.5: Ship Metrics Persistence
+
+Write ship metrics to `.agents/tasks/task-NNN/ship-metrics.json` for retrospective consumption:
+
+```json
+{
+  "timestamp": "ISO-8601",
+  "version": "X.Y.Z",
+  "branch": "agent/feature-name",
+  "coverage_pct": 85,
+  "plan_total": 5,
+  "plan_done": 5,
+  "pr_quality_score": 8.5,
+  "findings_critical": 0,
+  "findings_informational": 2,
+  "auto_fixed": 1,
+  "test_count": 285,
+  "eval_rounds": 1,
+  "models_used": ["claude", "{{ adversarial_model }}"]
+}
+```
+
+If no task directory exists, write to `.agents/ship-metrics.jsonl` (append one JSON object per line).
 
 ---
 
