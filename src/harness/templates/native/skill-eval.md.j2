@@ -35,12 +35,14 @@ which means DO IT. Run straight through and output the evaluation result at the 
 
 ## Step 1: Structured Review (you, the main agent)
 
-Review the code changes against the contract. This is your primary analysis.
+Review the code changes against the contract using the structured checklist.
 
-1. Run `git diff {{ trunk_branch }}..HEAD` to see actual code changes
-2. For each contract deliverable, verify it is implemented in the diff
-3. Run `{{ ci_command }}` to get fresh test results — do NOT trust the build log
-4. Score on four dimensions (1-5 each):
+1. Read the review checklist (`review-checklist.md` in the templates directory or project root).
+   Apply the checklist in two passes: **Pass 1 CRITICAL**, then **Pass 2 INFORMATIONAL**.
+2. Run `git diff {{ trunk_branch }}..HEAD` to see actual code changes
+3. For each contract deliverable, verify it is implemented in the diff
+4. Run `{{ ci_command }}` to get fresh test results — do NOT trust the build log
+5. Score on four dimensions (1-5 each):
 
 | Dimension    | 1 (Fail)              | 3 (Adequate)          | 5 (Excellent)           |
 |-------------|----------------------|----------------------|------------------------|
@@ -49,10 +51,12 @@ Review the code changes against the contract. This is your primary analysis.
 | Regression   | Broke existing tests  | Tests pass, fragile   | All tests pass, robust  |
 | Design       | Inconsistent, messy   | Follows conventions   | Improves architecture   |
 
-5. Collect findings. For each finding, classify:
+6. Collect findings. For each finding, classify:
    - **severity**: CRITICAL or INFORMATIONAL
+   - **confidence**: 1-10 (9-10: verified bug, 7-8: high pattern match, 5-6: moderate — show with caveat, 3-4: suppress to appendix, 1-2: speculation — only if CRITICAL)
    - **action**: FIXABLE (you know how to fix it) or INVESTIGATE (needs human judgment)
    - **path**, **line**, **category**, **description**
+   - Format: `[SEVERITY] (confidence: N/10) file:line — description`
 
 ---
 

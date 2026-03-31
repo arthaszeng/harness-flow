@@ -116,7 +116,15 @@ If any NOT DONE items: note them in the PR body. Continue — this is informatio
 
 Run the full `/harness-eval` workflow inline. This includes:
 
-1. **Pass 1**: Structured review — score on 4 dimensions, collect findings
+1. **Pass 1**: Structured review using the review checklist (`review-checklist.md`).
+   Apply in two passes: Pass 1 CRITICAL, Pass 2 INFORMATIONAL.
+   Every finding MUST include a confidence score (1-10):
+   - 9-10: verified bug → show normally
+   - 7-8: high confidence pattern match → show normally
+   - 5-6: moderate → show with caveat "Medium confidence — verify"
+   - 3-4: low → suppress to appendix
+   - 1-2: speculation → only report if CRITICAL
+   Score on 4 dimensions, collect findings
 2. **Pass 2**: Claude adversarial subagent — dispatch via Task tool:
    - **subagent_type**: `"generalPurpose"`
    - **prompt**: "Read the diff with `git diff {{ trunk_branch }}..HEAD`. Think like an attacker and chaos engineer. Find ways this code will fail in production. Edge cases, race conditions, security holes, resource leaks, failure modes, silent data corruption. No compliments — just problems. Output JSON findings: {\"severity\":\"CRITICAL|INFORMATIONAL\",\"confidence\":N,\"path\":\"file\",\"line\":N,\"category\":\"cat\",\"summary\":\"desc\",\"fix\":\"fix\",\"action\":\"FIXABLE|INVESTIGATE\"}"
