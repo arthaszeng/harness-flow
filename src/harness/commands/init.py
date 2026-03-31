@@ -165,7 +165,34 @@ def _step_driver_mode(ides: dict[str, bool]) -> tuple[str, dict[str, str]]:
     return mode, roles
 
 
-# ── Step 4: trunk branch ─────────────────────────────────────────
+# ── Step 4: workflow mode ─────────────────────────────────────────
+
+def _step_workflow_mode(ides: dict[str, bool]) -> tuple[str, str]:
+    """Return (workflow_mode, adversarial_model).
+
+    Only offers cursor-native when cursor is available.
+    """
+    if not ides.get("cursor"):
+        return "orchestrator", ""
+
+    typer.echo(t("init.step_mode_title"))
+    typer.echo(t("init.mode_desc"))
+    typer.echo(t("init.opt_orchestrator"))
+    typer.echo(t("init.opt_native"))
+    choice = _prompt_choice(t("init.choose"), 2, default=1)
+
+    if choice == 2:
+        typer.echo(t("init.mode_native_selected"))
+        adv_model = typer.prompt(
+            t("init.native_adversarial_model"), default="gpt-4.1",
+        )
+        return "cursor-native", adv_model
+
+    typer.echo(t("init.mode_orchestrator_selected"))
+    return "orchestrator", ""
+
+
+# ── Step 5: trunk branch ─────────────────────────────────────────
 
 def _step_trunk_branch(project_root: Path) -> str:
     """Detect the current git branch and let the user confirm or change it."""
@@ -391,6 +418,8 @@ def run_init(
         }
         driver_mode = "auto"
         roles: dict[str, str] = {}
+        workflow_mode = "orchestrator"
+        adversarial_model = ""
         trunk_branch = "main"
         ci = ci_command or "make test"
         memverse_enabled, memverse_driver, memverse_domain = False, "auto", ""
@@ -399,6 +428,7 @@ def run_init(
         proj_name, description = _step_project_info(project_root, name_override=name)
         ides = _step_ide_setup(lang_norm)
         driver_mode, roles = _step_driver_mode(ides)
+        workflow_mode, adversarial_model = _step_workflow_mode(ides)
         trunk_branch = _step_trunk_branch(project_root)
         ci = _step_ci_command(
             project_root, ides, driver_mode, roles, ci_override=ci_command,
@@ -420,6 +450,8 @@ def run_init(
         ci_command=ci,
         driver_mode=driver_mode,
         roles=roles,
+        workflow_mode=workflow_mode,
+        adversarial_model=adversarial_model or "gpt-4.1",
         trunk_branch=trunk_branch,
         memverse_enabled="true" if memverse_enabled else "false",
         memverse_driver=memverse_driver,
@@ -434,6 +466,10 @@ def run_init(
         vision_content = tmpl.render(project_name=proj_name)
         vision_path.write_text(vision_content, encoding="utf-8")
 
+    if workflow_mode == "cursor-native":
+        from harness.native.skill_gen import generate_native_artifacts
+        generate_native_artifacts(project_root, lang=lang_norm)
+
     _update_gitignore(project_root)
 
     typer.echo(t("init.done"))
@@ -441,8 +477,15 @@ def run_init(
     if not launch_vision and vision_path.exists():
         typer.echo(t("init.vision_generated"))
     typer.echo(t("init.gitignore_updated"))
-    typer.echo(t("init.next_auto"))
-    typer.echo(t("init.next_status"))
+    if workflow_mode == "cursor-native":
+        typer.echo(t("native.init_hint"))
+        typer.echo(t("native.hint_plan"))
+        typer.echo(t("native.hint_build"))
+        typer.echo(t("native.hint_eval"))
+        typer.echo(t("native.hint_ship"))
+    else:
+        typer.echo(t("init.next_auto"))
+        typer.echo(t("init.next_status"))
 
     if launch_vision:
         typer.echo(t("init.launch_vision"))

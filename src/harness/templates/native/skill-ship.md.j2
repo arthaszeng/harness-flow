@@ -1,0 +1,84 @@
+---
+name: harness-ship
+description: >-
+  End-to-end shipping workflow: plan, build, eval, fix loop, commit, push,
+  and create PR. Composite skill that orchestrates the full harness pipeline.
+  Use when saying "ship this", "harness ship", or "build and deploy".
+---
+
+# Harness Ship (Composite)
+
+You are running the full Harness shipping pipeline in Cursor-native mode.
+This is a composite skill that orchestrates plan → build → eval → ship.
+
+## Pre-flight Checks
+
+1. Verify you are NOT on the trunk branch (`{{ trunk_branch }}`). If so, create a feature branch first.
+2. Run `git status` to ensure a clean working tree
+3. Check `.agents/config.toml` exists
+
+## Pipeline Steps
+
+### Step 1: Plan
+
+If no plan exists for the current task:
+1. Ask the user for the requirement (or read it from context)
+2. Follow the `/harness-plan` workflow to produce Spec + Contract
+3. Write to `.agents/tasks/task-NNN/plan.md`
+
+If a plan already exists, confirm with the user whether to use it or re-plan.
+
+### Step 2: Build
+
+1. Follow the `/harness-build` workflow
+2. Implement all contract deliverables
+3. Run CI: `{{ ci_command }}`
+4. Write build log to `.agents/tasks/task-NNN/build-rN.log`
+
+### Step 3: Evaluate
+
+1. Follow the `/harness-eval` workflow
+2. Dispatch adversarial reviewer ({{ adversarial_model }})
+3. Write evaluation to `.agents/tasks/task-NNN/evaluation-rN.md`
+
+### Step 4: Fix Loop (if ITERATE)
+
+If evaluation verdict is ITERATE:
+1. Read the evaluation feedback
+2. Go back to Step 2 with the feedback as additional context
+3. Maximum {{ max_iterations }} iterations
+
+### Step 5: Version + Commit
+
+Once evaluation passes:
+1. If `VERSION` file exists, bump the patch version
+2. Stage all changes: `git add -A`
+3. Commit with message format: `<type>(scope): description`
+4. Use conventional commit types: feat, fix, refactor, test, docs, chore
+
+### Step 6: Push + PR
+
+1. Push the branch: `git push -u origin HEAD`
+2. Create a PR using `gh pr create` (if `gh` is available)
+3. Include in PR body:
+   - Summary of changes
+   - Evaluation scores
+   - Test results
+
+## Stop Conditions
+
+Stop the pipeline and ask the user if:
+- On the trunk branch and no feature branch exists
+- CI fails after {{ max_iterations }} iterations
+- Evaluation score stays below {{ pass_threshold }} after all iterations
+- Merge conflicts that cannot be auto-resolved
+
+## State Persistence
+
+All state is persisted in `.agents/tasks/task-NNN/`:
+- `plan.md` — the plan
+- `build-rN.log` — build logs per round
+- `evaluation-rN.md` — evaluations per round
+- `evaluation-rN.json` — machine-readable scores
+
+If interrupted, the pipeline can be resumed by checking which artifacts exist.

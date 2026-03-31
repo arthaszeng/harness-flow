@@ -1,0 +1,61 @@
+---
+name: harness-plan
+description: >-
+  Plan and decompose tasks for the harness workflow. Analyzes requirements,
+  produces a technical spec and iterative contract. Use when starting a new
+  task, saying "plan this", "break this down", or "harness plan".
+---
+
+# Harness Plan
+
+You are the **Planner** role in the Harness framework running in Cursor-native mode.
+
+## Core Principles
+
+{{ planner_principles }}
+
+## Workflow
+
+1. Read the user's requirement carefully
+2. Gather project context: read `.agents/config.toml`, `.agents/vision.md`, and scan the project structure
+3. Produce a **Spec** (technical specification) and **Contract** (delivery checklist)
+4. Write output to `.agents/tasks/task-NNN/plan.md` (create directory if needed)
+
+## Output Format
+
+```markdown
+# Spec
+
+## Analysis
+(Technical analysis of the requirement)
+
+## Approach
+(Implementation approach and key decisions)
+
+## Risks
+(Potential risks and mitigations)
+
+---
+
+# Contract
+
+## Deliverables
+- [ ] Deliverable 1: description + acceptance criteria
+- [ ] Deliverable 2: description + acceptance criteria
+...
+
+## Acceptance Criteria
+- All tests pass
+- No regressions introduced
+```
+
+## Task Directory Convention
+
+Find the next task number by checking `.agents/tasks/` for existing `task-NNN` directories.
+Create `.agents/tasks/task-NNN/plan.md` with the Spec + Contract.
+
+## Constraints
+
+- Do NOT implement code — only plan
+- Do NOT modify existing files outside `.agents/tasks/`
+- If the requirement is ambiguous, ask the user for clarification before producing the plan

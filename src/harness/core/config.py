@@ -58,7 +58,15 @@ class ModelsConfig(BaseModel):
     role_configs: dict[str, RoleModelConfig] = Field(default_factory=dict)
 
 
+class NativeModeConfig(BaseModel):
+    """Cursor-native mode settings — only used when workflow.mode = cursor-native."""
+    adversarial_model: str = "gpt-4.1"
+    adversarial_mechanism: str = "auto"  # subagent / cli / auto
+    review_gate: str = "eng"  # which review layers are hard gates
+
+
 class WorkflowConfig(BaseModel):
+    mode: str = "orchestrator"  # orchestrator / cursor-native
     profile: str = "standard"  # lite / standard / autonomous
     max_iterations: int = 3
     pass_threshold: float = 3.5
@@ -92,6 +100,7 @@ class HarnessConfig(BaseModel):
     drivers: DriversConfig = Field(default_factory=DriversConfig)
     models: ModelsConfig = Field(default_factory=ModelsConfig)
     workflow: WorkflowConfig = Field(default_factory=WorkflowConfig)
+    native: NativeModeConfig = Field(default_factory=NativeModeConfig)
     autonomous: AutonomousConfig = Field(default_factory=AutonomousConfig)
     integrations: IntegrationsConfig = Field(default_factory=IntegrationsConfig)
 

@@ -293,6 +293,18 @@ def _probe_ides(ides: dict[str, bool]) -> dict[str, bool]:
     return ready
 
 
+def _install_native_mode(project_root: Path, *, lang: str) -> int:
+    """Generate Cursor-native mode artifacts if workflow.mode == cursor-native."""
+    try:
+        cfg = HarnessConfig.load(project_root)
+    except Exception:
+        return 0
+    if cfg.workflow.mode != "cursor-native":
+        return 0
+    from harness.native.skill_gen import generate_native_artifacts
+    return generate_native_artifacts(project_root, lang=lang, cfg=cfg)
+
+
 def run_install(*, force: bool = False, lang: str | None = None) -> None:
     """Run install: preflight, then copy agent files."""
     global _needs_shell_reload
@@ -323,6 +335,8 @@ def run_install(*, force: bool = False, lang: str | None = None) -> None:
     if ides["codex"]:
         typer.echo(t("install.codex_agents"))
         total += _install_codex_agents(source_dir, force=force, lang=resolved)
+
+    total += _install_native_mode(Path.cwd(), lang=resolved)
 
     typer.echo(t("install.done", count=total))
 
