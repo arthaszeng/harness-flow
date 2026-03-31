@@ -56,3 +56,11 @@ Present ALL ASK items in ONE batch (not one-by-one):
 | Change auth middleware to use JWT | ASK | Architecture change |
 | Remove deprecated endpoint | ASK | Behavior change (breaking) |
 | Add index to frequently-queried column | ASK | Data model change |
+| LLM output written to DB without validation | AUTO-FIX | Obvious fix, add type check |
+| Race condition in status transition | ASK | Concurrency fix needs design |
+| Stale comment contradicts current code | AUTO-FIX | Mechanical, reversible |
+| Version mismatch between pyproject.toml and CHANGELOG | AUTO-FIX | Mechanical consistency |
+| subprocess.run with shell=True and f-string | ASK | Security — shell injection |
+| Sync call blocking async event loop | AUTO-FIX | Wrap in run_in_executor |
+| Missing eager loading causing N+1 | AUTO-FIX | Add select_related/joinedload |
+| New enum value not handled in switch/match | ASK | Behavior change — could break consumers |
