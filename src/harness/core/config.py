@@ -13,16 +13,9 @@ else:
     import tomli as tomllib
 from pydantic import BaseModel, Field
 
-# 与 DriverResolver / 工作流一致的角色名集合，用于配置校验和文档生成
-KNOWN_MODEL_ROLES: frozenset[str] = frozenset({
-    "planner",
-    "builder",
-    "evaluator",
-    "alignment_evaluator",
-    "strategist",
-    "reflector",
-    "advisor",
-})
+from harness.core.roles import ALL_ROLES
+
+KNOWN_MODEL_ROLES: frozenset[str] = ALL_ROLES
 
 
 class ProjectConfig(BaseModel):

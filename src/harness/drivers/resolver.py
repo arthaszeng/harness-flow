@@ -5,19 +5,13 @@ from __future__ import annotations
 import sys
 
 from harness.core.config import HarnessConfig, resolve_model as _resolve_model
+from harness.core.roles import ROLE_REGISTRY
 from harness.drivers.base import AgentDriver
 from harness.drivers.codex import CodexDriver
 from harness.drivers.cursor import CursorDriver
 
-# Role → agent name
-ROLE_AGENT_MAP = {
-    "planner": "harness-planner",
-    "builder": "harness-builder",
-    "evaluator": "harness-evaluator",
-    "alignment_evaluator": "harness-alignment-evaluator",
-    "strategist": "harness-strategist",
-    "reflector": "harness-reflector",
-    "advisor": "harness-advisor",
+ROLE_AGENT_MAP: dict[str, str] = {
+    role: desc.agent_name for role, desc in ROLE_REGISTRY.items()
 }
 
 

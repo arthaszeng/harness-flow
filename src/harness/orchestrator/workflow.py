@@ -20,6 +20,7 @@ from harness.drivers.base import AgentResult
 from harness.drivers.resolver import DriverResolver
 from harness.i18n import t
 from harness.methodology.contracts import parse_contract, write_contract_sidecar
+from harness.methodology.error_hints import format_error_feedback, translate_error
 from harness.methodology.evaluation import parse_evaluation, run_ci_check
 from harness.methodology.insights import generate_task_insights, write_task_insights
 from harness.methodology.scoring import write_evaluation_sidecar
@@ -251,8 +252,8 @@ def _run_task_loop(
                     abort_reason = f"builder driver error (exit {build_result.exit_code}, {elapsed:.0f}s)"
                     ui.error(f"[abort] {abort_reason} — {t('prompt.driver_error')}")
                     break
-                # Code-level failure: skip eval, feed builder error into next iteration
-                last_feedback = t("prompt.builder_fail_feedback", output=build_result.output[-2000:])
+                build_hint = translate_error(build_result.output, elapsed=elapsed)
+                last_feedback = format_error_feedback(build_hint, build_result.output)
                 sm.transition(TaskState.EVALUATING)
                 continue
 
@@ -282,9 +283,10 @@ def _run_task_loop(
                     "[3/3 eval] CI gate", elapsed, False, "failed",
                     fail_tail=ci_result.feedback.split("\n"),
                 )
-                last_feedback = t("prompt.ci_fail_feedback", feedback=ci_result.feedback)
+                ci_hint = translate_error(ci_result.feedback, elapsed=elapsed)
+                last_feedback = format_error_feedback(ci_hint, ci_result.feedback)
                 (task_dir / f"evaluation-r{iteration}.md").write_text(
-                    f"{t('prompt.ci_fail_heading')}\n\n{ci_result.feedback}", encoding="utf-8"
+                    f"{t('prompt.ci_fail_heading')}\n\n{last_feedback}", encoding="utf-8"
                 )
                 sm.state.current_task.artifacts.evaluation = str(
                     task_dir / f"evaluation-r{iteration}.md"
