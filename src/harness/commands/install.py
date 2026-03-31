@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import importlib.resources
 import shutil
+import subprocess
+import sys
 from pathlib import Path
 
 import typer
@@ -107,34 +109,102 @@ def _install_codex_agents(source_dir: Path, *, force: bool, lang: str) -> int:
     return installed
 
 
-def _probe_ides(ides: dict[str, bool]) -> dict[str, bool]:
-    """Run functional probes and display status with guidance for non-ready CLIs.
+def _run_cli_install(cmd: list[str], label: str) -> bool:
+    """Run an external CLI install command with live output. Returns True on success."""
+    typer.echo(t("install.cli_running", label=label))
+    try:
+        proc = subprocess.Popen(
+            cmd,
+            stdout=sys.stderr,
+            stderr=sys.stderr,
+        )
+        proc.wait(timeout=120)
+        if proc.returncode == 0:
+            typer.echo(t("install.cli_ok", label=label))
+            return True
+        typer.echo(t("install.cli_fail", label=label), err=True)
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+        typer.echo(t("install.cli_timeout", label=label), err=True)
+    except Exception as exc:
+        typer.echo(t("install.cli_error", label=label, error=str(exc)), err=True)
+    return False
 
-    Returns a dict with functional readiness (may downgrade True → False).
+
+def _try_install_cursor_agent() -> bool:
+    """Offer to install cursor-agent via official installer script."""
+    if not shutil.which("curl"):
+        typer.echo(t("install.curl_missing"))
+        return False
+    if not typer.confirm(t("install.cursor_agent_confirm"), default=True):
+        return False
+    return _run_cli_install(
+        ["bash", "-c", "curl https://cursor.com/install -fsS | bash"],
+        "Cursor Agent",
+    )
+
+
+def _try_install_codex_cli() -> bool:
+    """Offer to install Codex CLI via npm."""
+    npm = shutil.which("npm")
+    if not npm:
+        typer.echo(t("install.npm_missing"))
+        return False
+    if not typer.confirm(t("install.codex_cli_confirm"), default=True):
+        return False
+    return _run_cli_install(["npm", "install", "-g", "@openai/codex"], "Codex CLI")
+
+
+def _probe_ides(ides: dict[str, bool]) -> dict[str, bool]:
+    """Run functional probes, offer guided install for missing/broken CLIs.
+
+    Returns a dict with functional readiness (may upgrade False → True after install).
     """
     from harness.drivers.codex import CodexDriver
     from harness.drivers.cursor import CursorDriver
 
     ready = dict(ides)
+
+    # ── Cursor ────────────────────────────────────────────────────
     if ides["cursor"]:
         probe = CursorDriver().probe()
         if probe.available:
             typer.echo(t("install.cursor_ok"))
         else:
             typer.echo(t("install.cursor_not_ready"))
-            ready["cursor"] = False
+            if _try_install_cursor_agent():
+                reprobe = CursorDriver().probe()
+                if reprobe.available:
+                    typer.echo(t("install.cursor_ok"))
+                else:
+                    ready["cursor"] = False
+            else:
+                ready["cursor"] = False
     else:
         typer.echo(t("install.cursor_missing"))
 
+    # ── Codex ─────────────────────────────────────────────────────
     if ides["codex"]:
         probe = CodexDriver().probe()
         if probe.available:
             typer.echo(t("install.codex_ok"))
         else:
             typer.echo(t("install.codex_not_ready"))
-            ready["codex"] = False
+            if _try_install_codex_cli():
+                reprobe = CodexDriver().probe()
+                if reprobe.available:
+                    typer.echo(t("install.codex_ok"))
+                else:
+                    ready["codex"] = False
+            else:
+                ready["codex"] = False
     else:
         typer.echo(t("install.codex_missing"))
+        if _try_install_codex_cli():
+            ides["codex"] = True
+            ready["codex"] = True
+            typer.echo(t("install.codex_ok"))
 
     return ready
 

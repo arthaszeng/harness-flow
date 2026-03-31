@@ -79,6 +79,15 @@ MESSAGES: dict[str, str] = {
         "  Codex CLI:  ⚠ 检测到二进制但 `codex exec` 未就绪\n"
         "    -> 重新安装: npm install -g @openai/codex"
     ),
+    "install.cursor_agent_confirm": "  是否自动安装 Cursor Agent? (curl https://cursor.com/install | bash)",
+    "install.codex_cli_confirm": "  是否自动安装 Codex CLI? (npm install -g @openai/codex)",
+    "install.curl_missing": "  [skip] 未找到 curl，无法自动安装 Cursor Agent",
+    "install.npm_missing": "  [skip] 未找到 npm，无法自动安装 Codex CLI",
+    "install.cli_running": "  ▸ 正在安装 {label}...",
+    "install.cli_ok": "  ✓ {label} 安装成功",
+    "install.cli_fail": "  ✗ {label} 安装失败",
+    "install.cli_timeout": "  ✗ {label} 安装超时",
+    "install.cli_error": "  ✗ {label} 安装出错: {error}",
     "install.no_ide": "\n[error] 未检测到 Cursor 或 Codex CLI，至少需要安装一个。",
     "install.no_source": "\n[error] agent 源文件目录不存在: {path}",
     "install.cursor_agents": "安装 Cursor agents:",

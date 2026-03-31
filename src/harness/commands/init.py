@@ -68,15 +68,14 @@ def _step_ide_setup(lang: str) -> dict[str, bool]:
         "codex": shutil.which("codex") is not None,
     }
 
-    if not any(ides.values()):
-        typer.echo(t("init.cursor_status", status=t("init.ide_not_detected")))
-        typer.echo(t("init.codex_status", status=t("init.ide_not_detected")))
-        typer.echo(t("init.ide_error"), err=True)
-        raise typer.Exit(1)
-
     from harness.drivers.cursor import CursorDriver
     from harness.drivers.codex import CodexDriver
+    from harness.commands.install import (
+        _try_install_cursor_agent,
+        _try_install_codex_cli,
+    )
 
+    # ── Cursor ────────────────────────────────────────────────────
     ready = dict(ides)
     if ides["cursor"]:
         probe = CursorDriver().probe()
@@ -85,10 +84,18 @@ def _step_ide_setup(lang: str) -> dict[str, bool]:
         else:
             typer.echo(t("init.cursor_status", status="⚠ not ready"))
             typer.echo(t("install.cursor_not_ready"))
-            ready["cursor"] = False
+            if _try_install_cursor_agent():
+                reprobe = CursorDriver().probe()
+                if reprobe.available:
+                    typer.echo(t("init.cursor_status", status="ok"))
+                else:
+                    ready["cursor"] = False
+            else:
+                ready["cursor"] = False
     else:
         typer.echo(t("init.cursor_status", status=t("init.ide_not_detected")))
 
+    # ── Codex ─────────────────────────────────────────────────────
     if ides["codex"]:
         probe = CodexDriver().probe()
         if probe.available:
@@ -96,9 +103,20 @@ def _step_ide_setup(lang: str) -> dict[str, bool]:
         else:
             typer.echo(t("init.codex_status", status="⚠ not ready"))
             typer.echo(t("install.codex_not_ready"))
-            ready["codex"] = False
+            if _try_install_codex_cli():
+                reprobe = CodexDriver().probe()
+                if reprobe.available:
+                    typer.echo(t("init.codex_status", status="ok"))
+                else:
+                    ready["codex"] = False
+            else:
+                ready["codex"] = False
     else:
         typer.echo(t("init.codex_status", status=t("init.ide_not_detected")))
+        if _try_install_codex_cli():
+            ides["codex"] = True
+            ready["codex"] = True
+            typer.echo(t("init.codex_status", status="ok"))
 
     if not any(ready.values()):
         typer.echo(t("init.ide_error"), err=True)

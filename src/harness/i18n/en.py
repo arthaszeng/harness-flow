@@ -79,6 +79,15 @@ MESSAGES: dict[str, str] = {
         "  Codex CLI:  ⚠ binary found but `codex exec` not ready\n"
         "    -> Reinstall: npm install -g @openai/codex"
     ),
+    "install.cursor_agent_confirm": "  Auto-install Cursor Agent? (curl https://cursor.com/install | bash)",
+    "install.codex_cli_confirm": "  Auto-install Codex CLI? (npm install -g @openai/codex)",
+    "install.curl_missing": "  [skip] curl not found, cannot auto-install Cursor Agent",
+    "install.npm_missing": "  [skip] npm not found, cannot auto-install Codex CLI",
+    "install.cli_running": "  ▸ Installing {label}...",
+    "install.cli_ok": "  ✓ {label} installed successfully",
+    "install.cli_fail": "  ✗ {label} installation failed",
+    "install.cli_timeout": "  ✗ {label} installation timed out",
+    "install.cli_error": "  ✗ {label} installation error: {error}",
     "install.no_ide": "\n[error] Neither Cursor nor Codex CLI detected. At least one is required.",
     "install.no_source": "\n[error] Agent source directory not found: {path}",
     "install.cursor_agents": "Installing Cursor agents:",
