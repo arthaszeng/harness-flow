@@ -44,6 +44,7 @@ class DriversRolesConfig(BaseModel):
     alignment_evaluator: str = ""
     strategist: str = ""
     reflector: str = ""
+    advisor: str = ""
 
 
 class DriversConfig(BaseModel):
