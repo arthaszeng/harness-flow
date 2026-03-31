@@ -4,12 +4,13 @@ from __future__ import annotations
 
 import re
 import time
+from datetime import datetime, timezone
 
 from harness import __version__
 from harness.core.config import HarnessConfig
 from harness.core.events import EventEmitter, NullEventEmitter
 from harness.core.registry import Registry
-from harness.core.state import StateMachine
+from harness.core.state import StateMachine, StopContext
 from harness.core.tracker import RunTracker
 from harness.core.ui import get_ui
 from harness.drivers.resolver import DriverResolver
@@ -52,6 +53,17 @@ def run_autonomous(
     while True:
         safety = check_safety(sm, config.autonomous, completed_count, consecutive_blocked)
         if safety.should_stop:
+            existing_signal = (
+                sm.state.stop_context.reflection_signal
+                if sm.state.stop_context else None
+            )
+            sm.record_stop_context(StopContext(
+                stop_kind=safety.stop_kind,
+                threshold_snapshot=safety.threshold_snapshot,
+                stop_reason=safety.reason,
+                reflection_signal=existing_signal,
+                stopped_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            ))
             ui.safety_stop(safety.reason)
             break
 
@@ -83,13 +95,24 @@ def run_autonomous(
         # Reflector: periodic summary
         if completed_count > 0 and completed_count % config.autonomous.progress_report_interval == 0:
             t0 = time.monotonic()
+            drift_signal: str | None = None
             with tracker.track("reflector", "codex", resolver.agent_name("reflector")) as run:
                 with ui.agent_step("[reflector] generating summary", "codex") as on_out:
-                    _invoke_reflector(config, sm, resolver, memverse, on_output=on_out)
+                    drift_signal = _invoke_reflector(config, sm, resolver, memverse, on_output=on_out)
                 run.success = True
                 run.exit_code = 0
             elapsed = time.monotonic() - t0
             ui.step_done("[reflector]", elapsed, True, "synced")
+
+            if drift_signal:
+                kind = "vision_drift" if "VISION_DRIFT" in drift_signal else "vision_stale"
+                sm.record_stop_context(StopContext(
+                    stop_kind=kind,
+                    stop_reason=drift_signal,
+                    reflection_signal=drift_signal,
+                    stopped_at=datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                ))
+                break
 
     # Final session summary
     if results:
@@ -169,8 +192,12 @@ def _invoke_reflector(
     memverse: object,
     *,
     on_output=None,
-) -> None:
-    """Invoke Reflector to summarize progress and detect vision drift."""
+) -> str | None:
+    """Invoke Reflector to summarize progress and detect vision drift.
+
+    Returns the drift signal string if VISION_DRIFT/VISION_STALE detected,
+    None otherwise.
+    """
     ui = get_ui()
     driver = resolver.resolve("reflector")
     agent_name = resolver.agent_name("reflector")
@@ -209,8 +236,9 @@ def _invoke_reflector(
         if drift:
             ui.warn(f"[reflector] {drift}")
             ui.warn("[reflector] consider running `harness vision`")
+            return drift
 
-    # progress.md is now auto-refreshed by StateMachine._checkpoint()
+    return None
 
 
 def detect_vision_drift(reflector_output: str) -> str | None:

@@ -72,6 +72,15 @@ class SessionStats(BaseModel):
     elapsed_seconds: float = 0.0
 
 
+class StopContext(BaseModel):
+    """Structured context captured when the autonomous loop stops."""
+    stop_kind: str = ""
+    threshold_snapshot: dict[str, Any] = Field(default_factory=dict)
+    stop_reason: str = ""
+    reflection_signal: str | None = None
+    stopped_at: str = ""
+
+
 class SessionState(BaseModel):
     """Full session state, persisted to .agents/state.json."""
     session_id: str = ""
@@ -80,6 +89,7 @@ class SessionState(BaseModel):
     completed: list[CompletedTask] = Field(default_factory=list)
     blocked: list[CompletedTask] = Field(default_factory=list)
     stats: SessionStats = Field(default_factory=SessionStats)
+    stop_context: StopContext | None = None
 
     def save(self, agents_dir: Path) -> None:
         """Persist to .agents/state.json."""
@@ -189,6 +199,11 @@ class StateMachine:
 
         self._update_avg_score()
         self._state.current_task = None
+        self._checkpoint()
+
+    def record_stop_context(self, stop_context: StopContext) -> None:
+        """Record structured stop context and persist."""
+        self._state.stop_context = stop_context
         self._checkpoint()
 
     def end_session(self) -> None:

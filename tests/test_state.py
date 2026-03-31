@@ -1,5 +1,6 @@
-"""state.py 单元测试"""
+"""state.py unit tests"""
 
+import json
 from pathlib import Path
 
 import pytest
@@ -7,6 +8,7 @@ import pytest
 from harness.core.state import (
     SessionState,
     StateMachine,
+    StopContext,
     TaskRecord,
     TaskState,
 )
@@ -24,10 +26,8 @@ def test_session_save_load(tmp_path: Path):
 
 def test_detect_incomplete(tmp_path: Path):
     agents_dir = tmp_path / ".agents"
-    # 空状态 → 无未完成
     assert SessionState.detect_incomplete(agents_dir) is None
 
-    # 有活跃任务
     state = SessionState(
         session_id="test",
         mode="run",
@@ -64,12 +64,12 @@ def test_invalid_transition(tmp_path: Path):
     sm.start_task("t1", "test", "agent/test")
 
     with pytest.raises(ValueError, match="Illegal transition"):
-        sm.transition(TaskState.EVALUATING)  # IDLE → EVALUATING invalid
+        sm.transition(TaskState.EVALUATING)
 
 
 def test_stop_signal(tmp_path: Path):
     sm = StateMachine(tmp_path)
-    sm.start_session("run")  # 确保 .agents 目录存在
+    sm.start_session("run")
     assert not sm.stop_requested()
 
     (tmp_path / ".agents" / ".stop").write_text("stop", encoding="utf-8")
@@ -80,7 +80,7 @@ def test_stop_signal(tmp_path: Path):
 
 
 def test_checkpoint_refreshes_progress_md(tmp_path: Path):
-    """_checkpoint() 应在每次状态变化后自动刷新 progress.md。"""
+    """_checkpoint() should refresh progress.md on every state change."""
     sm = StateMachine(tmp_path)
     progress_path = tmp_path / ".agents" / "progress.md"
 
@@ -105,7 +105,7 @@ def test_checkpoint_refreshes_progress_md(tmp_path: Path):
 
 
 def test_progress_md_reflects_completed_task(tmp_path: Path):
-    """complete_task() 后 progress.md 应包含完成结果摘要。"""
+    """complete_task() should include completion summary in progress.md."""
     sm = StateMachine(tmp_path)
     sm.start_session("run")
     sm.start_task("t1", "implement feature", "agent/feat")
@@ -124,7 +124,7 @@ def test_progress_md_reflects_completed_task(tmp_path: Path):
 
 
 def test_progress_md_reflects_blocked_task(tmp_path: Path):
-    """阻塞任务后 progress.md 应包含阻塞结果摘要。"""
+    """Blocked task should appear in progress.md."""
     sm = StateMachine(tmp_path)
     sm.start_session("run")
     sm.start_task("t1", "broken feature", "agent/broken")
@@ -139,7 +139,7 @@ def test_progress_md_reflects_blocked_task(tmp_path: Path):
 
 
 def test_end_session_not_resumable(tmp_path: Path):
-    """end_session() 后 progress.md 不应标记为可恢复。"""
+    """end_session() should mark session as not resumable in progress.md."""
     sm = StateMachine(tmp_path)
     sm.start_session("auto")
     sm.end_session()
@@ -149,7 +149,7 @@ def test_end_session_not_resumable(tmp_path: Path):
 
 
 def test_active_session_is_resumable_in_progress(tmp_path: Path):
-    """有活跃任务时 progress.md 应标记为可恢复。"""
+    """Active task should show as resumable in progress.md."""
     sm = StateMachine(tmp_path)
     sm.start_session("run")
     sm.start_task("t1", "some work", "agent/work")
@@ -160,8 +160,204 @@ def test_active_session_is_resumable_in_progress(tmp_path: Path):
 
 
 def test_detect_incomplete_idle_not_resumable(tmp_path: Path):
-    """idle 模式即使有历史数据也不应被视为未完成。"""
+    """Idle mode should not be treated as incomplete even with history."""
     agents_dir = tmp_path / ".agents"
     state = SessionState(session_id="s1", mode="idle", current_task=None)
     state.save(agents_dir)
     assert SessionState.detect_incomplete(agents_dir) is None
+
+
+# ---------------------------------------------------------------------------
+# Stop context persistence tests
+# ---------------------------------------------------------------------------
+
+
+def test_stop_context_backward_compat(tmp_path: Path):
+    """Old state.json without stop_context should load() normally."""
+    agents_dir = tmp_path / ".agents"
+    agents_dir.mkdir(parents=True)
+    old_state = {
+        "session_id": "legacy-001",
+        "mode": "auto",
+        "current_task": None,
+        "completed": [],
+        "blocked": [],
+        "stats": {
+            "total_tasks": 0, "completed": 0, "blocked": 0,
+            "total_iterations": 0, "avg_score": 0.0, "elapsed_seconds": 0.0,
+        },
+    }
+    (agents_dir / "state.json").write_text(json.dumps(old_state), encoding="utf-8")
+
+    loaded = SessionState.load(agents_dir)
+    assert loaded.session_id == "legacy-001"
+    assert loaded.stop_context is None
+
+
+def test_safety_stop_context_persisted(tmp_path: Path):
+    """Safety stop should persist full stop context to state.json."""
+    sm = StateMachine(tmp_path)
+    sm.start_session("auto")
+
+    ctx = StopContext(
+        stop_kind="max_tasks",
+        threshold_snapshot={"completed": 10, "max_tasks_per_session": 10},
+        stop_reason="reached max task cap (10)",
+        stopped_at="2026-03-31T00:00:00+00:00",
+    )
+    sm.record_stop_context(ctx)
+
+    loaded = SessionState.load(tmp_path / ".agents")
+    assert loaded.stop_context is not None
+    assert loaded.stop_context.stop_kind == "max_tasks"
+    assert loaded.stop_context.threshold_snapshot["completed"] == 10
+    assert loaded.stop_context.threshold_snapshot["max_tasks_per_session"] == 10
+    assert loaded.stop_context.stop_reason == "reached max task cap (10)"
+    assert loaded.stop_context.reflection_signal is None
+    assert loaded.stop_context.stopped_at == "2026-03-31T00:00:00+00:00"
+
+
+def test_consecutive_blocked_stop_context(tmp_path: Path):
+    """Consecutive blocked breaker should include count and limit in snapshot."""
+    sm = StateMachine(tmp_path)
+    sm.start_session("auto")
+
+    ctx = StopContext(
+        stop_kind="consecutive_blocked",
+        threshold_snapshot={"consecutive_blocked": 3, "consecutive_block_limit": 2},
+        stop_reason="too many blocked",
+        stopped_at="2026-03-31T01:00:00+00:00",
+    )
+    sm.record_stop_context(ctx)
+
+    loaded = SessionState.load(tmp_path / ".agents")
+    assert loaded.stop_context.stop_kind == "consecutive_blocked"
+    assert loaded.stop_context.threshold_snapshot["consecutive_blocked"] == 3
+
+
+def test_stop_signal_stop_context(tmp_path: Path):
+    """Manual stop signal should record stop_kind=stop_signal."""
+    sm = StateMachine(tmp_path)
+    sm.start_session("auto")
+
+    ctx = StopContext(
+        stop_kind="stop_signal",
+        stop_reason="manual stop",
+        stopped_at="2026-03-31T02:00:00+00:00",
+    )
+    sm.record_stop_context(ctx)
+
+    loaded = SessionState.load(tmp_path / ".agents")
+    assert loaded.stop_context.stop_kind == "stop_signal"
+    assert loaded.stop_context.stop_reason == "manual stop"
+
+
+def test_vision_drift_stop_context(tmp_path: Path):
+    """VISION_DRIFT should persist both reflection_signal and stop context."""
+    sm = StateMachine(tmp_path)
+    sm.start_session("auto")
+
+    drift_line = "VISION_DRIFT: project deviating from original goals"
+    ctx = StopContext(
+        stop_kind="vision_drift",
+        stop_reason=drift_line,
+        reflection_signal=drift_line,
+        stopped_at="2026-03-31T03:00:00+00:00",
+    )
+    sm.record_stop_context(ctx)
+
+    loaded = SessionState.load(tmp_path / ".agents")
+    assert loaded.stop_context is not None
+    assert loaded.stop_context.stop_kind == "vision_drift"
+    assert loaded.stop_context.reflection_signal == drift_line
+    assert loaded.stop_context.stop_reason == drift_line
+
+
+def test_vision_stale_stop_context(tmp_path: Path):
+    """VISION_STALE should record the correct stop_kind."""
+    sm = StateMachine(tmp_path)
+    sm.start_session("auto")
+
+    stale_line = "VISION_STALE: vision document is outdated"
+    ctx = StopContext(
+        stop_kind="vision_stale",
+        stop_reason=stale_line,
+        reflection_signal=stale_line,
+        stopped_at="2026-03-31T03:30:00+00:00",
+    )
+    sm.record_stop_context(ctx)
+
+    loaded = SessionState.load(tmp_path / ".agents")
+    assert loaded.stop_context.stop_kind == "vision_stale"
+    assert loaded.stop_context.reflection_signal == stale_line
+
+
+def test_safety_stop_preserves_prior_reflection_signal(tmp_path: Path):
+    """Safety stop should carry forward the previously recorded reflection_signal."""
+    sm = StateMachine(tmp_path)
+    sm.start_session("auto")
+
+    sm.record_stop_context(StopContext(
+        stop_kind="vision_drift",
+        reflection_signal="VISION_DRIFT: slight drift detected",
+        stop_reason="VISION_DRIFT: slight drift detected",
+        stopped_at="2026-03-31T04:00:00+00:00",
+    ))
+
+    existing_signal = sm.state.stop_context.reflection_signal
+
+    sm.record_stop_context(StopContext(
+        stop_kind="max_tasks",
+        threshold_snapshot={"completed": 10, "max_tasks_per_session": 10},
+        stop_reason="task cap reached",
+        reflection_signal=existing_signal,
+        stopped_at="2026-03-31T04:01:00+00:00",
+    ))
+
+    loaded = SessionState.load(tmp_path / ".agents")
+    assert loaded.stop_context.stop_kind == "max_tasks"
+    assert loaded.stop_context.reflection_signal == "VISION_DRIFT: slight drift detected"
+
+
+def test_stop_context_save_load_roundtrip(tmp_path: Path):
+    """Full serialize/deserialize roundtrip for stop_context."""
+    agents_dir = tmp_path / ".agents"
+    state = SessionState(
+        session_id="rt-001",
+        mode="auto",
+        stop_context=StopContext(
+            stop_kind="consecutive_blocked",
+            threshold_snapshot={"consecutive_blocked": 2, "consecutive_block_limit": 2},
+            stop_reason="circuit breaker tripped",
+            reflection_signal="VISION_STALE: stale",
+            stopped_at="2026-03-31T05:00:00+00:00",
+        ),
+    )
+    state.save(agents_dir)
+
+    loaded = SessionState.load(agents_dir)
+    assert loaded.stop_context is not None
+    assert loaded.stop_context.stop_kind == "consecutive_blocked"
+    assert loaded.stop_context.reflection_signal == "VISION_STALE: stale"
+    assert loaded.stop_context.stopped_at == "2026-03-31T05:00:00+00:00"
+
+
+def test_stop_context_does_not_affect_progress_display(tmp_path: Path):
+    """stop_context should not leak into progress.md display.
+
+    Ensures this iteration does not modify display logic.
+    """
+    sm = StateMachine(tmp_path)
+    sm.start_session("auto")
+    sm.record_stop_context(StopContext(
+        stop_kind="max_tasks",
+        threshold_snapshot={"completed": 5, "max_tasks_per_session": 5},
+        stop_reason="cap reached",
+        stopped_at="2026-03-31T06:00:00+00:00",
+    ))
+
+    progress_path = tmp_path / ".agents" / "progress.md"
+    content = progress_path.read_text(encoding="utf-8")
+    assert "stop_kind" not in content
+    assert "threshold_snapshot" not in content
+    assert "stop_context" not in content
