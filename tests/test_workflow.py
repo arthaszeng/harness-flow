@@ -90,6 +90,7 @@ def test_single_task_pass(tmp_path: Path):
 
     # Mock planner
     planner = MagicMock()
+    planner.name = "mock-planner"
     planner.invoke.return_value = AgentResult(
         success=True,
         output="# Spec\ntest spec\n# Contract\n- [ ] do thing",
@@ -98,12 +99,14 @@ def test_single_task_pass(tmp_path: Path):
 
     # Mock builder
     builder = MagicMock()
+    builder.name = "mock-builder"
     builder.invoke.return_value = AgentResult(
         success=True, output="Built successfully", exit_code=0,
     )
 
     # Mock evaluator
     evaluator = MagicMock()
+    evaluator.name = "mock-evaluator"
     evaluator.invoke.return_value = AgentResult(
         success=True, output=_make_eval_output(4.0), exit_code=0,
     )
@@ -117,6 +120,7 @@ def test_single_task_pass(tmp_path: Path):
 
     resolver.resolve.side_effect = _resolve
     resolver.agent_name.side_effect = lambda r: f"harness-{r}"
+    resolver.resolve_model.return_value = ""
 
     result = run_single_task(config, sm, resolver, "add test feature")
 
@@ -142,12 +146,15 @@ def test_single_task_blocked_after_max_iterations(tmp_path: Path):
     config.workflow.max_iterations = 1
 
     planner = MagicMock()
+    planner.name = "mock-planner"
     planner.invoke.return_value = AgentResult(success=True, output="spec", exit_code=0)
 
     builder = MagicMock()
+    builder.name = "mock-builder"
     builder.invoke.return_value = AgentResult(success=True, output="built", exit_code=0)
 
     evaluator = MagicMock()
+    evaluator.name = "mock-evaluator"
     evaluator.invoke.return_value = AgentResult(
         success=True, output=_make_eval_output(1.5), exit_code=0,
     )
@@ -161,6 +168,7 @@ def test_single_task_blocked_after_max_iterations(tmp_path: Path):
 
     resolver.resolve.side_effect = _resolve
     resolver.agent_name.side_effect = lambda r: f"harness-{r}"
+    resolver.resolve_model.return_value = ""
 
     result = run_single_task(config, sm, resolver, "bad task")
 
@@ -181,6 +189,7 @@ def test_single_task_pass_with_dual_evaluation(tmp_path: Path):
     config.workflow.dual_evaluation = True
 
     planner = MagicMock()
+    planner.name = "mock-planner"
     planner.invoke.return_value = AgentResult(
         success=True,
         output="# Spec\nspec text\n# Contract\n- [ ] deliverable",
@@ -188,14 +197,17 @@ def test_single_task_pass_with_dual_evaluation(tmp_path: Path):
     )
 
     builder = MagicMock()
+    builder.name = "mock-builder"
     builder.invoke.return_value = AgentResult(success=True, output="built", exit_code=0)
 
     evaluator = MagicMock()
+    evaluator.name = "mock-evaluator"
     evaluator.invoke.return_value = AgentResult(
         success=True, output=_make_eval_output(4.0), exit_code=0,
     )
 
     alignment_evaluator = MagicMock()
+    alignment_evaluator.name = "mock-alignment-evaluator"
     alignment_evaluator.invoke.return_value = AgentResult(
         success=True, output="ALIGNED — all deliverables met.", exit_code=0,
     )
@@ -211,6 +223,7 @@ def test_single_task_pass_with_dual_evaluation(tmp_path: Path):
 
     resolver.resolve.side_effect = _resolve
     resolver.agent_name.side_effect = lambda r: f"harness-{r}"
+    resolver.resolve_model.return_value = ""
 
     result = run_single_task(config, sm, resolver, "dual eval feature")
 
@@ -231,6 +244,7 @@ def test_single_task_dual_eval_alignment_failure(tmp_path: Path):
     config.workflow.dual_evaluation = True
 
     planner = MagicMock()
+    planner.name = "mock-planner"
     planner.invoke.return_value = AgentResult(
         success=True,
         output="# Spec\nspec\n# Contract\n- [ ] item",
@@ -238,14 +252,17 @@ def test_single_task_dual_eval_alignment_failure(tmp_path: Path):
     )
 
     builder = MagicMock()
+    builder.name = "mock-builder"
     builder.invoke.return_value = AgentResult(success=True, output="built", exit_code=0)
 
     evaluator = MagicMock()
+    evaluator.name = "mock-evaluator"
     evaluator.invoke.return_value = AgentResult(
         success=True, output=_make_eval_output(4.0), exit_code=0,
     )
 
     alignment_evaluator = MagicMock()
+    alignment_evaluator.name = "mock-alignment-evaluator"
     alignment_evaluator.invoke.return_value = AgentResult(
         success=False, output="segfault", exit_code=139,
     )
@@ -261,6 +278,7 @@ def test_single_task_dual_eval_alignment_failure(tmp_path: Path):
 
     resolver.resolve.side_effect = _resolve
     resolver.agent_name.side_effect = lambda r: f"harness-{r}"
+    resolver.resolve_model.return_value = ""
 
     result = run_single_task(config, sm, resolver, "alignment fail task")
 
@@ -280,6 +298,7 @@ def test_single_task_dual_eval_alignment_unknown_verdict(tmp_path: Path):
     config.workflow.dual_evaluation = True
 
     planner = MagicMock()
+    planner.name = "mock-planner"
     planner.invoke.return_value = AgentResult(
         success=True,
         output="# Spec\nspec\n# Contract\n- [ ] item",
@@ -287,14 +306,17 @@ def test_single_task_dual_eval_alignment_unknown_verdict(tmp_path: Path):
     )
 
     builder = MagicMock()
+    builder.name = "mock-builder"
     builder.invoke.return_value = AgentResult(success=True, output="built", exit_code=0)
 
     evaluator = MagicMock()
+    evaluator.name = "mock-evaluator"
     evaluator.invoke.return_value = AgentResult(
         success=True, output=_make_eval_output(4.0), exit_code=0,
     )
 
     alignment_evaluator = MagicMock()
+    alignment_evaluator.name = "mock-alignment-evaluator"
     alignment_evaluator.invoke.return_value = AgentResult(
         success=True, output="I checked the code and it looks fine.", exit_code=0,
     )
@@ -310,6 +332,7 @@ def test_single_task_dual_eval_alignment_unknown_verdict(tmp_path: Path):
 
     resolver.resolve.side_effect = _resolve
     resolver.agent_name.side_effect = lambda r: f"harness-{r}"
+    resolver.resolve_model.return_value = ""
 
     result = run_single_task(config, sm, resolver, "unknown verdict task")
 
@@ -328,12 +351,14 @@ def test_single_task_blocked_early_abort_degraded(tmp_path: Path):
     config, sm, resolver = _setup(tmp_path)
 
     planner = MagicMock()
+    planner.name = "mock-planner"
     planner.invoke.return_value = AgentResult(
         success=False, output="segfault", exit_code=139,
     )
 
     resolver.resolve.side_effect = lambda role: planner
     resolver.agent_name.side_effect = lambda r: f"harness-{r}"
+    resolver.resolve_model.return_value = ""
 
     result = run_single_task(config, sm, resolver, "doomed task")
 
