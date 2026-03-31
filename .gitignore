@@ -19,6 +19,7 @@ htmlcov/
 *.log
 .DS_Store
 .idea/
+.cursor/
 
 # harness — .agents/ 是本地运行时目录，不纳入版本控制
 # 包含 state.json、.stop、tasks/、archive/ 等运行时产物
