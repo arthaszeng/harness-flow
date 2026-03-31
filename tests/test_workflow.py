@@ -84,6 +84,44 @@ def _setup(tmp_path: Path) -> tuple[HarnessConfig, StateMachine, MagicMock]:
     return config, sm, resolver
 
 
+def test_single_task_pass_invokes_agent_with_resolver_model_per_role(tmp_path: Path):
+    """run_single_task 传给各 role 的 model 与 resolve_model(role) 一致。"""
+    config, sm, resolver = _setup(tmp_path)
+    resolver.resolve_model.side_effect = lambda role: f"model:{role}"
+
+    planner = _mock_driver("codex")
+    planner.invoke.return_value = AgentResult(
+        success=True,
+        output="# Spec\ntest spec\n# Contract\n- [ ] do thing",
+        exit_code=0,
+    )
+    builder = _mock_driver("cursor")
+    builder.invoke.return_value = AgentResult(
+        success=True, output="Built successfully", exit_code=0,
+    )
+    evaluator = _mock_driver("codex")
+    evaluator.invoke.return_value = AgentResult(
+        success=True, output=_make_eval_output(4.0), exit_code=0,
+    )
+
+    def _resolve(role: str):
+        if role == "planner":
+            return planner
+        if role == "builder":
+            return builder
+        return evaluator
+
+    resolver.resolve.side_effect = _resolve
+    resolver.agent_name.side_effect = lambda r: f"harness-{r}"
+
+    result = run_single_task(config, sm, resolver, "add test feature")
+
+    assert result.verdict == "PASS"
+    assert planner.invoke.call_args.kwargs["model"] == "model:planner"
+    assert builder.invoke.call_args.kwargs["model"] == "model:builder"
+    assert evaluator.invoke.call_args.kwargs["model"] == "model:evaluator"
+
+
 def test_single_task_pass(tmp_path: Path):
     """测试单任务 PASS 流程"""
     config, sm, resolver = _setup(tmp_path)
