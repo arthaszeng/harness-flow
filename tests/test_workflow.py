@@ -11,6 +11,12 @@ from harness.drivers.resolver import DriverResolver
 from harness.orchestrator.workflow import _split_spec_contract, run_single_task
 
 
+def _mock_driver(name: str) -> MagicMock:
+    d = MagicMock()
+    d.name = name
+    return d
+
+
 def test_split_spec_contract_with_marker():
     text = "# Spec\nsome spec content\n# Contract\n- [ ] item 1"
     spec, contract = _split_spec_contract(text)
