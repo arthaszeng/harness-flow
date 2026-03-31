@@ -1,9 +1,12 @@
 """Cursor CLI subprocess driver.
 
-Uses `cursor agent --print --output-format stream-json --stream-partial-output`
-for streaming JSON events and live progress.
+Uses `cursor-agent -p --force --output-format stream-json` for streaming
+JSON events and live progress.  Prompt is passed via stdin (not CLI arg).
 
-Key design decisions (borrowed from CodeMachine-CLI):
+Key design decisions (aligned with CodeMachine-CLI):
+- Binary: ``cursor-agent`` (direct Node.js), not ``cursor agent`` (slow Electron shim)
+- Prompt: written to stdin as one UTF-8 blob (no ARG_MAX limit, faster parsing)
+- Flags: minimal — ``-p --force --output-format stream-json``; no --workspace/--approve-mcps
 - stdout and stderr are consumed in parallel threads to avoid pipe deadlock
 - Wall-clock timeout is enforced on the *overall* run, not just proc.wait()
 - Process-group kill ensures no orphan node/LSP children survive
@@ -145,10 +148,10 @@ class CursorDriver:
         return "cursor"
 
     def is_available(self) -> bool:
-        return shutil.which("cursor") is not None
+        return shutil.which("cursor-agent") is not None
 
     def probe(self) -> DriverProbe:
-        """Detect CLI version and validate that ``cursor agent`` is functional."""
+        """Detect CLI version and validate that ``cursor-agent`` is functional."""
         if self._probe_result is not None:
             return self._probe_result
 
@@ -160,17 +163,17 @@ class CursorDriver:
         version = ""
         try:
             result = subprocess.run(
-                ["cursor", "--version"],
+                ["cursor-agent", "--version"],
                 capture_output=True, text=True, timeout=_PROBE_TIMEOUT,
             )
             version = result.stdout.strip() or result.stderr.strip()
         except Exception:
-            warnings.append("could not detect cursor version")
+            warnings.append("could not detect cursor-agent version")
 
         functional = True
         try:
             help_result = subprocess.run(
-                ["cursor", "agent", "--help"],
+                ["cursor-agent", "--help"],
                 capture_output=True, text=True, timeout=_PROBE_TIMEOUT,
             )
             help_text = (help_result.stdout + help_result.stderr).lower()
@@ -179,15 +182,15 @@ class CursorDriver:
                 functional = False
                 warnings.append(t("driver.cursor_not_ready"))
             else:
-                for flag in ("--print", "--output-format", "--stream-partial-output"):
+                for flag in ("-p", "--output-format", "--force"):
                     if flag not in help_text:
-                        warnings.append(f"cursor agent may not support {flag}")
+                        warnings.append(f"cursor-agent may not support {flag}")
 
         except subprocess.TimeoutExpired:
             functional = False
             warnings.append(t("driver.cursor_not_ready"))
         except Exception:
-            warnings.append("could not probe cursor agent flags")
+            warnings.append("could not probe cursor-agent flags")
 
         self._probe_result = DriverProbe(
             available=functional, version=version, warnings=warnings,
@@ -210,11 +213,9 @@ class CursorDriver:
         full_prompt = self._compose_prompt(agent_name, prompt, readonly=readonly)
 
         cmd = [
-            "cursor", "agent",
-            "--print",
-            "--trust",
-            "--workspace", str(cwd),
-            "--approve-mcps",
+            "cursor-agent",
+            "-p",
+            "--force",
             "--output-format", "stream-json",
             "--stream-partial-output",
         ]
@@ -224,17 +225,13 @@ class CursorDriver:
 
         if readonly:
             cmd.extend(["--mode", "plan"])
-        else:
-            cmd.append("--force")
-
-        cmd.append(full_prompt)
 
         delay = _INITIAL_RETRY_DELAY
         result: AgentResult | None = None
 
         for attempt in range(_MAX_RETRIES + 1):
             try:
-                result = self._run_stream_json(cmd, cwd, timeout, on_output)
+                result = self._run_stream_json(cmd, cwd, timeout, on_output, stdin_data=full_prompt)
             except FileNotFoundError:
                 return AgentResult(success=False, output=t("driver.cursor_not_found"), exit_code=-1)
 
@@ -277,6 +274,7 @@ class CursorDriver:
         cwd: Path,
         timeout: int,
         on_output: Callable[[str], None] | None = None,
+        stdin_data: str | None = None,
     ) -> AgentResult:
         """Parse stream-json with parallel stdout/stderr and wall-clock timeout.
 
@@ -299,9 +297,10 @@ class CursorDriver:
         last_activity = time.monotonic()
         activity_lock = threading.Lock()
 
-        log.debug("spawn: %s (cwd=%s, timeout=%ds)", cmd[:-1], cwd, timeout)
+        log.debug("spawn: %s (cwd=%s, timeout=%ds, stdin=%d bytes)",
+                  cmd, cwd, timeout, len(stdin_data) if stdin_data else 0)
 
-        proc = proc_mgr.spawn_cursor(cmd, str(cwd))
+        proc = proc_mgr.spawn_cursor(cmd, str(cwd), stdin_data=stdin_data)
 
         def _emit(text: str) -> None:
             if on_output:

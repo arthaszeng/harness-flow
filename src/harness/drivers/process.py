@@ -107,14 +107,19 @@ def _start_new_process_group() -> None:
 def spawn_cursor(
     cmd: list[str],
     cwd: str,
+    stdin_data: str | None = None,
 ) -> subprocess.Popen:  # type: ignore[type-arg]
     """Spawn a Cursor agent subprocess with proper process-group isolation.
 
     The child is placed in its own process group (Unix) so that
     ``kill_process_tree`` can cleanly terminate it and all grandchildren.
+
+    If *stdin_data* is provided, it is written to the child's stdin as a
+    single blob and the pipe is closed — matching CodeMachine-CLI's approach
+    of sending the entire prompt via stdin rather than as a CLI argument.
     """
     kwargs: dict = dict(
-        stdin=subprocess.DEVNULL,
+        stdin=subprocess.PIPE if stdin_data else subprocess.DEVNULL,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
@@ -126,6 +131,14 @@ def spawn_cursor(
 
     proc = subprocess.Popen(cmd, **kwargs)
     register(proc)
+
+    if stdin_data and proc.stdin is not None:
+        try:
+            proc.stdin.write(stdin_data)
+            proc.stdin.close()
+        except (BrokenPipeError, OSError):
+            log.warning("stdin write failed (process may have exited early)")
+
     return proc
 
 

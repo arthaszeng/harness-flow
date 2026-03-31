@@ -66,12 +66,12 @@ MESSAGES: dict[str, str] = {
     "install.cursor_ok": "  Cursor CLI: ✓",
     "install.cursor_missing": "  Cursor CLI: ✗ 未找到",
     "install.cursor_not_ready": (
-        "  Cursor CLI: ⚠ 检测到 `cursor` 但 `cursor agent` 未就绪\n"
-        "    注意: `cursor -v` 能用 ≠ agent 可用，agent 是独立组件。\n"
+        "  Cursor CLI: ⚠ 检测到 `cursor-agent` 但未就绪\n"
+        "    注意: `cursor-agent --version` 能用 ≠ agent 可用。\n"
         "    修复步骤:\n"
-        "    1. 打开 Cursor 应用 -> 命令面板 -> 'Install cursor command'\n"
+        "    1. 运行 `curl https://cursor.com/install | bash` 安装/更新 cursor-agent\n"
         "    2. 确保 Cursor Pro 订阅有效且已登录\n"
-        "    3. 运行 `cursor agent --help` 验证 — 应显示帮助信息而非 'installing...'"
+        "    3. 运行 `cursor-agent --help` 验证 — 应显示帮助信息而非 'installing...'"
     ),
     "install.codex_ok": "  Codex CLI:  ✓",
     "install.codex_missing": "  Codex CLI:  ✗ 未找到",
@@ -174,11 +174,10 @@ MESSAGES: dict[str, str] = {
     "driver.cursor_not_found": "Cursor CLI 未找到",
     "driver.cursor_timeout": "Cursor agent 超时",
     "driver.cursor_not_ready": (
-        "检测到 `cursor` 但 `cursor agent` 未就绪"
-        "（cursor -v 能用 ≠ agent 可用，agent 是独立组件）。"
-        "修复: 1) 打开 Cursor -> 命令面板 -> 'Install cursor command'  "
+        "检测到 `cursor-agent` 但未就绪。"
+        "修复: 1) 运行 `curl https://cursor.com/install | bash` 安装/更新  "
         "2) 确保 Cursor Pro 订阅有效且已登录  "
-        "3) 运行 `cursor agent --help` 验证"
+        "3) 运行 `cursor-agent --help` 验证"
     ),
     "driver.heartbeat": "⏳ 运行中 {elapsed:.0f}s...",
     "driver.done": "✓ 完成 ({elapsed:.0f}s)",

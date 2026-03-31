@@ -174,14 +174,14 @@ def test_probe_not_available_when_binary_missing(mock_which: Mock) -> None:
 
 
 @patch("harness.drivers.cursor.subprocess.run")
-@patch("harness.drivers.cursor.shutil.which", return_value="/usr/bin/cursor")
+@patch("harness.drivers.cursor.shutil.which", return_value="/usr/bin/cursor-agent")
 def test_probe_available_when_agent_help_ok(mock_which: Mock, mock_run: Mock) -> None:
     def _side_effect(cmd, **kw):  # type: ignore[no-untyped-def]
         r = MagicMock()
-        if cmd[0] == "cursor" and cmd[1] == "--version":
+        if cmd == ["cursor-agent", "--version"]:
             r.stdout, r.stderr, r.returncode = "1.0.0", "", 0
         else:
-            r.stdout = "--print --output-format --stream-partial-output"
+            r.stdout = "-p --output-format --force"
             r.stderr = ""
             r.returncode = 0
         return r
@@ -195,12 +195,12 @@ def test_probe_available_when_agent_help_ok(mock_which: Mock, mock_run: Mock) ->
 
 
 @patch("harness.drivers.cursor.subprocess.run")
-@patch("harness.drivers.cursor.shutil.which", return_value="/usr/bin/cursor")
+@patch("harness.drivers.cursor.shutil.which", return_value="/usr/bin/cursor-agent")
 def test_probe_not_available_when_agent_installing(mock_which: Mock, mock_run: Mock) -> None:
     """Simulate 'cursor-agent not found, installing...' scenario."""
     def _side_effect(cmd, **kw):  # type: ignore[no-untyped-def]
         r = MagicMock()
-        if cmd[0] == "cursor" and cmd[1] == "--version":
+        if cmd == ["cursor-agent", "--version"]:
             r.stdout, r.stderr, r.returncode = "1.0.0", "", 0
         else:
             r.stdout = ""
@@ -213,14 +213,14 @@ def test_probe_not_available_when_agent_installing(mock_which: Mock, mock_run: M
     probe = driver.probe()
     assert probe.available is False
     assert len(probe.warnings) == 1
-    assert "cursor agent" in probe.warnings[0].lower() or "not available" in probe.warnings[0].lower()
+    assert "cursor-agent" in probe.warnings[0].lower() or "not available" in probe.warnings[0].lower()
 
 
 @patch("harness.drivers.cursor.subprocess.run")
-@patch("harness.drivers.cursor.shutil.which", return_value="/usr/bin/cursor")
+@patch("harness.drivers.cursor.shutil.which", return_value="/usr/bin/cursor-agent")
 def test_probe_not_available_on_timeout(mock_which: Mock, mock_run: Mock) -> None:
     def _side_effect(cmd, **kw):  # type: ignore[no-untyped-def]
-        if "agent" in cmd:
+        if cmd == ["cursor-agent", "--help"]:
             raise subprocess.TimeoutExpired(cmd, 8)
         r = MagicMock()
         r.stdout, r.stderr, r.returncode = "1.0.0", "", 0
@@ -234,12 +234,12 @@ def test_probe_not_available_on_timeout(mock_which: Mock, mock_run: Mock) -> Non
 
 
 @patch("harness.drivers.cursor.subprocess.run")
-@patch("harness.drivers.cursor.shutil.which", return_value="/usr/bin/cursor")
+@patch("harness.drivers.cursor.shutil.which", return_value="/usr/bin/cursor-agent")
 def test_probe_not_available_on_nonzero_exit(mock_which: Mock, mock_run: Mock) -> None:
-    """Non-zero exit from ``cursor agent --help`` must degrade to unavailable."""
+    """Non-zero exit from ``cursor-agent --help`` must degrade to unavailable."""
     def _side_effect(cmd, **kw):  # type: ignore[no-untyped-def]
         r = MagicMock()
-        if "agent" in cmd:
+        if cmd == ["cursor-agent", "--help"]:
             r.stdout, r.stderr, r.returncode = "", "error", 1
         else:
             r.stdout, r.stderr, r.returncode = "1.0.0", "", 0

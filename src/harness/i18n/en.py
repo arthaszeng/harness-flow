@@ -66,12 +66,12 @@ MESSAGES: dict[str, str] = {
     "install.cursor_ok": "  Cursor CLI: ✓",
     "install.cursor_missing": "  Cursor CLI: ✗ not found",
     "install.cursor_not_ready": (
-        "  Cursor CLI: ⚠ `cursor` found but `cursor agent` not ready\n"
-        "    Note: `cursor -v` works ≠ agent is ready; the agent is a separate component.\n"
+        "  Cursor CLI: ⚠ `cursor-agent` found but not functional\n"
+        "    Note: `cursor-agent --version` works ≠ agent is ready.\n"
         "    To fix:\n"
-        "    1. Open Cursor app, run: Command Palette -> 'Install cursor command'\n"
+        "    1. Run `curl https://cursor.com/install | bash` to install/update cursor-agent\n"
         "    2. Ensure Cursor Pro subscription is active and you are signed in\n"
-        "    3. Run `cursor agent --help` to verify — it should show help, not 'installing...'"
+        "    3. Run `cursor-agent --help` to verify — it should show help, not 'installing...'"
     ),
     "install.codex_ok": "  Codex CLI:  ✓",
     "install.codex_missing": "  Codex CLI:  ✗ not found",
@@ -175,11 +175,10 @@ MESSAGES: dict[str, str] = {
     "driver.cursor_not_found": "Cursor CLI not found",
     "driver.cursor_timeout": "Cursor agent timed out",
     "driver.cursor_not_ready": (
-        "`cursor` found but `cursor agent` not ready "
-        "(cursor -v works ≠ agent ready; the agent is a separate component). "
-        "Fix: 1) Open Cursor -> Command Palette -> 'Install cursor command'  "
+        "`cursor-agent` found but not functional. "
+        "Fix: 1) Run `curl https://cursor.com/install | bash` to install/update  "
         "2) Ensure Cursor Pro subscription and signed in  "
-        "3) Run `cursor agent --help` to verify"
+        "3) Run `cursor-agent --help` to verify"
     ),
     "driver.heartbeat": "⏳ running {elapsed:.0f}s...",
     "driver.done": "✓ done ({elapsed:.0f}s)",
