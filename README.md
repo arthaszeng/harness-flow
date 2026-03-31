@@ -2,7 +2,7 @@
 
 # harness-orchestrator
 
-> Contract-driven multi-agent autonomous development orchestration framework for Cursor and Codex.
+> Contract-driven multi-agent autonomous development orchestration framework for Cursor and Codex — with a Cursor-native mode that runs entirely inside your IDE.
 
 [![Python](https://img.shields.io/badge/python-%3E%3D3.9-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -11,9 +11,10 @@ Today's AI coding tools excel at single-shot tasks, but continuous development o
 
 - **Requirements move with a method** — Planner analyzes requirements to produce a spec and negotiate iterative contracts, instead of jumping straight to code
 - **Implementation and review are separate** — Builder implements against the contract; Evaluator reviews independently with four-dimensional scoring as a quality gate
+- **Cross-model adversarial review** — In Cursor-native mode, a GPT-based adversarial reviewer independently challenges Claude's work for higher-confidence findings
 - **Autonomous but bounded** — Strategist picks tasks from vision, constrained by iteration limits, pass thresholds, and stop signals
 - **Full traceability** — Each iteration's spec, contract, and evaluation are saved in Markdown + JSON for audit, automation, and resume after interruption
-- **Observable** — Every agent invocation, CI run, and state change is recorded as structured events (`events.jsonl`) for diagnosis and metrics
+- **Two modes** — **Orchestrator** (external CLI drives agents) or **Cursor-native** (skills + subagents inside the IDE, no external process)
 
 > **Design idea**: The core architecture is inspired by the GAN adversarial principle — separation and iterative interplay between Builder (generator) and Evaluator (discriminator) drives code quality to converge; Planner establishes a shared baseline for both sides through the contract protocol.
 
@@ -75,6 +76,8 @@ harness stop
 
 The sections below expand on each step.
 
+> **Cursor-native mode**: During `harness init`, choose **cursor-native** to skip external CLI orchestration entirely. Harness generates skills, subagents, and rules into `.cursor/`, and you drive the workflow from inside your IDE with `/harness-plan`, `/harness-build`, `/harness-eval`, and `/harness-ship`. See [Cursor-Native Mode](#cursor-native-mode) for details.
+
 ---
 
 ## Initialization and configuration
@@ -85,14 +88,15 @@ Installs role definition files into local IDE directories (`~/.cursor/agents/` a
 
 ### harness init
 
-Starts an interactive wizard in the current project with six steps:
+Starts an interactive wizard in the current project with seven steps:
 
 1. **Project info** — Name and description
 2. **IDE environment** — Detect Cursor/Codex and optionally install agent definitions
 3. **Driver mode** — Choose auto (recommended: Builder→Cursor, others→Codex), cursor, or codex
-4. **CI gate** — Configure commands for quality checks, with optional AI-suggested recommendations
-5. **Memverse integration** — Optionally enable long-term memory to persist key decisions during reflection
-6. **Vision** — Generate now or edit later
+4. **Workflow mode** — Choose **orchestrator** (external CLI drives agents) or **cursor-native** (skills + subagents inside Cursor IDE). Only shown when Cursor is detected
+5. **CI gate** — Configure commands for quality checks, with optional AI-suggested recommendations
+6. **Memverse integration** — Optionally enable long-term memory to persist key decisions during reflection
+7. **Vision** — Generate now or edit later
 
 After initialization, `.agents/` is created at the project root with:
 
@@ -172,6 +176,54 @@ Both modes support `--resume` (continue from last interruption) and `--verbose` 
 
 ---
 
+## Cursor-Native Mode
+
+Cursor-native mode runs the entire harness workflow **inside the Cursor IDE** using skills, subagents, and rules — no external CLI process needed. During `harness init`, select **cursor-native** when prompted for workflow mode.
+
+### Orchestrator vs Cursor-native
+
+|  | Orchestrator | Cursor-native |
+|---|---|---|
+| **How it runs** | External `harness` CLI spawns `cursor-agent` processes | Skills + subagents inside Cursor IDE |
+| **Entry point** | `harness run` / `harness auto` | `/harness-plan`, `/harness-build`, `/harness-eval`, `/harness-ship` |
+| **Cross-model review** | Configurable per role in `[drivers.roles]` | Adversarial subagent with a different model (e.g. GPT reviews Claude's work) |
+| **When to use** | CI/CD pipelines, headless automation, multi-IDE setups | Interactive development, Cursor-only workflows, unlimited Cursor quota |
+
+### Generated artifacts
+
+When you select cursor-native mode, `harness init` generates:
+
+| Artifact | Path | Purpose |
+|----------|------|---------|
+| `/harness-plan` | `.cursor/skills/harness/harness-plan/SKILL.md` | Plan and decompose a task into spec + contract |
+| `/harness-build` | `.cursor/skills/harness/harness-build/SKILL.md` | Implement the contract, run CI |
+| `/harness-eval` | `.cursor/skills/harness/harness-eval/SKILL.md` | Multi-pass review with cross-model adversarial evaluation |
+| `/harness-ship` | `.cursor/skills/harness/harness-ship/SKILL.md` | Composite: plan → build → eval → fix loop → commit → push → PR |
+| Adversarial reviewer | `.cursor/agents/harness-adversarial-reviewer.md` | GPT-based adversarial code reviewer (`model: gpt-4.1`, `readonly: true`) |
+| Evaluator | `.cursor/agents/harness-evaluator.md` | Structured code evaluator (`model: inherit`, `readonly: true`) |
+| Trust boundary | `.cursor/rules/harness-trust-boundary.mdc` | Always-on rule: Builder output is untrusted |
+| Workflow conventions | `.cursor/rules/harness-workflow.mdc` | Commit format, branch naming, task state management |
+
+### Cross-model adversarial review
+
+The `/harness-eval` skill dispatches a **cross-model adversarial reviewer** — a Cursor subagent configured with a different model family (default: `gpt-4.1`). This gives independent, cross-model validation:
+
+1. **Pass 1** — Main agent (Claude) does structured code review
+2. **Pass 2** — Adversarial subagent (GPT) hunts for security holes, race conditions, edge cases
+3. **Synthesis** — Findings agreed on by both models are flagged as high-confidence
+
+The adversarial model is configurable in `.agents/config.toml` under `[native] adversarial_model`. If the subagent fails, evaluation gracefully degrades to single-model review.
+
+### Regenerating artifacts
+
+To regenerate all native mode artifacts (e.g. after updating config):
+
+```bash
+harness install --force
+```
+
+---
+
 ## Command reference
 
 | Command | Description |
@@ -201,12 +253,16 @@ Project settings live in `.agents/config.toml`. Important keys:
 
 | Key | Default | Description |
 |-----|---------|-------------|
+| `workflow.mode` | "orchestrator" | Workflow mode: `orchestrator` (CLI-driven) or `cursor-native` (IDE-internal skills) |
 | `workflow.profile` | "standard" | Workflow profile: `lite` / `standard` / `autonomous` (see below) |
 | `workflow.max_iterations` | 3 | Max iterations per task |
 | `workflow.pass_threshold` | 3.5 | Evaluator pass threshold (out of 5) |
 | `workflow.auto_merge` | true | Auto-merge branch after pass |
 | `workflow.branch_prefix` | "agent" | Task branch prefix |
 | `workflow.dual_evaluation` | false | Dual evaluators: after quality review, run alignment review |
+| `native.adversarial_model` | "gpt-4.1" | Cross-model adversarial reviewer model (cursor-native only) |
+| `native.adversarial_mechanism` | "auto" | How to dispatch adversarial review: `subagent` / `cli` / `auto` |
+| `native.review_gate` | "eng" | Which review layers are hard gates |
 | `autonomous.max_tasks_per_session` | 10 | Max tasks per autonomous session |
 | `autonomous.consecutive_block_limit` | 2 | Stop after this many consecutive blocks |
 
@@ -305,7 +361,9 @@ harness-orchestrator/
 │   ├── drivers/             # Drivers: IDE agent invocation abstraction
 │   ├── core/                # Core: state, config, UI, events
 │   ├── methodology/         # Methodology: evaluation, scoring, contracts
-│   ├── templates/           # Role prompt templates
+│   ├── native/              # Cursor-native mode: skill/agent/rule generator
+│   ├── templates/           # Role prompt templates (orchestrator + native)
+│   │   └── native/          # Jinja2 templates for cursor-native artifacts
 │   └── integrations/        # Integrations: Git, Memverse
 ├── agents/                  # Role definition templates (Cursor / Codex)
 ├── tests/                   # Test suite (includes fixtures/)
@@ -324,6 +382,7 @@ harness-orchestrator/
 - **`drivers/`** — Wraps Cursor and Codex CLI details; upper layers use the `AgentDriver` protocol; `resolver.py` routes roles by mode (auto/cursor/codex); capability probe at startup checks versions and flags
 - **`core/`** — Runtime state (`state.py`), project config (`config.py`), terminal UI (`ui.py`), structured events (`events.py`), scanning, archive, index
 - **`methodology/`** — Parse evaluation output, compute four-dimensional scores, contract templates, JSON sidecars
+- **`native/`** — Cursor-native mode generator: reads SSOT roles + config, renders Jinja2 templates into `.cursor/skills/`, `.cursor/agents/`, `.cursor/rules/`
 - **`integrations/`** — Git branching and Memverse long-term memory
 
 </details>

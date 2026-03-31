@@ -2,7 +2,7 @@
 
 # harness-orchestrator
 
-> 面向 Cursor 与 Codex 的契约驱动多智能体自主开发编排框架。
+> 面向 Cursor 与 Codex 的契约驱动多智能体自主开发编排框架 — 支持 Cursor 原生模式，工作流完全在 IDE 内运行。
 
 [![Python](https://img.shields.io/badge/python-%3E%3D3.9-blue)](https://www.python.org/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
@@ -11,9 +11,10 @@
 
 - **需求按方法论推进** — Planner 分析需求产出 spec 并协商迭代契约，而不是直接跳到写代码
 - **实现与审查分离** — Builder 按契约实现；Evaluator 独立审查，以四维评分作为质量门禁
+- **跨模型对抗评审** — Cursor 原生模式下，GPT 对抗审查器独立挑战 Claude 的产出，提高发现置信度
 - **自主但有边界** — Strategist 从 vision 中选任务，受迭代上限、通过阈值与停止信号约束
 - **全程可追溯** — 每轮迭代的 spec、contract、evaluation 以 Markdown + JSON 保存，便于审计、自动化与中断后恢复
-- **可观测** — 每次 agent 调用、CI 运行与状态变更都记录为结构化事件（`events.jsonl`），便于诊断与度量
+- **双模式** — **编排器模式**（外部 CLI 驱动 agent）或 **Cursor 原生模式**（IDE 内 skill + 子代理，无需外部进程）
 
 > **设计思路**：核心架构受 GAN 对抗思想启发 — Builder（生成器）与 Evaluator（判别器）分离并迭代博弈，推动代码质量收敛；Planner 通过契约协议为双方建立共同基线。
 
@@ -75,6 +76,8 @@ harness stop
 
 下文展开每一步。
 
+> **Cursor 原生模式**：在 `harness init` 中选择 **cursor-native** 即可跳过外部 CLI 编排。Harness 会将 skill、子代理和规则生成到 `.cursor/` 中，你可在 IDE 内通过 `/harness-plan`、`/harness-build`、`/harness-eval` 和 `/harness-ship` 驱动整个工作流。详见 [Cursor 原生模式](#cursor-原生模式)。
+
 ---
 
 ## 初始化与配置
@@ -85,14 +88,15 @@ harness stop
 
 ### harness init
 
-在当前项目中启动交互式向导，共六步：
+在当前项目中启动交互式向导，共七步：
 
 1. **项目信息** — 名称与描述
 2. **IDE 环境** — 检测 Cursor/Codex，并可选择安装 agent 定义
 3. **驱动模式** — 选择 auto（推荐：Builder→Cursor，其余→Codex）、cursor 或 codex
-4. **CI 门禁** — 配置质量检查命令，可选 AI 建议
-5. **Memverse 集成** — 可选启用长期记忆，在反思阶段持久化关键决策
-6. **Vision** — 立即生成或稍后编辑
+4. **工作流模式** — 选择 **orchestrator**（外部 CLI 驱动 agent）或 **cursor-native**（IDE 内 skill + 子代理）。仅当检测到 Cursor 时显示
+5. **CI 门禁** — 配置质量检查命令，可选 AI 建议
+6. **Memverse 集成** — 可选启用长期记忆，在反思阶段持久化关键决策
+7. **Vision** — 立即生成或稍后编辑
 
 初始化后，项目根目录会创建 `.agents/`：
 
@@ -172,6 +176,54 @@ Read .agents/vision.md
 
 ---
 
+## Cursor 原生模式
+
+Cursor 原生模式将整个 harness 工作流在 **Cursor IDE 内部**通过 skill、子代理和规则运行 — 无需外部 CLI 进程。在 `harness init` 时选择 **cursor-native** 即可启用。
+
+### 编排器模式 vs Cursor 原生模式
+
+|  | 编排器模式 | Cursor 原生模式 |
+|---|---|---|
+| **运行方式** | 外部 `harness` CLI 生成 `cursor-agent` 进程 | Cursor IDE 内 skill + 子代理 |
+| **入口** | `harness run` / `harness auto` | `/harness-plan`、`/harness-build`、`/harness-eval`、`/harness-ship` |
+| **跨模型评审** | 在 `[drivers.roles]` 中按角色配置 | 对抗子代理使用不同模型（如 GPT 审查 Claude 的产出） |
+| **适用场景** | CI/CD 流水线、无头自动化、多 IDE 场景 | 交互式开发、纯 Cursor 工作流、充分利用 Cursor 配额 |
+
+### 生成的工件
+
+选择 cursor-native 模式后，`harness init` 会生成：
+
+| 工件 | 路径 | 用途 |
+|----------|------|---------|
+| `/harness-plan` | `.cursor/skills/harness/harness-plan/SKILL.md` | 规划与拆解任务为 spec + contract |
+| `/harness-build` | `.cursor/skills/harness/harness-build/SKILL.md` | 按契约实现，运行 CI |
+| `/harness-eval` | `.cursor/skills/harness/harness-eval/SKILL.md` | 多遍评审 + 跨模型对抗评估 |
+| `/harness-ship` | `.cursor/skills/harness/harness-ship/SKILL.md` | 组合技：plan → build → eval → 修复循环 → commit → push → PR |
+| 对抗审查器 | `.cursor/agents/harness-adversarial-reviewer.md` | 基于 GPT 的对抗代码审查器（`model: gpt-4.1`，`readonly: true`） |
+| 评估器 | `.cursor/agents/harness-evaluator.md` | 结构化代码评估器（`model: inherit`，`readonly: true`） |
+| 信任边界 | `.cursor/rules/harness-trust-boundary.mdc` | 始终生效规则：Builder 产出视为不可信 |
+| 工作流约定 | `.cursor/rules/harness-workflow.mdc` | 提交格式、分支命名、任务状态管理 |
+
+### 跨模型对抗评审
+
+`/harness-eval` skill 调度**跨模型对抗审查器** — 一个配置了不同模型族的 Cursor 子代理（默认 `gpt-4.1`），实现独立的跨模型验证：
+
+1. **第一遍** — 主代理（Claude）做结构化代码审查
+2. **第二遍** — 对抗子代理（GPT）专注安全漏洞、竞态条件、边界场景
+3. **综合** — 两个模型共同标记的问题标注为高置信度
+
+对抗模型可在 `.agents/config.toml` 的 `[native] adversarial_model` 中配置。若子代理调用失败，评估将优雅降级为单模型审查。
+
+### 重新生成工件
+
+如需重新生成全部原生模式工件（例如更新配置后）：
+
+```bash
+harness install --force
+```
+
+---
+
 ## 命令参考
 
 | 命令 | 说明 |
@@ -201,12 +253,16 @@ Read .agents/vision.md
 
 | 键 | 默认值 | 说明 |
 |-----|---------|-------------|
+| `workflow.mode` | "orchestrator" | 工作流模式：`orchestrator`（CLI 驱动）或 `cursor-native`（IDE 内 skill） |
 | `workflow.profile` | "standard" | 工作流配置：`lite` / `standard` / `autonomous`（见下） |
 | `workflow.max_iterations` | 3 | 每任务最大迭代次数 |
 | `workflow.pass_threshold` | 3.5 | Evaluator 通过阈值（满分 5） |
 | `workflow.auto_merge` | true | 通过后自动合并分支 |
 | `workflow.branch_prefix` | "agent" | 任务分支前缀 |
 | `workflow.dual_evaluation` | false | 双评审：质量评审后再跑对齐评审 |
+| `native.adversarial_model` | "gpt-4.1" | 跨模型对抗审查器模型（仅 cursor-native） |
+| `native.adversarial_mechanism` | "auto" | 对抗评审调度方式：`subagent` / `cli` / `auto` |
+| `native.review_gate` | "eng" | 哪些评审层为硬门禁 |
 | `autonomous.max_tasks_per_session` | 10 | 每自主会话最大任务数 |
 | `autonomous.consecutive_block_limit` | 2 | 连续阻塞达到此次数后停止 |
 
@@ -305,7 +361,9 @@ harness-orchestrator/
 │   ├── drivers/             # Drivers: IDE agent invocation abstraction
 │   ├── core/                # Core: state, config, UI, events
 │   ├── methodology/         # Methodology: evaluation, scoring, contracts
-│   ├── templates/           # Role prompt templates
+│   ├── native/              # Cursor-native mode: skill/agent/rule generator
+│   ├── templates/           # Role prompt templates (orchestrator + native)
+│   │   └── native/          # Jinja2 templates for cursor-native artifacts
 │   └── integrations/        # Integrations: Git, Memverse
 ├── agents/                  # Role definition templates (Cursor / Codex)
 ├── tests/                   # Test suite (includes fixtures/)
@@ -324,6 +382,7 @@ harness-orchestrator/
 - **`drivers/`** — 封装 Cursor 与 Codex CLI 细节；上层使用 `AgentDriver` 协议；`resolver.py` 按模式（auto/cursor/codex）路由角色；启动时 capability probe 检查版本与 flags
 - **`core/`** — 运行时状态（`state.py`）、项目配置（`config.py`）、终端 UI（`ui.py`）、结构化事件（`events.py`）、扫描、归档、索引
 - **`methodology/`** — 解析评审输出、计算四维分数、契约模板、JSON 侧车
+- **`native/`** — Cursor 原生模式生成器：读取 SSOT 角色 + 配置，渲染 Jinja2 模板为 `.cursor/skills/`、`.cursor/agents/`、`.cursor/rules/`
 - **`integrations/`** — Git 分支与 Memverse 长期记忆
 
 </details>
