@@ -205,6 +205,7 @@ class CursorDriver:
         readonly: bool = False,
         timeout: int = 600,
         on_output: Callable[[str], None] | None = None,
+        model: str = "",
     ) -> AgentResult:
         full_prompt = self._compose_prompt(agent_name, prompt, readonly=readonly)
 
@@ -217,6 +218,9 @@ class CursorDriver:
             "--output-format", "stream-json",
             "--stream-partial-output",
         ]
+
+        if model:
+            cmd.extend(["--model", model])
 
         if readonly:
             cmd.extend(["--mode", "plan"])

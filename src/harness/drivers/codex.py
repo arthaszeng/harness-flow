@@ -113,6 +113,7 @@ class CodexDriver:
         readonly: bool = False,
         timeout: int = 600,
         on_output: Callable[[str], None] | None = None,
+        model: str = "",
     ) -> AgentResult:
         full_prompt = self._compose_prompt(agent_name, prompt, readonly=readonly)
 
@@ -131,8 +132,12 @@ class CodexDriver:
             output_file,
             "-C",
             str(cwd),
-            "-",
         ]
+
+        if model:
+            cmd.extend(["--model", model])
+
+        cmd.append("-")
 
         try:
             return self._run_streaming(cmd, full_prompt, output_file, cwd, timeout, on_output)

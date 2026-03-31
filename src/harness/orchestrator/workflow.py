@@ -113,6 +113,7 @@ def run_single_task(
 
             planner = resolver.resolve("planner")
             planner_name = resolver.agent_name("planner")
+            planner_model = resolver.resolve_model("planner")
 
             if iteration == 1:
                 plan_prompt = _build_plan_prompt(requirement, project_root)
@@ -124,7 +125,7 @@ def run_single_task(
                 with ui.agent_step("[1/3 planner] generating spec + contract", planner.name) as on_out:
                     plan_result = planner.invoke(
                         planner_name, plan_prompt, project_root,
-                        readonly=True, on_output=on_out,
+                        readonly=True, on_output=on_out, model=planner_model,
                     )
                 run.exit_code = plan_result.exit_code
                 run.output_len = len(plan_result.output)
@@ -167,6 +168,7 @@ def run_single_task(
 
             builder = resolver.resolve("builder")
             builder_name = resolver.agent_name("builder")
+            builder_model = resolver.resolve_model("builder")
             build_prompt = _build_builder_prompt(requirement, task_dir, iteration, project_root)
 
             t0 = time.monotonic()
@@ -174,7 +176,7 @@ def run_single_task(
                 with ui.agent_step("[2/3 builder] executing contract", builder.name) as on_out:
                     build_result = builder.invoke(
                         builder_name, build_prompt, project_root,
-                        on_output=on_out,
+                        on_output=on_out, model=builder_model,
                     )
                 run.exit_code = build_result.exit_code
                 run.output_len = len(build_result.output)
@@ -246,6 +248,7 @@ def run_single_task(
             # Stage 2: Quality review (primary evaluator)
             evaluator = resolver.resolve("evaluator")
             eval_name = resolver.agent_name("evaluator")
+            eval_model = resolver.resolve_model("evaluator")
             eval_prompt = _build_eval_prompt(
                 requirement, task_dir, iteration, project_root, branch=branch,
             )
@@ -255,7 +258,7 @@ def run_single_task(
                 with ui.agent_step("[3/3 eval] quality review", evaluator.name) as on_out:
                     eval_result = evaluator.invoke(
                         eval_name, eval_prompt, project_root,
-                        readonly=True, on_output=on_out,
+                        readonly=True, on_output=on_out, model=eval_model,
                     )
                 run.exit_code = eval_result.exit_code
                 run.output_len = len(eval_result.output)
@@ -291,6 +294,7 @@ def run_single_task(
             if config.workflow.dual_evaluation and parsed.verdict == "PASS":
                 align_eval = resolver.resolve("alignment_evaluator")
                 align_name = resolver.agent_name("alignment_evaluator")
+                align_model = resolver.resolve_model("alignment_evaluator")
                 align_prompt = _build_alignment_eval_prompt(
                     requirement, task_dir, iteration, project_root, branch=branch,
                 )
@@ -299,7 +303,7 @@ def run_single_task(
                     with ui.agent_step("[3/3 eval] alignment review", align_eval.name) as on_out:
                         align_result = align_eval.invoke(
                             align_name, align_prompt, project_root,
-                            readonly=True, on_output=on_out,
+                            readonly=True, on_output=on_out, model=align_model,
                         )
                     run.exit_code = align_result.exit_code
                     run.output_len = len(align_result.output)

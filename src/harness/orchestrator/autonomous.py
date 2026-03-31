@@ -110,6 +110,7 @@ def _invoke_strategist(
     """Invoke Strategist agent; return the next task description or None."""
     driver = resolver.resolve("strategist")
     agent_name = resolver.agent_name("strategist")
+    model = resolver.resolve_model("strategist")
 
     vision = ""
     vision_path = sm.agents_dir / "vision.md"
@@ -131,7 +132,7 @@ def _invoke_strategist(
 
     result = driver.invoke(
         agent_name, prompt, config.project_root,
-        readonly=True, on_output=on_output,
+        readonly=True, on_output=on_output, model=model,
     )
 
     if not result.success:
@@ -173,6 +174,7 @@ def _invoke_reflector(
     ui = get_ui()
     driver = resolver.resolve("reflector")
     agent_name = resolver.agent_name("reflector")
+    model = resolver.resolve_model("reflector")
 
     vision = ""
     vision_path = sm.agents_dir / "vision.md"
@@ -196,7 +198,7 @@ def _invoke_reflector(
 
     result = driver.invoke(
         agent_name, prompt, config.project_root,
-        readonly=True, on_output=on_output,
+        readonly=True, on_output=on_output, model=model,
     )
 
     if result.success:

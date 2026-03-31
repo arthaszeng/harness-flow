@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import sys
 
-from harness.core.config import HarnessConfig
+from harness.core.config import HarnessConfig, resolve_model as _resolve_model
 from harness.drivers.base import AgentDriver
 from harness.drivers.codex import CodexDriver
 from harness.drivers.cursor import CursorDriver
@@ -79,6 +79,11 @@ class DriverResolver:
             return self._codex
 
         raise RuntimeError("Neither Cursor nor Codex CLI detected")
+
+    def resolve_model(self, role: str) -> str:
+        """解析角色对应的模型: per-role override → per-driver default → global default."""
+        driver = self.resolve(role)
+        return _resolve_model(role, driver.name, self._config.models)
 
     def agent_name(self, role: str) -> str:
         """Agent name for a role."""

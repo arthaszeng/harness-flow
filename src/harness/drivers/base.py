@@ -27,10 +27,12 @@ class AgentDriver(Protocol):
         readonly: bool = False,
         timeout: int = 600,
         on_output: Callable[[str], None] | None = None,
+        model: str = "",
     ) -> AgentResult:
         """Run an agent with the given prompt.
 
         on_output: callback per line of subprocess output; when set, the driver should not write stderr directly.
+        model: 模型名称，空字符串表示使用 IDE 默认模型。
         """
         ...
 

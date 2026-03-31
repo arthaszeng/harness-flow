@@ -42,6 +42,8 @@ class DriversConfig(BaseModel):
 
 class ModelsConfig(BaseModel):
     default: str = ""
+    driver_defaults: dict[str, str] = Field(default_factory=dict)
+    role_overrides: dict[str, str] = Field(default_factory=dict)
 
 
 class WorkflowConfig(BaseModel):
@@ -103,6 +105,15 @@ class HarnessConfig(BaseModel):
         cfg = cls.model_validate(data)
         cfg.project_root = root
         return cfg
+
+
+def resolve_model(role: str, driver_name: str, models: ModelsConfig) -> str:
+    """三级 fallback 解析模型: per-role override → per-driver default → global default."""
+    if role in models.role_overrides:
+        return models.role_overrides[role]
+    if driver_name in models.driver_defaults:
+        return models.driver_defaults[driver_name]
+    return models.default
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
