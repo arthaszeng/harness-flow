@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
-from harness.drivers.codex import CodexDriver, DriverProbe
+from harness.drivers.codex import CodexDriver
 
 
 def test_compose_prompt_includes_role_instructions_for_known_agent() -> None:
@@ -87,6 +87,50 @@ def test_invoke_falls_back_to_stdout_when_no_output_file(mock_popen: Mock, tmp_p
 
     assert result.success is True
     assert "streamed output" in result.output
+
+
+@patch("harness.drivers.codex.subprocess.Popen")
+def test_invoke_omits_model_flags_when_model_empty(mock_popen: Mock, tmp_path: Path) -> None:
+    captured: dict = {}
+
+    def _fake_popen(cmd, **kwargs):  # type: ignore[no-untyped-def]
+        captured["cmd"] = cmd
+        idx = cmd.index("--output-last-message") + 1
+        Path(cmd[idx]).write_text("ok", encoding="utf-8")
+        proc = MagicMock()
+        proc.stdin = io.StringIO()
+        proc.stdout = io.StringIO("")
+        proc.returncode = 0
+        proc.wait = Mock(return_value=0)
+        return proc
+
+    mock_popen.side_effect = _fake_popen
+    driver = CodexDriver()
+    driver.invoke("harness-planner", "p", tmp_path, model="")
+
+    assert "--model" not in captured["cmd"]
+
+
+@patch("harness.drivers.codex.subprocess.Popen")
+def test_invoke_adds_model_flag_when_set(mock_popen: Mock, tmp_path: Path) -> None:
+    captured: dict = {}
+
+    def _fake_popen(cmd, **kwargs):  # type: ignore[no-untyped-def]
+        captured["cmd"] = cmd
+        idx = cmd.index("--output-last-message") + 1
+        Path(cmd[idx]).write_text("ok", encoding="utf-8")
+        proc = MagicMock()
+        proc.stdin = io.StringIO()
+        proc.stdout = io.StringIO("")
+        proc.returncode = 0
+        proc.wait = Mock(return_value=0)
+        return proc
+
+    mock_popen.side_effect = _fake_popen
+    driver = CodexDriver()
+    driver.invoke("harness-planner", "p", tmp_path, model="o3")
+
+    assert captured["cmd"][captured["cmd"].index("--model") + 1] == "o3"
 
 
 # ── Probe tests ──────────────────────────────────────────────────

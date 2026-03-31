@@ -136,6 +136,23 @@ def test_invoke_advisor_returns_parsed_output(tmp_path: Path) -> None:
     assert "Expanded goal" in result.vision_content
     assert result.questions == []
     mock_driver.invoke.assert_called_once()
+    call_kw = mock_driver.invoke.call_args.kwargs
+    assert call_kw.get("model", "") == ""
+
+
+def test_invoke_advisor_passes_model(tmp_path: Path) -> None:
+    mock_driver = MagicMock()
+    mock_driver.invoke.return_value = AgentResult(
+        success=True,
+        output="# V\n\ngoal",
+        exit_code=0,
+    )
+    ctx = ProjectContext(project_name="test")
+    invoke_advisor(
+        mock_driver, "harness-advisor", ctx, "inp", tmp_path,
+        model="custom-model",
+    )
+    assert mock_driver.invoke.call_args.kwargs["model"] == "custom-model"
 
 
 def test_invoke_advisor_handles_failure(tmp_path: Path) -> None:

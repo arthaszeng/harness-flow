@@ -137,6 +137,16 @@ def test_resolve_model_empty_role_configs():
     assert resolve_model("builder", "cursor", models) == "gpt-4o"
 
 
+def test_resolve_model_role_empty_override_skips_lower_priority():
+    """角色显式配置空字符串时不再回落到 driver/global。"""
+    models = ModelsConfig(
+        default="gpt-4o",
+        driver_defaults={"codex": "o3"},
+        role_overrides={"planner": ""},
+    )
+    assert resolve_model("planner", "codex", models) == ""
+
+
 def test_models_config_from_toml(tmp_path: Path):
     agents_dir = tmp_path / ".agents"
     agents_dir.mkdir()

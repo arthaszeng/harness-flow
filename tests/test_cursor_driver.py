@@ -181,6 +181,44 @@ def test_invoke_handles_error_result(mock_popen: Mock, tmp_path: Path) -> None:
     assert "ERROR:" in result.output
 
 
+@patch("harness.drivers.cursor.proc_mgr.spawn_cursor")
+def test_invoke_omits_model_flag_when_empty(mock_spawn: Mock, tmp_path: Path) -> None:
+    ok_line = json.dumps({
+        "type": "result", "result": "x", "is_error": False, "duration_ms": 1,
+    })
+    proc = MagicMock()
+    proc.stdout = iter([ok_line])
+    proc.stderr = MagicMock()
+    proc.returncode = 0
+    proc.wait = Mock(return_value=0)
+    proc.pid = 42
+    mock_spawn.return_value = proc
+
+    driver = CursorDriver()
+    driver.invoke("harness-builder", "b", tmp_path, model="")
+    cmd = mock_spawn.call_args[0][0]
+    assert "--model" not in cmd
+
+
+@patch("harness.drivers.cursor.proc_mgr.spawn_cursor")
+def test_invoke_adds_model_flag_when_set(mock_spawn: Mock, tmp_path: Path) -> None:
+    ok_line = json.dumps({
+        "type": "result", "result": "x", "is_error": False, "duration_ms": 1,
+    })
+    proc = MagicMock()
+    proc.stdout = iter([ok_line])
+    proc.stderr = MagicMock()
+    proc.returncode = 0
+    proc.wait = Mock(return_value=0)
+    proc.pid = 42
+    mock_spawn.return_value = proc
+
+    driver = CursorDriver()
+    driver.invoke("harness-builder", "b", tmp_path, model="claude-4-opus")
+    cmd = mock_spawn.call_args[0][0]
+    assert cmd[cmd.index("--model") + 1] == "claude-4-opus"
+
+
 # ── Probe tests ──────────────────────────────────────────────────
 
 
