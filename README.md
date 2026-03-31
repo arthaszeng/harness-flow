@@ -210,6 +210,30 @@ Project settings live in `.agents/config.toml`. Important keys:
 | `autonomous.max_tasks_per_session` | 10 | Max tasks per autonomous session |
 | `autonomous.consecutive_block_limit` | 2 | Stop after this many consecutive blocks |
 
+### Model configuration
+
+Models are resolved per-role using a four-level fallback chain:
+
+1. **`models.role_overrides.<role>`** — Per-role override (highest priority)
+2. **`models.role_configs.<role>.model`** — Per-role extended config
+3. **`models.driver_defaults.<driver>`** — Per-driver default (`cursor` / `codex`)
+4. **`models.default`** — Global default (lowest priority)
+
+An empty string (the default) means "use the IDE/CLI's own default model" — the driver will not append `--model`, preserving existing behavior. You only need to configure models when you want explicit control.
+
+```toml
+[models]
+default = ""  # empty = IDE default model
+
+[models.driver_defaults]
+codex = "o3"
+
+[models.role_overrides]
+planner = "o3-pro"
+```
+
+Supported role names: `planner`, `builder`, `evaluator`, `alignment_evaluator`, `strategist`, `reflector`, `advisor`.
+
 ### Workflow profiles
 
 | Profile | Flow | When to use |

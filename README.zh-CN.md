@@ -210,6 +210,30 @@ Read .agents/vision.md
 | `autonomous.max_tasks_per_session` | 10 | 每自主会话最大任务数 |
 | `autonomous.consecutive_block_limit` | 2 | 连续阻塞达到此次数后停止 |
 
+### 模型配置
+
+模型按角色解析，遵循四级 fallback 链：
+
+1. **`models.role_overrides.<role>`** — 角色级覆盖（最高优先级）
+2. **`models.role_configs.<role>.model`** — 角色扩展配置中的模型
+3. **`models.driver_defaults.<driver>`** — 驱动级默认（`cursor` / `codex`）
+4. **`models.default`** — 全局默认（最低优先级）
+
+空字符串（默认值）表示"使用 IDE/CLI 自身的默认模型"——driver 不会附加 `--model` 参数，保持现有行为不变。只有在需要显式控制时才需要配置模型。
+
+```toml
+[models]
+default = ""  # 留空 = 使用 IDE 默认模型
+
+[models.driver_defaults]
+codex = "o3"
+
+[models.role_overrides]
+planner = "o3-pro"
+```
+
+支持的角色名：`planner`、`builder`、`evaluator`、`alignment_evaluator`、`strategist`、`reflector`、`advisor`。
+
 ### 工作流配置
 
 | 配置 | 流程 | 适用场景 |
