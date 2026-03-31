@@ -145,13 +145,14 @@ class CursorDriver:
             )
             help_text = (help_result.stdout + help_result.stderr).lower()
 
-            if any(p in help_text for p in _NOT_READY_PATTERNS):
+            if help_result.returncode != 0:
                 functional = False
                 warnings.append(t("driver.cursor_not_ready"))
             else:
                 for flag in ("--print", "--output-format", "--stream-partial-output"):
                     if flag not in help_text:
                         warnings.append(f"cursor agent may not support {flag}")
+
         except subprocess.TimeoutExpired:
             functional = False
             warnings.append(t("driver.cursor_not_ready"))
