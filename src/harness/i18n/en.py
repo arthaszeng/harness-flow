@@ -81,6 +81,7 @@ MESSAGES: dict[str, str] = {
     ),
     "install.cursor_agent_confirm": "  Auto-install Cursor Agent? (curl https://cursor.com/install | bash)",
     "install.codex_cli_confirm": "  Auto-install Codex CLI? (npm install -g @openai/codex)",
+    "install.codex_auth_confirm": "  Run Codex authentication? (opens browser for OpenAI login)",
     "install.curl_missing": "  [skip] curl not found, cannot auto-install Cursor Agent",
     "install.npm_missing": "  [skip] npm not found, cannot auto-install Codex CLI",
     "install.cli_running": "  ▸ Installing {label}...",
@@ -88,6 +89,17 @@ MESSAGES: dict[str, str] = {
     "install.cli_fail": "  ✗ {label} installation failed",
     "install.cli_timeout": "  ✗ {label} installation timed out",
     "install.cli_error": "  ✗ {label} installation error: {error}",
+    "install.path_added": "  ✓ Added {dir} to PATH in ~/{rc}",
+    "install.cursor_signin_hint": (
+        "  ℹ Cursor Agent installed. Make sure you are signed in to Cursor Pro:\n"
+        "    Open Cursor app -> Settings (gear icon) -> Sign In"
+    ),
+    "install.cursor_signin_skip": "  ℹ Cursor Agent installed. Sign in to Cursor Pro when ready.",
+    "install.codex_auth_running": "  ▸ Starting Codex authentication (browser will open)...",
+    "install.codex_auth_done": "  ✓ Codex authentication complete",
+    "install.codex_auth_skip": "  ℹ Skipped. Run `codex auth` later to authenticate.",
+    "install.codex_auth_timeout": "  ⚠ Codex auth timed out. Run `codex auth` manually later.",
+    "install.codex_auth_fail": "  ⚠ Codex auth failed. Run `codex auth` manually later.",
     "install.no_ide": "\n[error] Neither Cursor nor Codex CLI detected. At least one is required.",
     "install.no_source": "\n[error] Agent source directory not found: {path}",
     "install.cursor_agents": "Installing Cursor agents:",

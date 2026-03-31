@@ -109,6 +109,14 @@ def _install_codex_agents(source_dir: Path, *, force: bool, lang: str) -> int:
     return installed
 
 
+_AGENT_BIN_DIR = Path.home() / ".local" / "bin"
+
+_SHELL_RC_MAP = {
+    "zsh": ".zshrc",
+    "bash": ".bash_profile",
+}
+
+
 def _run_cli_install(cmd: list[str], label: str) -> bool:
     """Run an external CLI install command with live output. Returns True on success."""
     typer.echo(t("install.cli_running", label=label))
@@ -132,28 +140,83 @@ def _run_cli_install(cmd: list[str], label: str) -> bool:
     return False
 
 
+def _ensure_path(bin_dir: Path) -> None:
+    """Add *bin_dir* to the user's shell rc file if not already present."""
+    import os
+
+    bin_str = str(bin_dir)
+    if bin_str in os.environ.get("PATH", ""):
+        return
+
+    shell_name = Path(os.environ.get("SHELL", "/bin/bash")).name
+    rc_name = _SHELL_RC_MAP.get(shell_name, ".profile")
+    rc_path = Path.home() / rc_name
+
+    if rc_path.exists():
+        content = rc_path.read_text(encoding="utf-8")
+        if bin_str in content:
+            return
+
+    export_line = f'export PATH="{bin_str}:$PATH"'
+    with open(rc_path, "a", encoding="utf-8") as f:
+        f.write(f"\n# Added by harness install\n{export_line}\n")
+    typer.echo(t("install.path_added", rc=rc_name, dir=bin_str))
+
+    os.environ["PATH"] = f"{bin_str}:{os.environ.get('PATH', '')}"
+
+
 def _try_install_cursor_agent() -> bool:
-    """Offer to install cursor-agent via official installer script."""
+    """Install cursor-agent: download binary, fix PATH, guide sign-in."""
     if not shutil.which("curl"):
         typer.echo(t("install.curl_missing"))
         return False
     if not typer.confirm(t("install.cursor_agent_confirm"), default=True):
         return False
-    return _run_cli_install(
+
+    ok = _run_cli_install(
         ["bash", "-c", "curl https://cursor.com/install -fsS | bash"],
         "Cursor Agent",
     )
+    if not ok:
+        return False
+
+    _ensure_path(_AGENT_BIN_DIR)
+
+    if not shutil.which("cursor"):
+        typer.echo(t("install.cursor_signin_skip"))
+        return True
+
+    typer.echo(t("install.cursor_signin_hint"))
+    return True
 
 
 def _try_install_codex_cli() -> bool:
-    """Offer to install Codex CLI via npm."""
+    """Install Codex CLI via npm, then run interactive auth."""
     npm = shutil.which("npm")
     if not npm:
         typer.echo(t("install.npm_missing"))
         return False
     if not typer.confirm(t("install.codex_cli_confirm"), default=True):
         return False
-    return _run_cli_install(["npm", "install", "-g", "@openai/codex"], "Codex CLI")
+
+    ok = _run_cli_install(["npm", "install", "-g", "@openai/codex"], "Codex CLI")
+    if not ok:
+        return False
+
+    if not typer.confirm(t("install.codex_auth_confirm"), default=True):
+        typer.echo(t("install.codex_auth_skip"))
+        return True
+
+    typer.echo(t("install.codex_auth_running"))
+    try:
+        subprocess.run(["codex", "auth"], check=False, timeout=120)
+        typer.echo(t("install.codex_auth_done"))
+    except subprocess.TimeoutExpired:
+        typer.echo(t("install.codex_auth_timeout"))
+    except Exception:
+        typer.echo(t("install.codex_auth_fail"))
+
+    return True
 
 
 def _probe_ides(ides: dict[str, bool]) -> dict[str, bool]:

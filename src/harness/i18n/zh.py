@@ -81,6 +81,7 @@ MESSAGES: dict[str, str] = {
     ),
     "install.cursor_agent_confirm": "  是否自动安装 Cursor Agent? (curl https://cursor.com/install | bash)",
     "install.codex_cli_confirm": "  是否自动安装 Codex CLI? (npm install -g @openai/codex)",
+    "install.codex_auth_confirm": "  是否进行 Codex 认证? (会打开浏览器登录 OpenAI)",
     "install.curl_missing": "  [skip] 未找到 curl，无法自动安装 Cursor Agent",
     "install.npm_missing": "  [skip] 未找到 npm，无法自动安装 Codex CLI",
     "install.cli_running": "  ▸ 正在安装 {label}...",
@@ -88,6 +89,17 @@ MESSAGES: dict[str, str] = {
     "install.cli_fail": "  ✗ {label} 安装失败",
     "install.cli_timeout": "  ✗ {label} 安装超时",
     "install.cli_error": "  ✗ {label} 安装出错: {error}",
+    "install.path_added": "  ✓ 已将 {dir} 添加到 ~/{rc} 的 PATH 中",
+    "install.cursor_signin_hint": (
+        "  ℹ Cursor Agent 已安装。请确保已登录 Cursor Pro:\n"
+        "    打开 Cursor 应用 -> 设置 (齿轮图标) -> 登录"
+    ),
+    "install.cursor_signin_skip": "  ℹ Cursor Agent 已安装，请在准备好后登录 Cursor Pro。",
+    "install.codex_auth_running": "  ▸ 正在启动 Codex 认证 (浏览器将打开)...",
+    "install.codex_auth_done": "  ✓ Codex 认证完成",
+    "install.codex_auth_skip": "  ℹ 已跳过。稍后运行 `codex auth` 完成认证。",
+    "install.codex_auth_timeout": "  ⚠ Codex 认证超时，请稍后手动运行 `codex auth`。",
+    "install.codex_auth_fail": "  ⚠ Codex 认证失败，请稍后手动运行 `codex auth`。",
     "install.no_ide": "\n[error] 未检测到 Cursor 或 Codex CLI，至少需要安装一个。",
     "install.no_source": "\n[error] agent 源文件目录不存在: {path}",
     "install.cursor_agents": "安装 Cursor agents:",
