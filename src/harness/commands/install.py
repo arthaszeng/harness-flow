@@ -140,33 +140,46 @@ def _run_cli_install(cmd: list[str], label: str) -> bool:
     return False
 
 
-def _ensure_path(bin_dir: Path) -> None:
-    """Add *bin_dir* to the user's shell rc file if not already present."""
+def _ensure_path(bin_dir: Path) -> bool:
+    """Add *bin_dir* to the user's shell rc and current process PATH.
+
+    Returns True if a shell rc file was modified (caller should remind user to source).
+    """
     import os
 
     bin_str = str(bin_dir)
-    if bin_str in os.environ.get("PATH", ""):
-        return
+    modified_rc = False
 
     shell_name = Path(os.environ.get("SHELL", "/bin/bash")).name
     rc_name = _SHELL_RC_MAP.get(shell_name, ".profile")
     rc_path = Path.home() / rc_name
 
+    already_in_rc = False
     if rc_path.exists():
         content = rc_path.read_text(encoding="utf-8")
         if bin_str in content:
-            return
+            already_in_rc = True
 
-    export_line = f'export PATH="{bin_str}:$PATH"'
-    with open(rc_path, "a", encoding="utf-8") as f:
-        f.write(f"\n# Added by harness install\n{export_line}\n")
-    typer.echo(t("install.path_added", rc=rc_name, dir=bin_str))
+    if not already_in_rc:
+        export_line = f'export PATH="{bin_str}:$PATH"'
+        with open(rc_path, "a", encoding="utf-8") as f:
+            f.write(f"\n# Added by harness install\n{export_line}\n")
+        typer.echo(t("install.path_added", rc=rc_name, dir=bin_str))
+        modified_rc = True
 
-    os.environ["PATH"] = f"{bin_str}:{os.environ.get('PATH', '')}"
+    if bin_str not in os.environ.get("PATH", ""):
+        os.environ["PATH"] = f"{bin_str}:{os.environ.get('PATH', '')}"
+
+    return modified_rc
+
+
+_needs_shell_reload = False
 
 
 def _try_install_cursor_agent() -> bool:
     """Install cursor-agent: download binary, fix PATH, guide sign-in."""
+    global _needs_shell_reload
+
     if not shutil.which("curl"):
         typer.echo(t("install.curl_missing"))
         return False
@@ -180,7 +193,8 @@ def _try_install_cursor_agent() -> bool:
     if not ok:
         return False
 
-    _ensure_path(_AGENT_BIN_DIR)
+    if _ensure_path(_AGENT_BIN_DIR):
+        _needs_shell_reload = True
 
     if not shutil.which("cursor"):
         typer.echo(t("install.cursor_signin_skip"))
@@ -274,6 +288,8 @@ def _probe_ides(ides: dict[str, bool]) -> dict[str, bool]:
 
 def run_install(*, force: bool = False, lang: str | None = None) -> None:
     """Run install: preflight, then copy agent files."""
+    global _needs_shell_reload
+
     resolved = _resolve_install_lang(lang)
     typer.echo(t("install.title"))
 
@@ -302,3 +318,11 @@ def run_install(*, force: bool = False, lang: str | None = None) -> None:
         total += _install_codex_agents(source_dir, force=force, lang=resolved)
 
     typer.echo(t("install.done", count=total))
+
+    if _needs_shell_reload:
+        import os
+
+        shell_name = Path(os.environ.get("SHELL", "/bin/bash")).name
+        rc_name = _SHELL_RC_MAP.get(shell_name, ".profile")
+        typer.echo(t("install.reload_hint", rc=rc_name))
+        _needs_shell_reload = False
