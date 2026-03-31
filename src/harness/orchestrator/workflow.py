@@ -19,6 +19,7 @@ from harness.drivers.resolver import DriverResolver
 from harness.i18n import t
 from harness.methodology.contracts import parse_contract, write_contract_sidecar
 from harness.methodology.evaluation import parse_evaluation, run_ci_check
+from harness.methodology.insights import generate_task_insights, write_task_insights
 from harness.methodology.scoring import write_evaluation_sidecar
 
 
@@ -322,6 +323,15 @@ def run_single_task(
                 sm.complete_task(score=score, verdict="PASS")
                 ev.task_end(task_id=task_id, verdict="PASS", score=score, iterations=iteration)
 
+                insights = generate_task_insights(
+                    task_id=task_id,
+                    requirement=requirement,
+                    verdict="PASS",
+                    iterations=iteration,
+                    task_dir=task_dir,
+                )
+                write_task_insights(insights, task_dir)
+
                 if config.workflow.auto_merge:
                     ui.info("[git] merging to main...")
                     git_ops.merge_branch(branch, "main", project_root)
@@ -344,6 +354,17 @@ def run_single_task(
     sm.transition(TaskState.BLOCKED)
     sm.complete_task(score=final_score, verdict="BLOCKED")
     ev.task_end(task_id=task_id, verdict="BLOCKED", score=final_score, iterations=total_iterations)
+
+    insights = generate_task_insights(
+        task_id=task_id,
+        requirement=requirement,
+        verdict="BLOCKED",
+        iterations=total_iterations,
+        task_dir=task_dir,
+        feedback=abort_reason or last_feedback,
+    )
+    write_task_insights(insights, task_dir)
+
     update_index(agents_dir, sm.state)
 
     block_reason = abort_reason or f"max iterations ({max_iter})"

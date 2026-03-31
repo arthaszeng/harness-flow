@@ -1,5 +1,6 @@
 """workflow.py 集成测试 — mock drivers"""
 
+import json
 from pathlib import Path
 from unittest.mock import MagicMock
 
@@ -124,6 +125,16 @@ def test_single_task_pass(tmp_path: Path):
     assert result.iterations == 1
     assert len(sm.state.completed) == 1
 
+    # insights.json 应随任务归档到 archive 目录
+    archive_dir = tmp_path / ".agents" / "archive" / result.task_id
+    insights_path = archive_dir / "insights.json"
+    assert insights_path.exists(), "insights.json should be archived with the task"
+    data = json.loads(insights_path.read_text(encoding="utf-8"))
+    assert data["schema_version"] == "1.0"
+    assert data["task"]["verdict"] == "PASS"
+    assert data["quality_summary"] is not None
+    assert data["quality_summary"]["weighted_score"] > 0
+
 
 def test_single_task_blocked_after_max_iterations(tmp_path: Path):
     """测试达到最大迭代后阻塞"""
@@ -154,3 +165,86 @@ def test_single_task_blocked_after_max_iterations(tmp_path: Path):
     result = run_single_task(config, sm, resolver, "bad task")
 
     assert result.verdict == "BLOCKED"
+
+    # BLOCKED 任务的 insights.json 留在 tasks 目录
+    task_dir = tmp_path / ".agents" / "tasks" / result.task_id
+    insights_path = task_dir / "insights.json"
+    assert insights_path.exists(), "insights.json should exist for blocked tasks"
+    data = json.loads(insights_path.read_text(encoding="utf-8"))
+    assert data["schema_version"] == "1.0"
+    assert data["task"]["verdict"] == "BLOCKED"
+
+
+def test_single_task_pass_with_dual_evaluation(tmp_path: Path):
+    """PASS + dual_evaluation 时 insights 包含 alignment 摘要。"""
+    config, sm, resolver = _setup(tmp_path)
+    config.workflow.dual_evaluation = True
+
+    planner = MagicMock()
+    planner.invoke.return_value = AgentResult(
+        success=True,
+        output="# Spec\nspec text\n# Contract\n- [ ] deliverable",
+        exit_code=0,
+    )
+
+    builder = MagicMock()
+    builder.invoke.return_value = AgentResult(success=True, output="built", exit_code=0)
+
+    evaluator = MagicMock()
+    evaluator.invoke.return_value = AgentResult(
+        success=True, output=_make_eval_output(4.0), exit_code=0,
+    )
+
+    alignment_evaluator = MagicMock()
+    alignment_evaluator.invoke.return_value = AgentResult(
+        success=True, output="ALIGNED — all deliverables met.", exit_code=0,
+    )
+
+    def _resolve(role: str):
+        if role == "planner":
+            return planner
+        if role == "builder":
+            return builder
+        if role == "alignment_evaluator":
+            return alignment_evaluator
+        return evaluator
+
+    resolver.resolve.side_effect = _resolve
+    resolver.agent_name.side_effect = lambda r: f"harness-{r}"
+
+    result = run_single_task(config, sm, resolver, "dual eval feature")
+
+    assert result.verdict == "PASS"
+
+    archive_dir = tmp_path / ".agents" / "archive" / result.task_id
+    insights_path = archive_dir / "insights.json"
+    assert insights_path.exists()
+    data = json.loads(insights_path.read_text(encoding="utf-8"))
+    assert data["alignment_summary"]["has_alignment"] is True
+    assert data["alignment_summary"]["aligned"] is True
+    assert data["source_artifacts"]["alignment_md"] is not None
+
+
+def test_single_task_blocked_early_abort_degraded(tmp_path: Path):
+    """Planner 失败直接阻塞 — insights 降级为只含元数据。"""
+    config, sm, resolver = _setup(tmp_path)
+
+    planner = MagicMock()
+    planner.invoke.return_value = AgentResult(
+        success=False, output="segfault", exit_code=139,
+    )
+
+    resolver.resolve.side_effect = lambda role: planner
+    resolver.agent_name.side_effect = lambda r: f"harness-{r}"
+
+    result = run_single_task(config, sm, resolver, "doomed task")
+
+    assert result.verdict == "BLOCKED"
+
+    task_dir = tmp_path / ".agents" / "tasks" / result.task_id
+    insights_path = task_dir / "insights.json"
+    assert insights_path.exists()
+    data = json.loads(insights_path.read_text(encoding="utf-8"))
+    assert data["task"]["verdict"] == "BLOCKED"
+    assert data["quality_summary"] is None
+    assert data["source_artifacts"]["evaluation_json"] is None
