@@ -13,6 +13,17 @@ else:
     import tomli as tomllib
 from pydantic import BaseModel, Field
 
+# 与 DriverResolver / 工作流一致的角色名集合，用于配置校验和文档生成
+KNOWN_MODEL_ROLES: frozenset[str] = frozenset({
+    "planner",
+    "builder",
+    "evaluator",
+    "alignment_evaluator",
+    "strategist",
+    "reflector",
+    "advisor",
+})
+
 
 class ProjectConfig(BaseModel):
     name: str = ""
@@ -40,10 +51,17 @@ class DriversConfig(BaseModel):
     roles: DriversRolesConfig = Field(default_factory=DriversRolesConfig)
 
 
+class RoleModelConfig(BaseModel):
+    """单个角色的模型配置，支持模型和温度覆盖。"""
+    model: str | None = None
+    temperature: float | None = None
+
+
 class ModelsConfig(BaseModel):
     default: str = ""
     driver_defaults: dict[str, str] = Field(default_factory=dict)
     role_overrides: dict[str, str] = Field(default_factory=dict)
+    role_configs: dict[str, RoleModelConfig] = Field(default_factory=dict)
 
 
 class WorkflowConfig(BaseModel):
@@ -108,12 +126,30 @@ class HarnessConfig(BaseModel):
 
 
 def resolve_model(role: str, driver_name: str, models: ModelsConfig) -> str:
-    """三级 fallback 解析模型: per-role override → per-driver default → global default."""
+    """解析角色对应的模型，按以下优先级 fallback:
+
+    1. ``role_overrides[role]``  — 角色级精确覆盖
+    2. ``role_configs[role].model`` — 角色扩展配置中的模型
+    3. ``driver_defaults[driver]`` — 驱动级批量配置
+    4. ``default`` — 全局默认
+
+    返回空字符串表示"使用 IDE/CLI 自身默认模型"，driver 侧仅在非空时
+    附加 ``--model``，因此零配置不改变现有运行路径。
+    """
     if role in models.role_overrides:
         return models.role_overrides[role]
+    rc = models.role_configs.get(role)
+    if rc and rc.model is not None:
+        return rc.model
     if driver_name in models.driver_defaults:
         return models.driver_defaults[driver_name]
     return models.default
+
+
+def resolve_role_temperature(role: str, models: ModelsConfig) -> float | None:
+    """解析角色温度配置，无配置时返回 None。"""
+    rc = models.role_configs.get(role)
+    return rc.temperature if rc else None
 
 
 def _deep_merge(base: dict, override: dict) -> dict:
