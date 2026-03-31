@@ -102,6 +102,15 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="milliseconds")
 
 
+def _to_text(val: object) -> str | None:
+    """SQLite 文本列归一化：吸收 Path / MagicMock / 任意可 str() 化对象。"""
+    if val is None:
+        return None
+    if isinstance(val, str):
+        return val
+    return str(val)
+
+
 class Registry:
     """SQLite-backed agent run registry.
 
@@ -142,17 +151,20 @@ class Registry:
         prompt: str = "",
     ) -> int:
         """Insert a new running agent; return the auto-increment id."""
+        prompt_str = str(prompt) if prompt else ""
         cur = self._conn.execute(
             """INSERT INTO agent_runs
                (task_id, parent_run_id, role, driver, agent_name, iteration,
                 status, readonly, cwd, branch, prompt_hash, prompt_len, started_at)
                VALUES (?, ?, ?, ?, ?, ?, 'running', ?, ?, ?, ?, ?, ?)""",
             (
-                task_id, parent_run_id, role, driver, agent_name, iteration,
+                _to_text(task_id), parent_run_id,
+                _to_text(role), _to_text(driver), _to_text(agent_name),
+                iteration,
                 1 if readonly else 0,
-                cwd, branch,
-                _prompt_hash(prompt) if prompt else None,
-                len(prompt) if prompt else 0,
+                _to_text(cwd), _to_text(branch),
+                _prompt_hash(prompt_str) if prompt_str else None,
+                len(prompt_str) if prompt_str else 0,
                 _now_iso(),
             ),
         )
@@ -177,7 +189,8 @@ class Registry:
                SET status='completed', exit_code=?, output_len=?,
                    elapsed_ms=?, ended_at=?, log_path=?, session_id=COALESCE(?, session_id)
                WHERE id=?""",
-            (exit_code, output_len, elapsed_ms, _now_iso(), log_path, session_id, run_id),
+            (exit_code, output_len, elapsed_ms, _now_iso(),
+             _to_text(log_path), _to_text(session_id), run_id),
         )
         self._conn.commit()
 
@@ -192,13 +205,14 @@ class Registry:
         log_path: str | None = None,
     ) -> None:
         """Mark a run as failed."""
+        err_text = _to_text(error)
         self._conn.execute(
             """UPDATE agent_runs
                SET status='failed', error=?, exit_code=?, output_len=?,
                    elapsed_ms=?, ended_at=?, log_path=?
                WHERE id=?""",
-            (error[:2000] if error else None, exit_code, output_len,
-             elapsed_ms, _now_iso(), log_path, run_id),
+            (err_text[:2000] if err_text else None, exit_code, output_len,
+             elapsed_ms, _now_iso(), _to_text(log_path), run_id),
         )
         self._conn.commit()
 
@@ -228,7 +242,7 @@ class Registry:
         """Set the agent session/thread id (for future resume support)."""
         self._conn.execute(
             "UPDATE agent_runs SET session_id=? WHERE id=?",
-            (session_id, run_id),
+            (_to_text(session_id), run_id),
         )
         self._conn.commit()
 
