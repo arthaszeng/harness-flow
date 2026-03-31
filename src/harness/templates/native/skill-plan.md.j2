@@ -27,6 +27,36 @@ Produce the plan, run adversarial review, and output the final hardened plan.
 
 {{ planner_principles }}
 
+### 6 Decision Principles
+
+When making planning decisions, apply these principles in order:
+
+1. **Choose completeness** — When in doubt, cover more edge cases rather than fewer.
+   A plan that handles the unexpected is worth more than a plan that's fast to build.
+2. **Boil lakes** — If you're fixing something in the blast radius, fix ALL related issues.
+   Don't leave known problems adjacent to the fix.
+3. **Pragmatic** — When two approaches solve the same problem, choose the cleaner one.
+   Avoid cleverness. Avoid premature abstraction.
+4. **DRY** — If the plan duplicates existing functionality, stop. Reuse what exists.
+   Refuse to build what already works.
+5. **Explicit over clever** — 10 lines of obvious code beats 200 lines of abstract framework.
+   Prefer straightforward implementation.
+6. **Bias toward action** — Merge beats another review cycle beats stalling.
+   Perfect is the enemy of shipped.
+
+### Decision Classification
+
+Every decision during planning falls into one of three categories:
+
+- **Mechanical** — There is only one correct answer. Apply it silently.
+  Example: "Which test framework?" → use the one the project already uses.
+- **Taste** — Reasonable engineers could disagree. Mark as `[TASTE DECISION]`.
+  Present to the final approval gate with rationale.
+  Example: "Should we use composition or inheritance here?"
+- **User Challenge** — Both reviewer models agree the user's direction needs reconsideration.
+  NEVER auto-decide. Always present to the user with evidence.
+  Example: "User wants to add a cache layer, but the bottleneck is CPU-bound."
+
 ---
 
 ## Step 1: Context Gathering
@@ -74,6 +104,11 @@ Write output to `.agents/tasks/task-NNN/plan.md` (create directory if needed).
 
 ## Out of Scope
 - (explicitly list things NOT being done)
+
+## Decision Audit Trail
+| # | Phase | Decision | Classification | Principle | Rationale | Rejected Alternative |
+|---|-------|----------|---------------|-----------|-----------|---------------------|
+| 1 | Approach | ... | Mechanical/Taste | #N | ... | ... |
 ```
 
 **Quality bar**: Every deliverable MUST have acceptance criteria. Vague deliverables
@@ -150,10 +185,53 @@ If the plan has 5+ deliverables OR touches 10+ files, also dispatch a cross-mode
   compliments. Just the problems."
 - **description**: `"Cross-model plan review"`
 
-Present findings under a `CROSS-MODEL REVIEW:` header. If the cross-model reviewer
-disagrees with the primary reviewer on any point, note it as a tension point.
+Present findings under a `CROSS-MODEL REVIEW:` header.
 
-If the subagent fails: skip silently.
+**Build a Consensus Table** comparing both reviewers:
+
+```
+PLAN DUAL VOICES — CONSENSUS TABLE
+═══════════════════════════════════════════════════
+  Dimension       Claude    Cross-Model   Consensus
+  Completeness    PASS      PASS          CONFIRMED
+  Consistency     PASS      ISSUE         DISAGREE → [TASTE DECISION]
+  Clarity         PASS      PASS          CONFIRMED
+  Scope           PASS      PASS          CONFIRMED
+  Feasibility     ISSUE     PASS          DISAGREE → [TASTE DECISION]
+  Architecture    PASS      PASS          CONFIRMED
+═══════════════════════════════════════════════════
+```
+
+- **CONFIRMED**: both agree → proceed with confidence
+- **DISAGREE**: → mark as taste decision, present to final approval gate
+
+If the subagent fails: skip the consensus table and note single-reviewer mode.
+
+---
+
+## Step 5: Final Approval Gate
+
+Before finalizing the plan, present a summary for user approval:
+
+1. List all **automatic decisions** (Mechanical) — for transparency only
+2. List all **taste decisions** — with rationale and rejected alternatives
+3. List all **user challenges** — where both models suggest reconsidering the user's direction
+
+```
+PLAN APPROVAL GATE
+═══════════════════════════════════════════════════
+  Automatic decisions:  N (logged in audit trail)
+  Taste decisions:      M (need your call)
+  User challenges:      K (both models flagged)
+
+  [If M > 0 or K > 0:]
+  For each taste/challenge decision:
+    #N: [description]
+    Options: A) Accept plan's choice  B) Override to [alternative]  C) Discuss further
+═══════════════════════════════════════════════════
+```
+
+If no taste decisions or user challenges: proceed directly — "Plan approved (all decisions mechanical)."
 
 ---
 
