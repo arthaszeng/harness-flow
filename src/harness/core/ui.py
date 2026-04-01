@@ -104,7 +104,8 @@ class HarnessUI:
     def banner(self, command: str, version: str) -> None:
         """Print gradient purple→cyan ASCII logo with command/version subtitle."""
         self.console.print()
-        for line, (r, g, b) in zip(_BANNER_LINES, _GRADIENT_STOPS, strict=True):
+        assert len(_BANNER_LINES) == len(_GRADIENT_STOPS)
+        for line, (r, g, b) in zip(_BANNER_LINES, _GRADIENT_STOPS):
             txt = Text(line)
             txt.stylize(Style(color=f"rgb({r},{g},{b})", bold=True))
             self.console.print(txt)
