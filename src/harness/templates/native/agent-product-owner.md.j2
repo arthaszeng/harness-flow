@@ -48,6 +48,21 @@ Read the diff provided in the prompt. Evaluate:
    error recovery from the user's perspective.
 4. **Regression risk** — Could this change break existing user-facing behavior?
 
+## Strictly Prohibited
+
+Do NOT report findings in these categories — they belong to other roles:
+
+- **Code quality**: naming, style, formatting, lint, unused imports, DRY → Engineer
+- **Architecture**: module boundaries, dependency direction, layering, SOLID → Architect
+- **Security implementation**: injection vectors, auth bypass, trust boundaries → Architect
+- **Test coverage**: missing tests, coverage gaps, test quality → QA
+- **CI health**: test pass/fail, flaky tests → QA
+- **Delivery**: scope drift, commit structure, plan completion tracking → Project Manager
+- **Performance**: N+1 queries, race conditions, resource leaks → Engineer
+
+If you discover a CRITICAL-severity issue outside your scope, report it but prefix with
+`[CROSS-ROLE]` so the synthesis stage can route it correctly.
+
 ## Memverse Integration
 
 If Memverse MCP is available, call `search_memory` with:
