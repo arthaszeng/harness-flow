@@ -196,7 +196,7 @@ class TestRunInitNonInteractive:
 
 
 class TestRunInitReinit:
-    """When .agents/config.toml exists, init skips wizard and regenerates artifacts."""
+    """With --force and existing config, init skips wizard and regenerates artifacts."""
 
     @patch("harness.native.skill_gen.generate_native_artifacts", return_value=42)
     def test_reinit_skips_wizard_regenerates(self, mock_gen, monkeypatch, tmp_path):
@@ -209,7 +209,7 @@ class TestRunInitReinit:
             '[workflow]\ntrunk_branch = "main"\n',
             encoding="utf-8",
         )
-        run_init(non_interactive=True)
+        run_init(force=True)
         mock_gen.assert_called_once()
         call_kwargs = mock_gen.call_args.kwargs
         assert call_kwargs.get("force") is True
@@ -225,7 +225,7 @@ class TestRunInitReinit:
             '[workflow]\ntrunk_branch = "main"\n',
             encoding="utf-8",
         )
-        run_init()
+        run_init(force=True)
         mock_gen.assert_called_once()
         call_kwargs = mock_gen.call_args.kwargs
         assert call_kwargs.get("lang") == "zh"
@@ -236,5 +236,27 @@ class TestRunInitReinit:
         agents.mkdir(parents=True)
         (agents / "config.toml").write_text("this is not valid toml [[[", encoding="utf-8")
         with pytest.raises(typer.Exit) as exc_info:
-            run_init()
+            run_init(force=True)
         assert exc_info.value.exit_code == 1
+
+    def test_no_force_config_exists_prompts_overwrite(self, monkeypatch, tmp_path):
+        """Without --force, existing config triggers confirm prompt; declining exits."""
+        monkeypatch.chdir(tmp_path)
+        agents = tmp_path / ".agents"
+        agents.mkdir(parents=True)
+        (agents / "config.toml").write_text(
+            '[project]\nname = "x"\n[ci]\ncommand = "t"\n',
+            encoding="utf-8",
+        )
+        with patch("harness.commands.init.typer.confirm", return_value=False):
+            with pytest.raises(typer.Exit) as exc_info:
+                run_init()
+            assert exc_info.value.exit_code == 0
+
+    def test_force_no_config_runs_wizard(self, monkeypatch, tmp_path):
+        """--force without existing config falls through to normal wizard."""
+        monkeypatch.chdir(tmp_path)
+        set_lang("en")
+        with patch("harness.native.skill_gen.generate_native_artifacts"):
+            run_init(non_interactive=True, force=True)
+        assert (tmp_path / ".agents" / "config.toml").exists()

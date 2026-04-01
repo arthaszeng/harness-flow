@@ -40,3 +40,8 @@ class TestHelpOutput:
             stripped = line.strip()
             if stripped.startswith("install") and "completion" not in stripped:
                 pytest.fail(f"'install' command found in help: {line}")
+
+    def test_init_help_has_force_option(self):
+        result = runner.invoke(app, ["init", "--help"])
+        assert result.exit_code == 0
+        assert "--force" in result.output
