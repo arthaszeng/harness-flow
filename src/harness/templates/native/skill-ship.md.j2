@@ -38,8 +38,18 @@ Run straight through and output the PR URL at the end.
 
 4. Check `.agents/config.toml` exists.
 
-5. Detect the current task: find the most recent `task-NNN` directory under `.agents/tasks/`.
-   If a plan exists at `.agents/tasks/task-NNN/plan.md`, read it for context.
+5. **Detect or create the task directory** (deterministic algorithm):
+   1. Scan `.agents/tasks/` for all `task-NNN` directories
+   2. Let `L` = directory with the largest NNN (by numeric sort)
+   3. If `L` exists and `L/plan.md` exists → reuse `L` as `TASK_DIR`
+   4. Otherwise → create `task-{max(NNN)+1}` (or `task-001` if none exist) as `TASK_DIR`
+   5. All eval artifacts, ship-metrics, and build logs go into `TASK_DIR`
+
+   ```bash
+   mkdir -p .agents/tasks/task-NNN
+   ```
+
+   If a plan exists at `TASK_DIR/plan.md`, read it for context.
 
 6. **Prior Learnings**: If Memverse MCP is available, search for learnings relevant to the
    changed files/modules. Display any prior pitfalls or patterns that apply to this diff.
@@ -295,10 +305,10 @@ If no `TODOS.md` exists: skip silently.
 ╚══════════════════════════════════════════════════════════════╝
 ```
 
-Check for evaluation artifacts (use the task-NNN detected in Step 1):
+Check for evaluation artifacts using the `TASK_DIR` established in Step 1:
 
 ```bash
-ls .agents/tasks/task-NNN/evaluation-r*.md 2>/dev/null
+ls TASK_DIR/evaluation-r*.md 2>/dev/null
 ```
 
 **Verification checklist:**
@@ -306,7 +316,7 @@ ls .agents/tasks/task-NNN/evaluation-r*.md 2>/dev/null
 2. **Non-empty**: The file must contain a verdict (`PASS` or `ITERATE`). An empty or stub file is not valid.
 3. **Fresh**: The evaluation must be for the CURRENT diff. If code changed after the eval
    (e.g., fix loop commits), the latest evaluation round must post-date those changes.
-4. **Correct task**: The task-NNN must match the task detected in Step 1 pre-flight, not a stale task.
+4. **Correct task**: The `TASK_DIR` must match the directory established in Step 1 pre-flight.
 
 **If ANY check fails:** You have not completed eval. **Go back to Step 3.8.**
 Do NOT rationalize ("it's just templates", "tests pass so it's fine").
@@ -332,6 +342,10 @@ Once evaluation PASSES:
 
 1. **Version bump**: If a `VERSION` file exists, bump PATCH (auto-decide).
    If `pyproject.toml` has a version field, bump it too.
+
+   **Do NOT create a git tag.** Version tags are created automatically by CI
+   (`auto-tag.yml`) after the PR is merged to `{{ trunk_branch }}`. This prevents
+   publishing a release from an unmerged PR.
 
 2. **Bisectable commits**: Analyze the diff and group into logical commits:
    - Infrastructure/config changes first
