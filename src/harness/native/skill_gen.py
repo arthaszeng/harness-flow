@@ -156,11 +156,28 @@ def _render_template(tmpl_dir: Path, tmpl_name: str, context: dict[str, str]) ->
     return tmpl.render(**context)
 
 
+_WORKTREES_JSON = {
+    "setup-worktree-unix": [
+        "mkdir -p .agents/tasks .agents/archive",
+        'cp "$ROOT_WORKTREE_PATH/.agents/config.toml" .agents/ 2>/dev/null || true',
+        'cp "$ROOT_WORKTREE_PATH/.agents/vision.md" .agents/ 2>/dev/null || true',
+        'cp -r "$ROOT_WORKTREE_PATH/.cursor" . 2>/dev/null || true',
+    ],
+    "setup-worktree-windows": [
+        "mkdir .agents\\tasks 2>nul & mkdir .agents\\archive 2>nul",
+        'copy "%ROOT_WORKTREE_PATH%\\.agents\\config.toml" .agents\\ 2>nul',
+        'copy "%ROOT_WORKTREE_PATH%\\.agents\\vision.md" .agents\\ 2>nul',
+        'xcopy /E /I /Y "%ROOT_WORKTREE_PATH%\\.cursor" .cursor\\ 2>nul',
+    ],
+}
+
+
 def generate_native_artifacts(
     project_root: Path,
     *,
     lang: str = "en",  # reserved for future i18n
     cfg: HarnessConfig | None = None,
+    force: bool = False,
 ) -> int:
     """Generate all Cursor-native mode artifacts. Returns count of files written."""
     if cfg is None:
@@ -217,8 +234,36 @@ def generate_native_artifacts(
         typer.echo(t("native.generated_skill", path=_rel(project_root, dest)))
         count += 1
 
+    # Worktrees config → .cursor/worktrees.json
+    count += _generate_worktrees_json(project_root, force=force)
+
     typer.echo(t("native.done", count=count))
     return count
+
+
+def _generate_worktrees_json(project_root: Path, *, force: bool = False) -> int:
+    """Write .cursor/worktrees.json for Cursor Parallel Agents support.
+
+    Skips if the file already exists and *force* is False, because users may
+    have added project-specific setup commands.  Returns 1 if written, 0 if
+    skipped.
+    """
+    import json
+
+    cursor_dir = project_root / ".cursor"
+    cursor_dir.mkdir(parents=True, exist_ok=True)
+    out_path = cursor_dir / "worktrees.json"
+
+    if out_path.exists() and not force:
+        typer.echo(t("native.worktrees_skip", path=_rel(project_root, out_path)))
+        return 0
+
+    out_path.write_text(
+        json.dumps(_WORKTREES_JSON, indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    typer.echo(t("native.worktrees_ok", path=_rel(project_root, out_path)))
+    return 1
 
 
 def _rel(root: Path, path: Path) -> str:

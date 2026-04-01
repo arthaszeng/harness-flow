@@ -367,7 +367,7 @@ def _probe_ides_force(ides: dict[str, bool]) -> dict[str, bool]:
     return ready
 
 
-def _install_native_mode(project_root: Path, *, lang: str) -> int:
+def _install_native_mode(project_root: Path, *, lang: str, force: bool = False) -> int:
     """Generate Cursor-native mode artifacts if workflow.mode == cursor-native."""
     try:
         cfg = HarnessConfig.load(project_root)
@@ -376,7 +376,7 @@ def _install_native_mode(project_root: Path, *, lang: str) -> int:
     if cfg.workflow.mode != "cursor-native":
         return 0
     from harness.native.skill_gen import generate_native_artifacts
-    return generate_native_artifacts(project_root, lang=lang, cfg=cfg)
+    return generate_native_artifacts(project_root, lang=lang, cfg=cfg, force=force)
 
 
 def run_install(*, force: bool = False, lang: str | None = None) -> None:
@@ -399,7 +399,7 @@ def run_install(*, force: bool = False, lang: str | None = None) -> None:
     else:
         ready = _probe_ides(ides)
 
-    native_count = _install_native_mode(Path.cwd(), lang=resolved)
+    native_count = _install_native_mode(Path.cwd(), lang=resolved, force=force)
 
     if not any(ready.values()) and native_count == 0:
         typer.echo(t("install.no_ide"), err=True)
