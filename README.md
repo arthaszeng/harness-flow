@@ -445,7 +445,7 @@ ruff check src/ tests/
 ruff format src/ tests/
 ```
 
-Ruff targets Python 3.9 with line length 100.
+Ruff targets Python 3.9 with line length 100. See [docs/releasing.md](docs/releasing.md) for the release process.
 
 ---
 
@@ -455,6 +455,7 @@ Ruff targets Python 3.9 with line length 100.
 |-----|-------------|
 | [docs/state-machine.md](docs/state-machine.md) | Task state machine |
 | [docs/compatibility.md](docs/compatibility.md) | CLI version requirements |
+| [docs/releasing.md](docs/releasing.md) | Release process and PyPI publishing |
 | [examples/todo-api-benchmark/](examples/todo-api-benchmark/) | Benchmark: five tasks, three modes |
 
 ---
