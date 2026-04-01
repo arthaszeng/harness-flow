@@ -171,12 +171,70 @@ When you choose cursor-native mode, `harness init` generates:
 | Fix-First | `.cursor/rules/harness-fix-first.mdc` | Always-on: classify findings before presenting |
 | Workflow conventions | `.cursor/rules/harness-workflow.mdc` | Commit format, branch naming, task state |
 | Safety guardrails | `.cursor/rules/harness-safety-guardrails.mdc` | Always-on: destructive command detection and warning |
+| Worktrees config | `.cursor/worktrees.json` | Parallel Agents: worktree init script for isolated checkouts |
 
 To regenerate after config changes:
 
 ```bash
 harness install --force
 ```
+
+---
+
+## Parallel Development
+
+> **Key feature** — Run multiple harness tasks simultaneously without file conflicts.
+
+When you run several Cursor agent tabs in the same project, they share one working directory.
+Uncommitted changes from one task leak into another, causing confusion and broken builds.
+
+Harness solves this automatically via **Cursor Parallel Agents** — each agent gets its own
+isolated git worktree with a separate checkout. Cursor creates, uses, and cleans up these
+worktrees transparently.
+
+### How it works
+
+`harness init` generates `.cursor/worktrees.json`, which tells Cursor how to initialize
+each worktree. The generated script:
+
+1. Creates `.agents/tasks/` and `.agents/archive/` directories
+2. Copies `.agents/config.toml` and `.agents/vision.md` from the main worktree
+3. Copies the entire `.cursor/` directory (skills, agents, rules) from the main worktree
+
+This ensures every parallel agent has full harness context — skills, review roles, and
+project configuration — without manual setup.
+
+### Usage
+
+No extra steps needed. After `harness init`, simply open multiple agent tabs in Cursor
+and start different tasks. Each agent operates in its own isolated checkout.
+
+### Customization
+
+Edit `.cursor/worktrees.json` to add project-specific setup commands (e.g., dependency
+installation):
+
+```json
+{
+  "setup-worktree-unix": [
+    "mkdir -p .agents/tasks .agents/archive",
+    "cp \"$ROOT_WORKTREE_PATH/.agents/config.toml\" .agents/ 2>/dev/null || true",
+    "cp \"$ROOT_WORKTREE_PATH/.agents/vision.md\" .agents/ 2>/dev/null || true",
+    "cp -r \"$ROOT_WORKTREE_PATH/.cursor\" . 2>/dev/null || true",
+    "pip install -e '.[dev]' -q"
+  ]
+}
+```
+
+> **Note:** `harness install --force` regenerates the default `worktrees.json`. If you have
+> custom setup commands, back them up first or re-add them after regeneration.
+
+### Known limitations
+
+- **LSP support in worktrees** is not yet available in Cursor — linting and type-checking
+  may not work in worktree checkouts. This is a Cursor-side limitation being actively developed.
+- **Requires Cursor 2.0+** with Parallel Agents support. On older versions, the
+  `worktrees.json` file is harmless and simply ignored.
 
 ---
 
