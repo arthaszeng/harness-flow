@@ -114,7 +114,7 @@ def _build_context(cfg: HarnessConfig, *, role: str = "") -> dict[str, str]:
         "branch_prefix": cfg.workflow.branch_prefix.rstrip("/"),
         "pass_threshold": str(cfg.workflow.pass_threshold),
         "max_iterations": str(cfg.workflow.max_iterations),
-        "adversarial_model": cfg.native.adversarial_model,
+        "evaluator_model": cfg.native.evaluator_model,
         "adversarial_mechanism": cfg.native.adversarial_mechanism,
         "planner_principles": _planner_principles(),
         "builder_principles": _builder_principles(),

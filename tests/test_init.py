@@ -9,13 +9,17 @@ import pytest
 import typer
 
 from harness.commands.init import (
+    KNOWN_MODELS,
+    _detect_cursor_model,
     _load_template,
     _prompt_choice,
     _step_ci_command,
+    _step_evaluator_model,
     _step_language,
     _step_memverse,
     _update_gitignore,
     run_init,
+    validate_model_name,
 )
 from harness.core.scanner import ProjectScan
 from harness.i18n import set_lang
@@ -132,6 +136,88 @@ class TestStepMemverse:
                 assert _step_memverse(tmp_path) == (True, "my-domain")
 
 
+class TestValidateModelName:
+    def test_inherit_is_valid(self):
+        assert validate_model_name("inherit") is True
+
+    def test_simple_model_name(self):
+        assert validate_model_name("gpt-4.1") is True
+
+    def test_complex_model_name(self):
+        assert validate_model_name("gpt-5.4-high") is True
+
+    def test_claude_model(self):
+        assert validate_model_name("claude-4.6-opus") is True
+
+    def test_short_model(self):
+        assert validate_model_name("o3") is True
+
+    def test_empty_string_invalid(self):
+        assert validate_model_name("") is False
+
+    def test_starts_with_digit_invalid(self):
+        assert validate_model_name("4gpt") is False
+
+    def test_spaces_invalid(self):
+        assert validate_model_name("gpt 4") is False
+
+    def test_special_chars_invalid(self):
+        assert validate_model_name("model@v2") is False
+
+    def test_underscore_valid(self):
+        assert validate_model_name("my_model") is True
+
+    def test_slash_invalid(self):
+        assert validate_model_name("org/model") is False
+
+
+class TestDetectCursorModel:
+    def test_returns_none_when_no_db(self):
+        from pathlib import Path as _Path
+        with patch("harness.commands.init.Path.home", return_value=_Path("/nonexistent")):
+            assert _detect_cursor_model() is None
+
+    def test_returns_none_on_error(self):
+        with patch("harness.commands.init.Path.home", side_effect=OSError("no home")):
+            assert _detect_cursor_model() is None
+
+
+class TestStepEvaluatorModel:
+    def test_choice_1_returns_inherit(self):
+        with patch("harness.commands.init._detect_cursor_model", return_value=None):
+            with patch("harness.commands.init.typer.prompt", return_value="1"):
+                assert _step_evaluator_model() == "inherit"
+
+    def test_choice_known_model(self):
+        first_model = KNOWN_MODELS[0][0]
+        with patch("harness.commands.init._detect_cursor_model", return_value=None):
+            with patch("harness.commands.init.typer.prompt", return_value="2"):
+                assert _step_evaluator_model() == first_model
+
+    def test_custom_input_valid(self):
+        custom_idx = str(2 + len(KNOWN_MODELS))
+        with patch("harness.commands.init._detect_cursor_model", return_value=None):
+            with patch(
+                "harness.commands.init.typer.prompt",
+                side_effect=[custom_idx, "my-custom-model"],
+            ):
+                assert _step_evaluator_model() == "my-custom-model"
+
+    def test_custom_input_invalid_then_valid(self):
+        custom_idx = str(2 + len(KNOWN_MODELS))
+        with patch("harness.commands.init._detect_cursor_model", return_value=None):
+            with patch(
+                "harness.commands.init.typer.prompt",
+                side_effect=[custom_idx, "", "gpt-4.1"],
+            ):
+                assert _step_evaluator_model() == "gpt-4.1"
+
+    def test_detected_model_appears_as_option(self):
+        with patch("harness.commands.init._detect_cursor_model", return_value="my-detected-v2"):
+            with patch("harness.commands.init.typer.prompt", return_value="2"):
+                assert _step_evaluator_model() == "my-detected-v2"
+
+
 class TestUpdateGitignore:
     def test_creates_new_gitignore_when_missing(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -180,6 +266,7 @@ class TestRunInitNonInteractive:
         body = cfg.read_text(encoding="utf-8")
         assert 'name = "alpha-project"' in body
         assert 'command = "pytest -q"' in body
+        assert 'evaluator_model = "inherit"' in body
         vision = agents / "vision.md"
         assert vision.exists()
         mock_gen.assert_called_once()

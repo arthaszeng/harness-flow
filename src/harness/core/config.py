@@ -44,7 +44,7 @@ class ModelsConfig(BaseModel):
 
 class NativeModeConfig(BaseModel):
     """Native IDE workflow settings (eval, ship, skills)."""
-    adversarial_model: str = "gpt-4.1"
+    evaluator_model: str = "inherit"
     adversarial_mechanism: Literal["subagent", "cli", "auto"] = "auto"
     review_gate: Literal["eng", "advisory"] = "eng"
     plan_review_gate: Literal["human", "ai", "auto"] = "auto"

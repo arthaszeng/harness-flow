@@ -25,9 +25,13 @@ MESSAGES: dict[str, str] = {
     "init.enable_label": "开启",
     "init.disable_label": "关闭",
     "init.domain_prefix": "  Domain prefix（用于区分项目）",
-    "init.step6_label": "Vision",
-    "init.vision_now_label": "现在生成",
-    "init.vision_later_label": "跳过，稍后编辑 .agents/vision.md",
+    "init.step_evaluator_label": "评估器模型",
+    "init.evaluator_desc": "评审角色使用的模型。'inherit' = 使用 IDE 默认模型。",
+    "init.evaluator_detected": "检测到 Cursor 当前模型: {model}",
+    "init.evaluator_detected_label": "来自 Cursor 检测",
+    "init.evaluator_inherit_hint": "使用 IDE 默认模型",
+    "init.evaluator_prompt": "  评估器模型",
+    "init.evaluator_invalid": "无效的模型名称。请输入 'inherit' 或模型 ID（字母、数字、点、连字符、下划线）。",
 
     # ── native mode generation ────────────────────────────────────
     "native.generating": "  正在生成 Cursor-native 模式产物...",

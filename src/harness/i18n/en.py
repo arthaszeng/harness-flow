@@ -25,9 +25,13 @@ MESSAGES: dict[str, str] = {
     "init.enable_label": "Enable",
     "init.disable_label": "Disable",
     "init.domain_prefix": "  Domain prefix (to distinguish projects)",
-    "init.step6_label": "Vision",
-    "init.vision_now_label": "Generate now",
-    "init.vision_later_label": "Skip, edit .agents/vision.md later",
+    "init.step_evaluator_label": "Evaluator Model",
+    "init.evaluator_desc": "The model used by eval reviewers. 'inherit' = use the IDE's default model.",
+    "init.evaluator_detected": "Detected Cursor model: {model}",
+    "init.evaluator_detected_label": "detected from Cursor",
+    "init.evaluator_inherit_hint": "use IDE default",
+    "init.evaluator_prompt": "  Evaluator model",
+    "init.evaluator_invalid": "Invalid model name. Use 'inherit' or a model ID (letters, digits, dots, hyphens, underscores).",
 
     # ── native mode generation ────────────────────────────────────
     "native.generating": "  Generating Cursor-native mode artifacts...",
