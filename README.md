@@ -14,11 +14,20 @@ AI coding tools excel at single-shot tasks. Continuous development needs more: g
 ### 1. Install harness
 
 ```bash
-git clone https://github.com/arthaszeng/harness-orchestrator.git
-cd harness-orchestrator
-./install.sh        # or: pip install -e .
+pip install harness-orchestrator
 harness --version   # verify (also works: python3 -m harness --version)
 ```
+
+<details>
+<summary>Alternative: install from source (for contributors)</summary>
+
+```bash
+git clone https://github.com/arthaszeng/harness-orchestrator.git
+cd harness-orchestrator
+pip install -e ".[dev]"
+```
+
+</details>
 
 ### 2. Initialize your project
 
@@ -58,6 +67,13 @@ Open your project in Cursor. You now have four skills available:
 ```
 
 Harness will plan the work, implement it, run a three-pass adversarial review, auto-fix trivial issues, create bisectable commits, and open a PR — all without leaving your IDE.
+
+### Updating
+
+```bash
+harness update          # upgrade to latest, reinstall agents, check config
+harness update --check  # just check if a new version is available
+```
 
 ---
 
