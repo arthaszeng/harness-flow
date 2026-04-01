@@ -307,3 +307,45 @@ def test_retro_uses_real_template_path(tmp_path: Path):
     content = retro.read_text(encoding="utf-8")
     assert "src/harness/templates/ship.j2" not in content
     assert "skill-ship.md.j2" in content
+
+
+def test_ship_has_eval_artifact_gate(tmp_path: Path):
+    """ship template contains the eval artifact gate before Step 6."""
+    cfg = _make_cfg(tmp_path)
+    generate_native_artifacts(tmp_path, cfg=cfg)
+    ship = (tmp_path / ".cursor" / "skills" / "harness" / "harness-ship" / "SKILL.md")
+    content = ship.read_text(encoding="utf-8")
+    assert "Eval Artifact Gate" in content
+    assert "evaluation-r*.md" in content
+    gate_pos = content.index("Eval Artifact Gate")
+    step6_pos = content.index("## Step 6:")
+    assert gate_pos < step6_pos, "Eval gate must appear before Step 6"
+
+
+def test_ship_has_eval_readiness_in_preflight(tmp_path: Path):
+    """ship pre-flight includes eval readiness reminder with TODO template."""
+    cfg = _make_cfg(tmp_path)
+    generate_native_artifacts(tmp_path, cfg=cfg)
+    ship = (tmp_path / ".cursor" / "skills" / "harness" / "harness-ship" / "SKILL.md")
+    content = ship.read_text(encoding="utf-8")
+    assert "Eval Readiness Reminder" in content
+    assert "EVAL — MANDATORY" in content
+    reminder_pos = content.index("Eval Readiness Reminder")
+    step2_pos = content.index("## Step 2:")
+    assert reminder_pos < step2_pos, "Eval reminder must appear in pre-flight (before Step 2)"
+
+
+def test_ship_important_rules_prioritize_eval(tmp_path: Path):
+    """ship Important Rules section puts eval-skip prevention first."""
+    import re
+
+    cfg = _make_cfg(tmp_path)
+    generate_native_artifacts(tmp_path, cfg=cfg)
+    ship = (tmp_path / ".cursor" / "skills" / "harness" / "harness-ship" / "SKILL.md")
+    content = ship.read_text(encoding="utf-8")
+    rules_pos = content.index("## Important Rules")
+    rules_section = content[rules_pos:]
+    bullets = re.findall(r"^- \*\*Never skip.*", rules_section, re.MULTILINE)
+    assert len(bullets) >= 2, "Expected multiple 'Never skip' rules"
+    assert "eval" in bullets[0].lower(), \
+        f"First 'Never skip' rule must be about eval, got: {bullets[0]}"
