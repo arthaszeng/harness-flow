@@ -33,8 +33,21 @@ perform read-only analysis on the diff.
 After all responses arrive:
 
 1. **Merge findings** from all 5 reviewers into a unified list
-2. **Cross-validate:** If 2+ roles flag the same issue → mark `[HIGH CONFIDENCE]`
-3. **Compute dimension scores** (map role to evaluation dimension):
+2. **Filter out-of-scope findings** using the role→responsibility map:
+   | Role | Owns | Must NOT report |
+   |------|------|----------------|
+   | Architect | Design, modules, deps, security design | Code quality, tests, delivery, user value |
+   | Product Owner | User value, requirements, AC, UX edge cases | Code quality, architecture, tests, delivery |
+   | Engineer | Code quality, DRY, patterns, performance, errors | Architecture decisions, user value, delivery, test strategy |
+   | QA | Tests, coverage, CI, regression, boundaries | Code quality, architecture, user value, delivery |
+   | Project Manager | Scope, delivery, decomposition, commit structure | Code quality, architecture, tests, user value |
+
+   For each finding, check if the reporting role owns that category:
+   - **In-scope**: keep as-is
+   - **Out-of-scope + CRITICAL**: re-tag as `[CROSS-ROLE]` and keep
+   - **Out-of-scope + WARN/INFO**: mark `[OUT-OF-SCOPE]` and exclude from scoring
+3. **Cross-validate:** If 2+ roles flag the same issue → mark `[HIGH CONFIDENCE]`
+4. **Compute dimension scores** (map role to evaluation dimension):
    ```
    Design:        [architect score]/10
    Completeness:  [product-owner score]/10
@@ -44,7 +57,7 @@ After all responses arrive:
    ─────────────────────────────────
    Weighted avg:  [avg]/10
    ```
-4. **Determine verdict:**
+5. **Determine verdict:**
    - All PASS and avg ≥ {{ pass_threshold }} → `PASS`
    - Any CRITICAL finding → `ITERATE`
    - avg < {{ pass_threshold }} → `ITERATE`
