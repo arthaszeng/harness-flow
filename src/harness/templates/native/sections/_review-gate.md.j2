@@ -37,7 +37,7 @@ Present the complete plan + 5-role review summary. Wait for:
 - **edit: [feedback]** → re-plan
 - **reject** → terminate
 
-**Score {{ gate_summary_confirm_min }}–{{ gate_full_review_min | int - 1 }} → SUMMARY CONFIRM**
+**Score {{ gate_summary_confirm_min }}–{{ (gate_full_review_min | int) - 1 }} → SUMMARY CONFIRM**
 Show a concise summary:
 ```
 PLAN SUMMARY

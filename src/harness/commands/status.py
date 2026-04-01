@@ -8,7 +8,7 @@ from pathlib import Path
 from rich.panel import Panel
 from rich.table import Table
 
-from harness.core.config import HarnessConfig
+from harness.core.config import HarnessConfig, WorkflowConfig
 from harness.core.progress import (
     get_recent_blocked,
     get_recent_completed,
@@ -20,7 +20,7 @@ from harness.core.ui import get_ui
 
 log = logging.getLogger("harness.commands.status")
 
-_DEFAULT_PASS_THRESHOLD = 7.0
+_DEFAULT_PASS_THRESHOLD = WorkflowConfig().pass_threshold
 
 
 def _load_pass_threshold() -> float:
