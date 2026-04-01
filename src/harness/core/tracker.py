@@ -46,7 +46,7 @@ class RunTracker:
         self,
         role: str,
         driver_name: str = DEFAULT_DRIVER,
-        agent_name: str = "",
+        agent_name: str = "unknown",
         iteration: int | None = None,
         *,
         readonly: bool = False,
