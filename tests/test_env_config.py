@@ -16,10 +16,10 @@ def test_env_overrides_empty_when_no_vars(monkeypatch):
 
 def test_env_overrides_parses_two_segment(monkeypatch):
     monkeypatch.setenv("HARNESS_CI_COMMAND", "pytest -v")
-    monkeypatch.setenv("HARNESS_WORKFLOW_PROFILE", "lite")
+    monkeypatch.setenv("HARNESS_WORKFLOW_MAX_ITERATIONS", "7")
     result = _env_overrides()
     assert result["ci"]["command"] == "pytest -v"
-    assert result["workflow"]["profile"] == "lite"
+    assert result["workflow"]["max_iterations"] == "7"
 
 
 def test_env_overrides_ignores_empty_values(monkeypatch):

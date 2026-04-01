@@ -1,5 +1,7 @@
 [中文版](zh-CN/state-machine.md)
 
+> **Note (v4.0.0):** The orchestrator mode and its state machine have been removed. This document is preserved for historical reference. In cursor-native mode, task state is managed through `.agents/tasks/` plan files and evaluation artifacts.
+
 # State Machine
 
 Harness uses an explicit state machine for the task lifecycle. All valid transitions are declared in `src/harness/core/state.py`; any operation that violates transition constraints raises `ValueError`.

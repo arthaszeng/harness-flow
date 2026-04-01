@@ -48,15 +48,15 @@ class TestMigrateConfig:
         )
         assert _migrate_config(tmp_path) == 0
 
-    def test_missing_workflow_keys_warns(self, tmp_path: Path):
+    def test_workflow_without_legacy_keys_ok(self, tmp_path: Path):
+        """Workflow section without removed orchestrator keys is valid."""
         agents_dir = tmp_path / ".agents"
         agents_dir.mkdir()
         (agents_dir / "config.toml").write_text(
             '[project]\nname = "test"\n[ci]\ncommand = "make test"\n'
             '[workflow]\nmax_iterations = 3\n'
         )
-        warnings = _migrate_config(tmp_path)
-        assert warnings >= 1
+        assert _migrate_config(tmp_path) == 0
 
     def test_missing_sections_warns(self, tmp_path: Path):
         agents_dir = tmp_path / ".agents"

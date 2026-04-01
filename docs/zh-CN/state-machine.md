@@ -1,3 +1,5 @@
+> **说明 (v4.0.0):** 编排器模式及其状态机已移除。本文档保留供历史参考。在 cursor-native 模式中，任务状态通过 `.agents/tasks/` 下的计划文件和评审产物管理。
+
 # 状态机
 
 Harness 使用显式状态机管理任务的生命周期。所有合法转换在 `src/harness/core/state.py` 中声明，任何违反转换约束的操作将抛出 `ValueError`。

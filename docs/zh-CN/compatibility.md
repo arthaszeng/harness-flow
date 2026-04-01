@@ -1,5 +1,7 @@
 # 运行时兼容性矩阵
 
+> **说明（v4.0.0）：** 本文所述的基于 driver 的架构已移除。Harness 不再直接调用 Cursor 或 Codex CLI。本文档仅作历史参考保留。在 cursor-native 模式下，由 Cursor IDE 直接执行 skills，无需外部 CLI。
+
 Harness 依赖 Cursor CLI 和/或 Codex CLI 提供实际 agent 能力。本文档记录已验证的版本范围和已知限制。
 
 ## Cursor CLI

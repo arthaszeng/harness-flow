@@ -1,4 +1,4 @@
-"""harness-orchestrator: contract-driven multi-agent autonomous development orchestration framework."""
+"""harness-orchestrator: Cursor-native multi-agent development framework."""
 
 from importlib.metadata import version as _pkg_version
 

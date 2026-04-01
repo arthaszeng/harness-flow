@@ -4,15 +4,15 @@ build-backend = "hatchling.build"
 
 [project]
 name = "harness-orchestrator"
-version = "3.1.6"
-description = "Contract-driven multi-agent development orchestrator for Cursor & Codex"
+version = "4.0.0"
+description = "Cursor-native multi-agent development framework with 5-role review"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.9"
 authors = [
     { name = "Arthas Zeng" },
 ]
-keywords = ["ai", "agents", "orchestration", "multi-agent", "cursor", "codex", "harness", "development"]
+keywords = ["ai", "agents", "multi-agent", "cursor", "harness", "development", "code-review"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
@@ -62,3 +62,4 @@ line-length = 100
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["src"]

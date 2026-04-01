@@ -11,7 +11,6 @@ from harness.commands.status import (
     _render_header,
     _render_next_action,
     _render_recent_result,
-    _render_resume,
     _render_stats,
 )
 from harness.core.state import (
@@ -99,37 +98,6 @@ class TestRenderRecentResult:
         assert "bad" in output
 
 
-class TestRenderResume:
-    def test_idle_no_resume(self):
-        console, buf = _make_console()
-        state = SessionState(mode="idle")
-        _render_resume(console, state)
-        assert buf.getvalue() == ""
-
-    def test_run_resumable(self):
-        console, buf = _make_console()
-        state = SessionState(
-            session_id="s1",
-            mode="run",
-            current_task=TaskRecord(id="t1", requirement="x"),
-        )
-        _render_resume(console, state)
-        output = buf.getvalue()
-        assert "resume" in output.lower()
-        assert "harness run --resume" in output
-
-    def test_auto_resumable(self):
-        console, buf = _make_console()
-        state = SessionState(
-            session_id="s1",
-            mode="auto",
-            current_task=TaskRecord(id="t1", requirement="x"),
-        )
-        _render_resume(console, state)
-        output = buf.getvalue()
-        assert "harness auto --resume" in output
-
-
 class TestRenderNextAction:
     def test_fresh_state(self):
         console, buf = _make_console()
@@ -137,8 +105,9 @@ class TestRenderNextAction:
         _render_next_action(console, state)
         output = buf.getvalue()
         assert "Next Action" in output
+        assert "harness 技能" in output
 
-    def test_resumable_action(self):
+    def test_resumable_shows_ide_hint(self):
         console, buf = _make_console()
         state = SessionState(
             mode="run",
@@ -146,7 +115,10 @@ class TestRenderNextAction:
         )
         _render_next_action(console, state)
         output = buf.getvalue()
-        assert "harness run --resume" in output
+        assert "Next Action" in output
+        assert "会话可恢复" in output
+        assert "harness run" not in output
+        assert "harness auto" not in output
 
 
 class TestRunStatusScenarios:
@@ -170,7 +142,6 @@ class TestRunStatusScenarios:
         _render_header(console, state)
         _render_current(console, state)
         _render_recent_result(console, state)
-        _render_resume(console, state)
         _render_next_action(console, state)
         _render_stats(console, state)
         output = buf.getvalue()
@@ -178,9 +149,8 @@ class TestRunStatusScenarios:
         assert "feature A" in output
         assert "4.5" in output
         assert "Next Action" in output
-        assert "harness run --resume" not in output
 
-    def test_resumable_scenario(self):
+    def test_in_flight_scenario(self):
         console, buf = _make_console()
         state = SessionState(
             session_id="s-resume",
@@ -196,14 +166,14 @@ class TestRunStatusScenarios:
         _render_header(console, state)
         _render_current(console, state)
         _render_recent_result(console, state)
-        _render_resume(console, state)
         _render_next_action(console, state)
         _render_stats(console, state)
         output = buf.getvalue()
         assert "in-flight work" in output
         assert "building" in output
-        assert "harness auto --resume" in output
         assert "s-resume" in output
+        assert "会话可恢复" in output
+        assert "harness run" not in output
 
     def test_blocked_scenario(self):
         console, buf = _make_console()
@@ -218,7 +188,6 @@ class TestRunStatusScenarios:
         _render_header(console, state)
         _render_current(console, state)
         _render_recent_result(console, state)
-        _render_resume(console, state)
         _render_next_action(console, state)
         _render_stats(console, state)
         output = buf.getvalue()

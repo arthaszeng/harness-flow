@@ -1,5 +1,7 @@
 # Vision — harness-orchestrator
 
+> **说明（v4.0.0）：** 编排器（orchestrator）模式与 CLI driver 已移除；Harness 现为 Cursor-native（在 IDE 中执行 skills）。下文目标仍描述方法论；「跨 agent 后端的统一抽象」现为 IDE 优先，而非基于 CLI driver。
+
 ## 愿景陈述
 
 harness-orchestrator 的长期目标，是成为一个面向真实代码仓库的本地优先开发编排层：它不直接替代工程师，也不试图重新发明 IDE，而是把多种 agent 能力组织进一个可执行、可审计、可恢复的工程闭环中。对于使用 Cursor、Codex 等工具的团队和个人来说，这个项目的价值不在于“再多一个 AI 入口”，而在于把分散的 agent 行为收束为统一方法论，让需求推进、代码实现和质量把关能够持续协同。
