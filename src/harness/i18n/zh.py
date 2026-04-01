@@ -389,4 +389,25 @@ MESSAGES: dict[str, str] = {
         "项目结构发现:\n{report}\n\n"
         "请直接输出推荐的命令（一行），不要其他解释。例如：make check test"
     ),
+
+    # ── update command ─────────────────────────────────────────────
+    "update.title": "\nharness update — 自更新与维护\n",
+    "update.current_version": "  当前版本: {version}",
+    "update.checking": "  正在检查 PyPI 更新...",
+    "update.check_failed": "  [警告] 无法连接 PyPI — 跳过版本检查",
+    "update.up_to_date": "  ✓ 已是最新版本",
+    "update.new_version": "  发现新版本: {version}",
+    "update.upgrading": "  ▸ 正在通过 pip 升级...",
+    "update.upgrade_ok": "  ✓ 升级完成",
+    "update.upgrade_fail": "  ✗ 升级失败（见上方错误）",
+    "update.skip_reinstall": "  由于升级失败，跳过 agent 重装",
+    "update.reinstall": "\n  重新安装 agent 定义 (--force)...\n",
+    "update.migrate_title": "\n  配置迁移检查:\n",
+    "update.config_parse_error": "  [警告] 无法解析 {path}",
+    "update.config_missing_section": "  [提示] 缺少 [{section}] 配置段 ({desc}) — 建议添加",
+    "update.config_new_key": "  [提示] 新增配置 [{section}] {config_key} = \"{default}\"（最新版本可用）",
+    "update.config_deprecated": "  [警告] 已废弃配置 {config_key} — 请改用 {replacement}（自 {version} 起）",
+    "update.config_ok": "  ✓ 配置已是最新",
+    "update.done": "\n  更新完成。{warnings} 个配置警告。",
+
 }

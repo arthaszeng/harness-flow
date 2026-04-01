@@ -103,6 +103,24 @@ def status() -> None:
 
 
 @app.command()
+def update(
+    check: bool = typer.Option(
+        False, "--check", "-c",
+        help="Only check for updates, do not install",
+    ),
+) -> None:
+    """Self-update harness, reinstall artifacts, and migrate config.
+
+    Performs three steps:
+    1. Check PyPI for newer version and upgrade via pip
+    2. Reinstall agent definitions (equivalent to harness install --force)
+    3. Check .agents/config.toml for new/deprecated keys
+    """
+    from harness.commands.update import run_update
+    run_update(check=check)
+
+
+@app.command()
 def stop() -> None:
     """Gracefully stop the currently running task"""
     from harness.commands.stop import run_stop
