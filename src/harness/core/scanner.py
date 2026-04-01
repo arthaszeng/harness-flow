@@ -119,7 +119,7 @@ def _build_suggestions(scan: ProjectScan) -> None:
         if "ci" in targets:
             suggestions.append((5, "make ci", "full CI (may include smoke tests, slower)"))
         # make test alone
-        if "test" in targets and not ("check" in targets):
+        if "test" in targets and "check" not in targets:
             suggestions.append((8, "make test", "unit tests"))
         elif "test" in targets:
             suggestions.append((6, "make test", "unit tests only"))

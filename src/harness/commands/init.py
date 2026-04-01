@@ -138,7 +138,6 @@ def _step_driver_mode(ides: dict[str, bool]) -> tuple[str, dict[str, str]]:
 
     both = ides["cursor"] and ides["codex"]
     cursor_only = ides["cursor"] and not ides["codex"]
-    codex_only = ides["codex"] and not ides["cursor"]
 
     if both:
         typer.echo(t("init.both_detected"))
@@ -323,7 +322,7 @@ def _ai_suggest_ci(
         return typer.prompt(t("init.enter_ci"), default="make test")
 
     report_lines = format_scan_report(scan)
-    report_text = "\n".join(f"- {l}" for l in report_lines) if report_lines else "(none)"
+    report_text = "\n".join(f"- {line}" for line in report_lines) if report_lines else "(none)"
 
     prompt = t(
         "prompt.ai_ci",

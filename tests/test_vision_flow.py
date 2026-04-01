@@ -8,7 +8,6 @@ from unittest.mock import MagicMock
 from harness.drivers.base import AgentResult
 from harness.orchestrator.autonomous import detect_vision_drift
 from harness.orchestrator.vision_flow import (
-    AdvisorOutput,
     ProjectContext,
     build_advisor_prompt,
     gather_context,

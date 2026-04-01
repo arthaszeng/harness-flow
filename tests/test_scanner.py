@@ -139,7 +139,7 @@ class TestFormatScanReport:
 
         scan = scan_project(project_dir)
         report = format_scan_report(scan)
-        assert any("Makefile" in l for l in report)
-        assert any("pytest" in l for l in report)
-        assert any("check_architecture" in l for l in report)
-        assert any("pyproject" in l for l in report)
+        assert any("Makefile" in line for line in report)
+        assert any("pytest" in line for line in report)
+        assert any("check_architecture" in line for line in report)
+        assert any("pyproject" in line for line in report)

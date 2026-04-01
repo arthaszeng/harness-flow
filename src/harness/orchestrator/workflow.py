@@ -60,7 +60,6 @@ def run_single_task(
 ) -> WorkflowResult:
     """Run the full plan → contract → build → eval loop."""
     from harness.integrations import git_ops
-    from harness.integrations.git_ops import DirtyWorktreeError
 
     ui = get_ui()
     ev = events or NullEventEmitter()

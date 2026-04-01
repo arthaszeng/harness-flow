@@ -7,7 +7,7 @@ import subprocess
 from pathlib import Path
 from unittest.mock import MagicMock, Mock, patch
 
-from harness.drivers.cursor import CursorDriver, DriverProbe, _format_event, _compose_full_output, _ThinkingTracker
+from harness.drivers.cursor import CursorDriver, _format_event, _compose_full_output, _ThinkingTracker
 
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"

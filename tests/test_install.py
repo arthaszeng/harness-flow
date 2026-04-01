@@ -9,7 +9,6 @@ import pytest
 
 from harness.commands.install import (
     _install_cursor_agents,
-    _install_codex_agents,
     run_install,
 )
 
