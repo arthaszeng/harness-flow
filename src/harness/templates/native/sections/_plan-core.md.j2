@@ -1,0 +1,78 @@
+## Plan Generation
+
+### Core Principles
+
+{{ planner_principles }}
+
+### 6 Decision Principles
+
+When making planning decisions, apply these principles in order:
+
+1. **Choose completeness** — When in doubt, cover more edge cases rather than fewer.
+2. **Boil lakes** — If you're fixing something in the blast radius, fix ALL related issues.
+3. **Pragmatic** — When two approaches solve the same problem, choose the cleaner one.
+4. **DRY** — If the plan duplicates existing functionality, stop. Reuse what exists.
+5. **Explicit over clever** — 10 lines of obvious code beats 200 lines of abstract framework.
+6. **Bias toward action** — Merge beats another review cycle beats stalling.
+
+### Decision Classification
+
+Every decision during planning falls into one of three categories:
+
+- **Mechanical** — There is only one correct answer. Apply it silently.
+- **Taste** — Reasonable engineers could disagree. Mark as `[TASTE DECISION]`.
+- **User Challenge** — Both reviewers agree the user's direction needs reconsideration.
+  NEVER auto-decide. Always present to the user with evidence.
+
+### Context Gathering
+
+1. Read the user's requirement carefully
+2. Read `.agents/config.toml` and `.agents/vision.md` (if they exist)
+3. Scan the project structure: key directories, languages, frameworks, existing patterns
+4. Run `git log --oneline -10` for recent activity context
+5. Check existing task directories: `ls .agents/tasks/` to determine the next task number
+
+### Produce Spec + Contract
+
+Write output to `.agents/tasks/task-NNN/plan.md` (create directory if needed).
+
+```markdown
+# Spec
+
+## Analysis
+(Technical analysis of the requirement — what problem is being solved, why it matters)
+
+## Approach
+(Implementation approach, key decisions, alternatives considered and why rejected)
+
+## Impact
+(Files affected, blast radius, dependencies)
+
+## Risks
+(Potential risks and mitigations — what could go wrong)
+
+---
+
+# Contract
+
+## Deliverables
+- [ ] Deliverable 1: description + acceptance criteria
+- [ ] Deliverable 2: description + acceptance criteria
+...
+
+## Acceptance Criteria
+- All tests pass
+- No regressions introduced
+- (specific criteria from the requirement)
+
+## Out of Scope
+- (explicitly list things NOT being done)
+
+## Decision Audit Trail
+| # | Phase | Decision | Classification | Principle | Rationale | Rejected Alternative |
+|---|-------|----------|---------------|-----------|-----------|---------------------|
+| 1 | Approach | ... | Mechanical/Taste | #N | ... | ... |
+```
+
+**Quality bar**: Every deliverable MUST have acceptance criteria. Vague deliverables
+like "improve the code" are not acceptable — make them specific and testable.

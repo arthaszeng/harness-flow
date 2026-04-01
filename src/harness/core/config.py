@@ -69,6 +69,14 @@ class NativeModeConfig(BaseModel):
     hooks_pre_build: str = ""
     hooks_post_eval: str = ""
     hooks_pre_ship: str = ""
+    role_models: dict[str, str] = Field(
+        default_factory=dict,
+        description=(
+            "Per-role model overrides for the 5 review roles. "
+            'Keys: architect, product_owner, engineer, qa, project_manager. '
+            'Empty string or absent = use IDE default model.'
+        ),
+    )
 
 
 class WorkflowConfig(BaseModel):

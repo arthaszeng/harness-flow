@@ -215,61 +215,22 @@ If any NOT DONE items: note them in the PR body. Continue — this is informatio
 
 ---
 
-## Step 3.8: Pre-Landing Review + Adversarial (always-on)
+## Step 3.8: Pre-Landing Review — 5-Role Code Evaluation (always-on)
 
-Run the `/harness-eval` workflow inline. Dispatch all review passes in parallel using
-Task tool — the main agent orchestrates but does NOT perform the structured review itself.
+Run code evaluation inline. Dispatch all 5 role reviewers in parallel using
+Task tool — the main agent orchestrates but does NOT perform reviews itself.
 
-{% if adversarial_mechanism == 'subagent' %}
-**Adversarial dispatch: subagent-only mode.**
-If a subagent fails, that pass is marked FAILED — no inline fallback.
-{% elif adversarial_mechanism == 'cli' %}
-**Adversarial dispatch: CLI mode.**
-Do NOT use Task tool for adversarial review. Use external CLI instead.
-{% else %}{# auto #}
-**Adversarial dispatch: auto mode.**
-Attempt subagent dispatch; degrade gracefully on failure.
-{% endif %}
+{% include 'sections/_code-review.md.j2' %}
 
-**Dispatch passes in two waves:**
-- **Wave A**: Pass 1 + Pass 2 + Pass 3 + baseline specialists — all in one message
-- **Wave B**: After Pass 1 returns, conditionally dispatch red-team (if CRITICAL or diff > 200 LOC)
-
-1. **Pass 1**: Structured review — dispatch `harness-evaluator` subagent:
-   - **subagent_type**: `"harness-evaluator"`
-   - **description**: `"Structured code review + scoring"`
-   - **prompt**: "Task plan: .agents/tasks/task-NNN/plan.md (or 'No plan'). Build log: .agents/tasks/task-NNN/build-rN.log (or 'No build log'). Diff range: {{ trunk_branch }}..HEAD. CI command: {{ ci_command }}. Review and score following your agent instructions."
-
-2. **Pass 2**: Primary adversarial subagent:
-   - **subagent_type**: `"generalPurpose"`
-   - **prompt**: "Read the diff with `git diff {{ trunk_branch }}..HEAD`. Think like an attacker and chaos engineer. Find ways this code will fail in production. Edge cases, race conditions, security holes, resource leaks, failure modes, silent data corruption. No compliments — just problems. Output JSON findings: {\"severity\":\"CRITICAL|INFORMATIONAL\",\"confidence\":N,\"path\":\"file\",\"line\":N,\"category\":\"cat\",\"summary\":\"desc\",\"fix\":\"fix\",\"action\":\"FIXABLE|INVESTIGATE\"}"
-   - **description**: `"Adversarial code review"`
-
-3. **Pass 3**: Cross-model adversarial:
-   - **subagent_type**: `"harness-adversarial-reviewer"`
-   - **prompt**: (same adversarial prompt — the subagent uses {{ adversarial_model }})
-   - **description**: `"Cross-model adversarial review"`
-
-3b. **Specialists** (if diff >= 50 lines): dispatch testing + security + performance specialists in parallel (subagent_type: generalPurpose, model: fast). After Pass 1 returns, if CRITICAL findings or diff > 200 lines, also dispatch red-team.
-
-4. **Cross-model synthesis**: Merge findings from all passes. High confidence = found by 2+ passes.
-
-5. **Fix-First flow**:
-   - **AUTO-FIX** findings: apply fixes, commit: `git commit -m "fix: auto-fix review findings"`
-   - **ASK** findings: present in one batch. Per-item: A) Fix, B) Skip.
-
-6. **Compute scores and verdict**: avg >= {{ pass_threshold }} → PASS, else → ITERATE.
 {% if review_gate == 'eng' %}
 
-**Review Gate (eng):** Evaluation is a hard gate — ITERATE verdict blocks shipping.
+**Review Gate (eng):** Evaluation is a hard gate — ISSUES_FOUND verdict blocks shipping.
 All CRITICAL findings must be resolved before proceeding.
 {% elif review_gate == 'advisory' %}
 
-**Review Gate (advisory):** Evaluation is advisory — ITERATE verdict is logged but does not block.
+**Review Gate (advisory):** Evaluation is advisory — ISSUES_FOUND verdict is logged but does not block.
 CRITICAL findings are flagged but shipping continues.
 {% endif %}
-
-Write evaluation to `.agents/tasks/task-NNN/evaluation-rN.md` and `.json`.
 
 ---
 

@@ -34,8 +34,11 @@ _SKILL_TEMPLATES = [
 ]
 
 _AGENT_TEMPLATES = [
-    ("agent-adversarial-reviewer.md.j2", "harness-adversarial-reviewer"),
-    ("agent-evaluator.md.j2", "harness-evaluator"),
+    ("agent-architect.md.j2", "harness-architect"),
+    ("agent-product-owner.md.j2", "harness-product-owner"),
+    ("agent-engineer.md.j2", "harness-engineer"),
+    ("agent-qa.md.j2", "harness-qa"),
+    ("agent-project-manager.md.j2", "harness-project-manager"),
 ]
 
 _RULE_TEMPLATES = [
@@ -75,12 +78,16 @@ def _detect_project_lang(cfg: HarnessConfig) -> str:
     return "unknown"
 
 
+_ROLE_NAMES = ("architect", "product_owner", "engineer", "qa", "project_manager")
+
+
 def _build_context(cfg: HarnessConfig, *, role: str = "") -> dict[str, str]:
     """Build the Jinja2 template context from config + i18n.
 
     When role is specified, irrelevant variables are stripped to reduce
     token noise (inspired by Claude Code's omitClaudeMd pattern).
     """
+    rm = cfg.native.role_models
     ctx: dict[str, str] = {
         "ci_command": cfg.ci.command,
         "trunk_branch": cfg.workflow.trunk_branch,
@@ -101,19 +108,10 @@ def _build_context(cfg: HarnessConfig, *, role: str = "") -> dict[str, str]:
         "retro_window_days": str(cfg.native.retro_window_days),
     }
 
-    if role == "adversarial_reviewer":
-        for key in (
-            "builder_principles",
-            "planner_principles",
-            "ci_command",
-            "max_iterations",
-            "branch_prefix",
-        ):
-            ctx.pop(key, None)
-    elif role == "evaluator":
-        for key in ("planner_principles", "branch_prefix"):
-            ctx.pop(key, None)
-    elif role == "planner":
+    for rn in _ROLE_NAMES:
+        ctx[f"role_models_{rn}"] = rm.get(rn, "")
+
+    if role == "planner":
         for key in ("builder_principles",):
             ctx.pop(key, None)
 
@@ -186,10 +184,8 @@ def generate_native_artifacts(
     agents_dir = project_root / ".cursor" / "agents"
     agents_dir.mkdir(parents=True, exist_ok=True)
     for tmpl_name, agent_name in _AGENT_TEMPLATES:
-        role = "adversarial_reviewer" if "adversarial" in agent_name else "evaluator"
-        agent_context = _build_context(cfg, role=role)
         out_path = agents_dir / f"{agent_name}.md"
-        content = _render_template(tmpl_dir, tmpl_name, agent_context)
+        content = _render_template(tmpl_dir, tmpl_name, context)
         out_path.write_text(content, encoding="utf-8")
         typer.echo(t("native.generated_agent", path=_rel(project_root, out_path)))
         count += 1

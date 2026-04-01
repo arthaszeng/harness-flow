@@ -1,11 +1,11 @@
 ## Review Gate — {{ plan_review_gate }}
 {% if plan_review_gate == "human" %}
 
-**STOP.** Present the complete plan and adversarial review report to the user.
+**STOP.** Present the complete plan and review report to the user.
 
 Display:
 1. The full plan (spec + contract)
-2. Adversarial review summary (rounds, issues, score)
+2. Plan review summary (5-role scores, aggregate, findings)
 3. Any unresolved reviewer concerns
 
 Wait for user response:
@@ -28,11 +28,11 @@ Assess whether the plan needs human review by calculating an **escalation score*
 | Risk | security, authentication, or authorization changes | +3 |
 | Risk | data model or schema changes | +3 |
 | Risk | public API surface changes | +2 |
-| Quality | adversarial review score < 7/10 | +2 |
+| Quality | plan review aggregate score < 7/10 | +2 |
 | Type | new feature (not fix or refactor) | +1 |
 
 **Score >= 5 → FULL REVIEW**
-Present the complete plan + adversarial review report. Wait for:
+Present the complete plan + 5-role review summary. Wait for:
 - **approve** → continue
 - **edit: [feedback]** → re-plan
 - **reject** → terminate
@@ -46,14 +46,15 @@ PLAN SUMMARY
   Deliverables:  N items
   Files:         ~N estimated
   Risk flags:    [list or "none"]
-  Review score:  X/10
+  Review scores: Arch X/10 | Prod X/10 | Eng X/10 | QA X/10 | PM X/10
+  Aggregate:     X/10
   Gate score:    N (SUMMARY CONFIRM)
 ═══════════════════════════════════════════
 Continue? [approve / edit / reject]
 ```
 
 **Score < 3 → AUTO PROCEED**
-Log: `"Plan auto-approved (gate score N, review score X/10)"` and continue.
+Log: `"Plan auto-approved (gate score N, aggregate review score X/10)"` and continue.
 {% else %}
-Plan is auto-approved after adversarial review completes. Continue immediately.
+Plan is auto-approved after plan review completes. Continue immediately.
 {% endif %}

@@ -1,0 +1,23 @@
+{# _plan-content.md.j2 — aggregates the full plan lifecycle.
+   Included by: _vision-content.md.j2, skill-plan.md.j2
+   Contains: plan-core → plan-review → review-gate → ship invocation #}
+
+{% include 'sections/_plan-core.md.j2' %}
+
+---
+
+{% include 'sections/_plan-review.md.j2' %}
+
+---
+
+{% include 'sections/_review-gate.md.j2' %}
+
+---
+
+## Execution
+
+Review gate passed. Invoke `/harness-ship` to execute the full
+build → eval → ship → PR pipeline.
+
+Ship will dispatch the same 5 roles (architect, product-owner, engineer,
+qa, project-manager) in `code-eval` mode for the evaluation phase.

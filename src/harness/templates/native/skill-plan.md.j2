@@ -1,7 +1,7 @@
 ---
 name: harness-plan
 description: >-
-  End-to-end from requirement to PR: refine a plan with adversarial review,
+  End-to-end from requirement to PR: refine a plan with multi-role review,
   then auto-execute build/eval/ship/retro. Use when saying "plan", "do this",
   "implement", "build this feature", "harness plan", or providing a specific
   requirement. (harness)
@@ -17,7 +17,7 @@ that needs planning and execution.
 
 **Only stop for:**
 - Ambiguous requirements (ask for clarification ONCE, then proceed with best interpretation)
-- Taste decisions or user challenges identified by adversarial review
+- Taste decisions or user challenges identified by plan review
 - Review gate escalation (when plan_review_gate requires it)
 - ASK-classified review findings during eval
 
@@ -29,126 +29,17 @@ that needs planning and execution.
 
 ---
 
-## Phase 0: Plan Refinement
+## Phase 0: Requirement Understanding
 
-### Core Principles
-
-{{ planner_principles }}
-
-### 6 Decision Principles
-
-When making planning decisions, apply these principles in order:
-
-1. **Choose completeness** — When in doubt, cover more edge cases rather than fewer.
-   A plan that handles the unexpected is worth more than a plan that's fast to build.
-2. **Boil lakes** — If you're fixing something in the blast radius, fix ALL related issues.
-   Don't leave known problems adjacent to the fix.
-3. **Pragmatic** — When two approaches solve the same problem, choose the cleaner one.
-   Avoid cleverness. Avoid premature abstraction.
-4. **DRY** — If the plan duplicates existing functionality, stop. Reuse what exists.
-   Refuse to build what already works.
-5. **Explicit over clever** — 10 lines of obvious code beats 200 lines of abstract framework.
-   Prefer straightforward implementation.
-6. **Bias toward action** — Merge beats another review cycle beats stalling.
-   Perfect is the enemy of shipped.
-
-### Decision Classification
-
-Every decision during planning falls into one of three categories:
-
-- **Mechanical** — There is only one correct answer. Apply it silently.
-  Example: "Which test framework?" → use the one the project already uses.
-- **Taste** — Reasonable engineers could disagree. Mark as `[TASTE DECISION]`.
-  Present to the final approval gate with rationale.
-  Example: "Should we use composition or inheritance here?"
-- **User Challenge** — Both reviewer models agree the user's direction needs reconsideration.
-  NEVER auto-decide. Always present to the user with evidence.
-  Example: "User wants to add a cache layer, but the bottleneck is CPU-bound."
-
-### Context Gathering
-
-1. Read the user's requirement carefully
-2. Read `.agents/config.toml` and `.agents/vision.md` (if they exist)
-3. Scan the project structure: key directories, languages, frameworks, existing patterns
-4. Run `git log --oneline -10` for recent activity context
-5. Check existing task directories: `ls .agents/tasks/` to determine the next task number
-
-### Produce Spec + Contract
-
-Write output to `.agents/tasks/task-NNN/plan.md` (create directory if needed).
-
-```markdown
-# Spec
-
-## Analysis
-(Technical analysis of the requirement — what problem is being solved, why it matters)
-
-## Approach
-(Implementation approach, key decisions, alternatives considered and why rejected)
-
-## Impact
-(Files affected, blast radius, dependencies)
-
-## Risks
-(Potential risks and mitigations — what could go wrong)
+Read the user's requirement. If ambiguous, ask for clarification **once** —
+then proceed with best interpretation.
 
 ---
 
-# Contract
-
-## Deliverables
-- [ ] Deliverable 1: description + acceptance criteria
-- [ ] Deliverable 2: description + acceptance criteria
-...
-
-## Acceptance Criteria
-- All tests pass
-- No regressions introduced
-- (specific criteria from the requirement)
-
-## Out of Scope
-- (explicitly list things NOT being done)
-
-## Decision Audit Trail
-| # | Phase | Decision | Classification | Principle | Rationale | Rejected Alternative |
-|---|-------|----------|---------------|-----------|-----------|---------------------|
-| 1 | Approach | ... | Mechanical/Taste | #N | ... | ... |
-```
-
-**Quality bar**: Every deliverable MUST have acceptance criteria. Vague deliverables
-like "improve the code" are not acceptable — make them specific and testable.
-
-### Adversarial Review Loop
-
-After writing the plan to disk, dispatch an adversarial reviewer subagent:
-
-**Dispatch via Task tool:**
-- **subagent_type**: `"generalPurpose"`
-- **description**: `"Adversarial plan review"`
-- Review on 5 dimensions: completeness, consistency, clarity, scope, feasibility
-- Score 1-10, list specific issues with fixes
-
-**Iteration loop** (max 3 rounds):
-1. Fix issues found by reviewer in the plan file
-2. Re-dispatch reviewer with updated plan
-3. Stop if PASS or same issues recur (convergence guard)
-
-Persist unresolved issues as `## Reviewer Concerns` in the plan file.
-
-**Cross-model review** (if plan has 5+ deliverables or touches 10+ files):
-- Dispatch `harness-adversarial-reviewer` subagent for independent perspective
-- Build consensus table comparing both reviewers
-- Mark disagreements as `[TASTE DECISION]`
-
----
-
+{# Recursive composition: plan = Phase 0 + plan-content (plan-core, plan-review, gate, ship) #}
 {% with interaction_depth="low" %}
-{% include 'sections/_review-gate.md.j2' %}
+{% include 'sections/_plan-content.md.j2' %}
 {% endwith %}
-
----
-
-{% include 'sections/_execution-pipeline.md.j2' %}
 
 ---
 

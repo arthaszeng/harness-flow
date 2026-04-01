@@ -1,10 +1,11 @@
 ---
 name: harness-eval
 description: >-
-  Multi-pass code review with cross-model adversarial evaluation and Fix-First
-  auto-remediation. Dispatches independent subagents for adversarial review.
-  Use when saying "review this", "evaluate", "harness eval", or after a build.
-  Proactively invoke after any /harness-build completes. (harness)
+  Multi-role code review with 5 specialized reviewers and Fix-First
+  auto-remediation. Dispatches architect, product-owner, engineer, qa,
+  and project-manager subagents in parallel. Use when saying "review this",
+  "evaluate", "harness eval", or after a build. Proactively invoke after
+  any /harness-build completes. (harness)
 ---
 
 # Harness Eval
@@ -14,11 +15,11 @@ pipeline. Run straight through and output the evaluation result at the end.
 
 **Only stop for:**
 - ASK-classified findings that need user judgment (see Fix-First below)
-- All review passes failed (no results at all)
+- All review subagents failed (no results at all)
 
 **Never stop for:**
 - AUTO-FIX findings (fix them, commit, continue)
-- Subagent failures (degrade in auto mode, mark FAILED in subagent mode)
+- Subagent failures (degrade gracefully per degradation ladder)
 - Minor issues or informational findings
 
 ---
@@ -48,277 +49,19 @@ unless git diff is empty.
 
 **Minimum viable eval = non-empty git diff.** Everything else degrades gracefully.
 
-### Degradation Matrix
-
-| Pass 1 (Structured) | Pass 2 (Primary subagent) | Pass 3 ({{ adversarial_model }}) | Action |
-|---------------------|-------------------------|-------------------------------|--------|
-| ✓ | ✓ | ✓ | Full synthesis |
-| ✓ | ✓ | ✗ | Synthesis without cross-model, tag `[primary-only]` |
-| ✓ | ✗ | ✓ | Synthesis without primary subagent |
-| ✓ | ✗ | ✗ | Single-reviewer mode, note in evaluation |
-| ✗ | — | — | FATAL — cannot evaluate. Stop and report error. |
-
 ---
 
 {% include 'sections/_trust-boundary.md.j2' %}
 
 ---
 
-## Step 1: Dispatch Reviewers (two waves)
+## Step 1: 5-Role Code Review
 
-Dispatch reviewers in two waves. The main agent is the orchestrator — it does NOT
-perform the structured review itself.
-
-**Wave A** — dispatch Pass 1, Pass 2, Pass 3, and baseline specialists (if applicable)
-**in a single message** using multiple Task tool calls for maximum parallelism.
-
-**Wave B** — after Pass 1 (harness-evaluator) returns, conditionally dispatch red-team
-(see Step 1.5). Do NOT wait for Pass 2/3 before sending Wave B.
-
-{% if adversarial_mechanism == 'subagent' %}
-**Adversarial dispatch: subagent-only mode.**
-Dispatch Pass 2 and Pass 3 via Task tool. If either subagent fails, that pass is
-marked FAILED — do NOT fall back to inline review. Note the failure in evaluation
-output and continue with remaining passes.
-{% elif adversarial_mechanism == 'cli' %}
-**Adversarial dispatch: CLI mode.**
-Do NOT use Task tool for adversarial review. Instead invoke the adversarial model
-via your external CLI tool. If CLI is unavailable, mark that pass as FAILED.
-{% else %}{# auto #}
-**Adversarial dispatch: auto mode (default).**
-Attempt subagent dispatch first. If subagent fails or times out, degrade:
-- Pass 2 failure → skip, continue with Pass 1 + Pass 3
-- Pass 3 failure → skip, continue with Pass 1 + Pass 2
-- Both fail → single-reviewer mode (Pass 1 only)
-{% endif %}
-
-### Pass 1: Structured Review via harness-evaluator
-
-- **subagent_type**: `"harness-evaluator"`
-- **description**: `"Structured code review + scoring"`
-- **prompt**: (construct from template below, substituting actual task paths from Step 0)
-
-```
-Task plan: .agents/tasks/task-NNN/plan.md (or "No plan — evaluate raw diff only")
-Build log: .agents/tasks/task-NNN/build-rN.log (or "No build log — skip builder-claims verification")
-Diff range: {{ trunk_branch }}..HEAD
-CI command: {{ ci_command }}
-
-Review and score this code change following the methodology in your agent instructions.
-Output the JSON verdict followed by the markdown VERDICT summary.
-```
-
-### Pass 2: Primary Adversarial Subagent
-
-- **subagent_type**: `"generalPurpose"`
-- **description**: `"Adversarial code review"`
-- **prompt**:
-
-```
-Read the diff for this branch with `git diff {{ trunk_branch }}..HEAD`.
-Think like an attacker and a chaos engineer. Your job is to find ways this
-code will fail in production.
-
-Look for: edge cases, race conditions, security holes, resource leaks,
-failure modes, silent data corruption, logic errors that produce wrong
-results silently, error handling that swallows failures, and trust
-boundary violations.
-
-Be adversarial. Be thorough. No compliments — just the problems.
-
-For each finding, output a JSON object on its own line:
-{"severity":"CRITICAL|INFORMATIONAL","confidence":N,"path":"file","line":N,"category":"category","summary":"description","fix":"recommended fix","action":"FIXABLE|INVESTIGATE"}
-
-If no findings: output `NO FINDINGS` and nothing else.
-Do not output anything else — no preamble, no summary, no commentary.
-```
-
-### Pass 3: Cross-Model Adversarial Review
-
-- **subagent_type**: `"harness-adversarial-reviewer"`
-- **description**: `"Cross-model adversarial review"`
-- **prompt**:
-
-```
-Review the code changes on this branch against the base branch.
-Run `git diff {{ trunk_branch }}..HEAD` to see the diff.
-Your job is to find ways this code will fail in production.
-Think like an attacker and a chaos engineer. Find edge cases, race
-conditions, security holes, resource leaks, failure modes, and silent
-data corruption paths. Be adversarial. Be thorough. No compliments —
-just the problems.
-
-For each finding, output a JSON object on its own line:
-{"severity":"CRITICAL|INFORMATIONAL","confidence":N,"path":"file","line":N,"category":"category","summary":"description","fix":"recommended fix","action":"FIXABLE|INVESTIGATE"}
-
-If no findings: output `NO FINDINGS` and nothing else.
-```
-
-### Specialist Dispatch (conditional, parallel with above)
-
-Before dispatching, check diff size: `git diff {{ trunk_branch }}..HEAD --stat | tail -1`
-
-- If diff < 50 lines: **SKIP** specialist dispatch
-- If diff >= 50 lines: dispatch **testing + security + performance** specialists alongside the three passes above
-
-**Dispatch each specialist via Task tool:**
-- **subagent_type**: `"generalPurpose"`
-- **model**: `"fast"` (specialists are tightly scoped)
-- **description**: `"Specialist review: {name}"`
-
-For each specialist, construct the prompt:
-```
-You are a specialist code reviewer focused on {DOMAIN}.
-Read the checklist at `.cursor/skills/harness/harness-eval/specialists/{name}.md`, then analyze the diff.
-
-Run `git diff {{ trunk_branch }}..HEAD` and analyze the changes.
-Output findings using the EXACT JSON format specified in the specialist checklist's "Output Format" section.
-The format is a single JSON object with "specialist" and "findings" array fields.
-
-If no findings: output `NO FINDINGS` and nothing else.
-```
-
-If any subagent fails or times out: log the failure and continue with available results.
+{% include 'sections/_code-review.md.j2' %}
 
 ---
 
-## Step 1.5: Red-Team Dispatch (conditional)
-
-After Pass 1 (harness-evaluator) returns:
-- If Pass 1 found any CRITICAL finding OR diff > 200 lines: dispatch **red-team** specialist
-- Otherwise: skip
-
----
-
-## Step 2: Cross-Model Synthesis
-
-After all dispatched subagents complete, merge findings across all passes.
-
-**Parse specialist results** (if dispatched):
-1. Extract `findings` array from each specialist's JSON envelope
-2. Flatten all findings, tagging each with its specialist name
-3. Fingerprint each: `{file}:{line}:{category}`
-4. Deduplicate: same fingerprint from 2+ specialists → boost confidence by +1
-5. Compute **PR Quality Score**: `max(0, 10 - critical_count * 2 - informational_count * 0.5)`
-
-**Fingerprint and deduplicate across ALL passes:**
-- Compute fingerprint: `{path}:{line}:{category}` (or `{path}:{category}` if no line)
-- Group findings by fingerprint
-- Findings matching across 2+ passes: **HIGH CONFIDENCE** — boost confidence by +1
-
-**Synthesis table:**
-
-```
-REVIEW SYNTHESIS:
-═══════════════════════════════════════════════════════════
-  High confidence (found by 2+ passes):   [list]
-  Unique to structured review (Pass 1):   [list]
-  Unique to specialists:                   [list by specialist]
-  Unique to primary adversarial (Pass 2):  [list]
-  Unique to {{ adversarial_model }} (Pass 3):  [list]
-
-  PR Quality Score: X/10
-  Models used: Evaluator ✓/✗  Specialists ✓/✗  Primary adversarial ✓/✗  {{ adversarial_model }} ✓/✗
-═══════════════════════════════════════════════════════════
-```
-
-High-confidence findings take priority for fixes.
-
----
-
-## Step 3: Fix-First Flow
-
-Apply the Fix-First heuristic to all collected findings:
-
-**AUTO-FIX** (fix immediately, no user input):
-- Dead code, stale comments, unused imports
-- Missing error handling with obvious fix
-- Naming inconsistencies, formatting issues
-- Missing type hints where the type is obvious
-- Certainty is high, blast radius is small, fix is reversible
-
-**ASK** (present to user):
-- Security findings (even if fix seems obvious)
-- Architecture or behavior changes
-- Data model changes
-- Any finding where the fix could change observable behavior
-- Confidence < 7 on a CRITICAL finding
-
-**For AUTO-FIX findings:**
-1. Apply each fix
-2. Run `{{ ci_command }}` to verify no regressions
-3. Output one line per fix: `[AUTO-FIXED] [file:line] Problem → what you did`
-4. Commit fixed files: `git add <fixed-files> && git commit -m "fix: auto-fix review findings"`
-
-**For ASK findings:**
-Present all ASK items in ONE batch:
-- List each with number, severity, problem, recommended fix
-- Per-item options: A) Fix  B) Skip
-- If 0 ASK items, skip this step entirely
-
----
-
-## Step 4: Verdict and Output
-
-Compute the final verdict based on Pass 1 scores:
-- Average >= {{ pass_threshold }} → **PASS**
-- Average < {{ pass_threshold }} → **ITERATE**
-- Any unfixed CRITICAL finding with action=INVESTIGATE → force **ITERATE**
-
-Write evaluation to `.agents/tasks/task-NNN/evaluation-rN.md`:
-
-```markdown
-# Evaluation — Round N
-
-## Scores
-| Dimension    | Score | Notes |
-|-------------|-------|-------|
-| Completeness | X/5   |       |
-| Quality      | X/5   |       |
-| Regression   | X/5   |       |
-| Design       | X/5   |       |
-
-**Average: X.X/5**
-
-## Verdict: PASS / ITERATE
-
-## Findings
-### High Confidence (cross-model agreement)
-- ...
-
-### Structured Review
-- ...
-
-### Adversarial Review (Primary)
-- ...
-
-### Adversarial Review ({{ adversarial_model }})
-- ...
-
-## Auto-Fixed
-- [AUTO-FIXED] file:line — description
-
-## Fix Suggestions (if ITERATE)
-- ...
-```
-
-Also write machine-readable JSON to `.agents/tasks/task-NNN/evaluation-rN.json`:
-
-```json
-{
-  "verdict": "PASS",
-  "scores": {"completeness": 4, "quality": 4, "regression": 5, "design": 4},
-  "average": 4.25,
-  "models_used": {"evaluator": "inherit", "adversarial_primary": "inherit", "adversarial_cross": "{{ adversarial_model }}"},
-  "findings_count": {"high_confidence": 0, "structural": 1, "adversarial_primary": 0, "adversarial_cross": 0},
-  "auto_fixed": 0,
-  "ask_items": 0
-}
-```
-
----
-
-## Step 5: Capture Learnings
+## Step 2: Capture Learnings
 
 After the evaluation is complete, capture non-obvious insights as learnings:
 

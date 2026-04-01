@@ -59,9 +59,9 @@ Step 5/9  工作流模式
 |-------|-------------|------|
 | `/harness-brainstorm` | "我有个想法" | 发散探索 → vision → 计划 → 审阅门控 → 自动构建/评审/发布/回顾 |
 | `/harness-vision` | "我有个方向" | 澄清 vision → 计划 → 审阅门控 → 自动构建/评审/发布/回顾 |
-| `/harness-plan` | "我有个需求" | 细化计划 + 对抗审查 → 审阅门控 → 自动构建/评审/发布/回顾 |
+| `/harness-plan` | "我有个需求" | 细化计划 + 5 角色审查 → 审阅门控 → 自动构建/评审/发布/回顾 |
 
-三个入口共享同一自动执行管线：构建 → 评审 → 迭代 → 发布 → 轻量级自动回顾（含 Memverse 学习）。
+三个入口采用递归组合（brainstorm ⊃ vision ⊃ plan），共享同一计划审查 → ship 管线。计划批准后，`/harness-ship` 处理构建 → 评审 → 迭代 → 发布 → PR。
 
 **工具类技能：**
 
@@ -76,7 +76,7 @@ Step 5/9  工作流模式
 | 技能 | 功能 |
 |-------|-------------|
 | `/harness-build` | 按契约实现，运行 CI，分流失败，输出结构化构建日志 |
-| `/harness-eval` | 三通道对抗代码评审（结构化评估器 + 主模型对抗 + 跨模型对抗） |
+| `/harness-eval` | 5 角色代码评审（架构师 + 产品负责人 + 工程师 + QA + 项目经理） |
 | `/harness-ship` | 全自动流水线：测试 → 评审 → 修复 → 提交 → push → PR |
 | `/harness-doc-release` | 文档同步：检测代码变更导致的文档过时 |
 
@@ -86,7 +86,7 @@ Step 5/9  工作流模式
 /harness-plan 给用户注册接口添加输入校验
 ```
 
-Harness 会生成计划并对抗审查、应用审阅门控、构建、三通道对抗代码评审、自动修复琐碎问题、创建可二分提交并开 PR — 全程不离开 IDE。
+Harness 会生成计划并 5 角色审查、应用审阅门控、构建、5 角色代码评审、自动修复琐碎问题、创建可二分提交并开 PR — 全程不离开 IDE。
 
 ### 更新
 
@@ -102,23 +102,29 @@ harness update --check  # 仅检查是否有新版本
 ```
 你输入 /harness-ship "添加功能 X"
   → Rebase 到 main，运行测试
-  → 三通道对抗评审（全部并行调度）：
-      第一通道：harness-evaluator 结构化评审（4 个维度）
-      第二通道：主模型对抗子代理（攻击面）
-      第三通道：跨模型评审（独立视角）
+  → 5 角色代码评审（全部并行调度）：
+      架构师：      设计 + 安全评审
+      产品负责人：  完整性 + 行为正确性
+      工程师：      质量 + 性能
+      QA：          回归 + 测试（唯一运行 CI 的角色）
+      项目经理：    scope + 交付
   → Fix-First：自动修复琐碎问题，重要问题询问你
   → 可二分提交 + push + PR
 ```
 
-### 三通道对抗评审
+### 统一 5 角色评审系统
 
-每次代码变更经过三个独立的子代理审查，**全部并行调度**以最大化速度：
+同一组 5 个专业角色同时审查**计划**和**代码**，全部并行调度：
 
-1. **结构化评审** — `harness-evaluator` 子代理在完整性、质量、回归、设计四个维度评分
-2. **主模型对抗** — 全新上下文的对抗子代理搜寻安全漏洞、竞态条件、边界场景、资源泄漏
-3. **跨模型对抗** — 基于不同模型族的审查器（默认 `gpt-4.1`，可配置）提供独立视角
+| 角色 | 计划审查关注点 | 代码评审关注点 |
+|------|---------------|---------------|
+| **架构师** | 可行性、模块影响、依赖变更 | 架构合规性、分层、耦合、安全 |
+| **产品负责人** | vision 对齐、用户价值、验收标准 | 需求覆盖、行为正确性 |
+| **工程师** | 实现可行性、代码复用、技术债 | 代码质量、DRY、模式一致、性能 |
+| **QA** | 测试策略、边界值、回归风险 | 测试覆盖、边界场景、CI 健康度 |
+| **项目经理** | 任务分解、并行度、scope | scope 漂移、计划完成度、交付风险 |
 
-三个通道并行调度。被 2+ 通道发现的问题标注为**高置信度**。对抗模型可在 `.agents/config.toml` 中配置。
+被 2+ 角色发现的问题标注为**高置信度**。每个角色可通过 `.agents/config.toml` 中的 `[native.role_models]` 使用不同模型。
 
 ### Fix-First 自动修复
 
@@ -131,13 +137,12 @@ harness update --check  # 仅检查是否有新版本
 
 ### 优雅降级
 
-| 第一通道（结构化） | 第二通道（主模型对抗） | 第三通道（跨模型） | 行为 |
-|---------------------|-----------------|---------------|----------|
-| 正常 | 正常 | 正常 | 完整三通道综合 |
-| 正常 | 正常 | 失败 | 双通道，标记 `[primary-only]` |
-| 正常 | 失败 | 正常 | 双通道，无主模型对抗 |
-| 正常 | 失败 | 失败 | 单审查器模式 |
-| 失败 | — | — | 致命 — 无法评估 |
+| 响应角色数 | 行为 |
+|-----------|------|
+| 5/5 | 完整综合 + 交叉验证 |
+| 3-4/5 | 使用可用评审继续，标注缺失视角 |
+| 1-2/5 | 记录警告，降级到单 agent 评审 |
+| 0/5 | 回退到单个 generalPurpose 子代理 |
 
 ---
 
@@ -149,16 +154,19 @@ harness update --check  # 仅检查是否有新版本
 |----------|------|---------|
 | `/harness-brainstorm` | `.cursor/skills/harness/harness-brainstorm/SKILL.md` | 发散探索 → vision → 计划 → 自动执行到 PR |
 | `/harness-vision` | `.cursor/skills/harness/harness-vision/SKILL.md` | 澄清 vision → 计划 → 自动执行到 PR |
-| `/harness-plan` | `.cursor/skills/harness/harness-plan/SKILL.md` | 细化计划 + 对抗审查 → 自动执行到 PR |
+| `/harness-plan` | `.cursor/skills/harness/harness-plan/SKILL.md` | 细化计划 + 5 角色审查 → 自动执行到 PR |
 | `/harness-build` | `.cursor/skills/harness/harness-build/SKILL.md` | 构建：按契约实现、运行 CI、分流失败 |
-| `/harness-eval` | `.cursor/skills/harness/harness-eval/SKILL.md` | 三通道评审 + Fix-First 自动修复 |
-| `/harness-ship` | `.cursor/skills/harness/harness-ship/SKILL.md` | 全自动流水线：测试 → 评审 → 修复 → 提交 → PR |
+| `/harness-eval` | `.cursor/skills/harness/harness-eval/SKILL.md` | 5 角色代码评审 + Fix-First 自动修复 |
+| `/harness-ship` | `.cursor/skills/harness/harness-ship/SKILL.md` | 全自动流水线：测试 → 5 角色评审 → 修复 → 提交 → PR |
 | `/harness-investigate` | `.cursor/skills/harness/harness-investigate/SKILL.md` | 系统化 bug 调查与最小修复 |
 | `/harness-learn` | `.cursor/skills/harness/harness-learn/SKILL.md` | Memverse 知识管理 |
 | `/harness-doc-release` | `.cursor/skills/harness/harness-doc-release/SKILL.md` | 代码变更后文档同步 |
 | `/harness-retro` | `.cursor/skills/harness/harness-retro/SKILL.md` | 工程回顾与趋势分析 |
-| 对抗审查器 | `.cursor/agents/harness-adversarial-reviewer.md` | 跨模型代码审查器（模型可配置） |
-| 评估器 | `.cursor/agents/harness-evaluator.md` | 结构化评估器，由 eval/ship 调度执行 Pass 1 |
+| 架构师 | `.cursor/agents/harness-architect.md` | 架构评审器（计划 + 代码双模式） |
+| 产品负责人 | `.cursor/agents/harness-product-owner.md` | 产品评审器（计划 + 代码双模式） |
+| 工程师 | `.cursor/agents/harness-engineer.md` | 工程评审器（计划 + 代码双模式） |
+| QA | `.cursor/agents/harness-qa.md` | QA 评审器，CI 唯一执行者（计划 + 代码双模式） |
+| 项目经理 | `.cursor/agents/harness-project-manager.md` | 交付评审器（计划 + 代码双模式） |
 | 信任边界 | `.cursor/rules/harness-trust-boundary.mdc` | 始终生效：Builder 产出视为不可信 |
 | Fix-First | `.cursor/rules/harness-fix-first.mdc` | 始终生效：发现先分类再呈现 |
 | 工作流约定 | `.cursor/rules/harness-workflow.mdc` | 提交格式、分支命名、任务状态 |
@@ -190,6 +198,7 @@ harness install --force
 | `native.review_gate` | "eng" | 评审门禁严格度。允许值：`eng`（硬门禁）、`advisory`（仅记录） |
 | `native.plan_review_gate` | "auto" | 计划审阅门控模式。允许值：`human`（始终暂停）、`ai`（自动批准）、`auto`（复杂度自适应） |
 | `native.retro_window_days` | 14 | 回顾分析默认时间窗口（天数，1–365） |
+| `native.role_models.*` | `{}` | 每角色模型覆盖。键：`architect`、`product_owner`、`engineer`、`qa`、`project_manager` |
 | `autonomous.max_tasks_per_session` | 10 | 每自主会话最大任务数 |
 | `autonomous.consecutive_block_limit` | 2 | 连续阻塞达到此次数后停止 |
 

@@ -1,0 +1,90 @@
+## Code Review — 5-Role Parallel Dispatch
+
+### Dispatch
+
+Launch **all 5 reviewers in parallel** via the Task tool, each with `mode: code-eval`.
+Send a SINGLE message containing all 5 Task tool calls:
+
+| # | Subagent | Prompt extras |
+|---|----------|---------------|
+| 1 | `harness-architect` | `mode: code-eval`, diff range, architecture docs paths |
+| 2 | `harness-product-owner` | `mode: code-eval`, diff range, `.agents/vision.md` path, plan path |
+| 3 | `harness-engineer` | `mode: code-eval`, diff range, source directory listing |
+| 4 | `harness-qa` | `mode: code-eval`, diff range, `ci_command: {{ ci_command }}`, test directory listing |
+| 5 | `harness-project-manager` | `mode: code-eval`, diff range, plan path, deliverable checklist |
+
+Each prompt must include:
+- `diff_range: {{ trunk_branch }}..HEAD`
+- `plan_path: .agents/tasks/task-NNN/plan.md` (if available)
+- `memverse_domain: {{ project_name }}`
+- Role-specific context listed above
+
+**CI Ownership:** Only `harness-qa` runs `{{ ci_command }}`. Other roles
+perform read-only analysis on the diff.
+
+**Degradation ladder** (if Task tool calls fail):
+- **5/5 respond:** Full synthesis as described below
+- **3-4/5 respond:** Proceed with available reviews, note missing perspectives
+- **1-2/5 respond:** Log warning, fall through to single-agent review
+- **0/5 respond:** Fall back to single generalPurpose subagent review
+
+### Synthesis
+
+After all responses arrive:
+
+1. **Merge findings** from all 5 reviewers into a unified list
+2. **Cross-validate:** If 2+ roles flag the same issue → mark `[HIGH CONFIDENCE]`
+3. **Compute dimension scores** (map role to evaluation dimension):
+   ```
+   Design:        [architect score]/10
+   Completeness:  [product-owner score]/10
+   Quality:       [engineer score]/10
+   Regression:    [qa score]/10
+   Scope:         [project-manager score]/10
+   ─────────────────────────────────
+   Weighted avg:  [avg]/10
+   ```
+4. **Determine verdict:**
+   - All PASS and avg ≥ {{ pass_threshold }} → `PASS`
+   - Any CRITICAL finding → `ISSUES_FOUND`
+   - avg < {{ pass_threshold }} → `ISSUES_FOUND`
+
+### Fix-First Triage
+
+Apply the Fix-First heuristic from `.cursor/rules/harness-fix-first.mdc`:
+
+- **AUTO-FIX:** High certainty + small blast radius + reversible → fix immediately
+- **ASK:** Security, behavior change, architecture change, data model change,
+  or low confidence → batch and present to user
+
+After auto-fixes, re-run `{{ ci_command }}` to verify no regressions.
+Log: `[AUTO-FIXED] file:line — Problem → What you did`
+
+### Final Verdict
+
+Write the evaluation summary to `.agents/tasks/task-NNN/evaluation-rN.md`:
+
+```markdown
+# Code Evaluation — Round N
+
+## Dimension Scores
+| Dimension | Role | Score |
+|-----------|------|-------|
+| Design | architect | N/10 |
+| Completeness | product-owner | N/10 |
+| Quality | engineer | N/10 |
+| Regression | qa | N/10 |
+| Scope | project-manager | N/10 |
+| **Weighted Average** | | **N/10** |
+
+## Findings
+[merged findings list]
+
+## Auto-Fixed
+[list of auto-fixed items]
+
+## ASK Items
+[items requiring user decision]
+
+## Verdict: PASS | FAIL
+```

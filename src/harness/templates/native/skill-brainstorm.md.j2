@@ -59,88 +59,12 @@ Which approach resonates? Or combine/remix ideas?
 
 Let the user pick, combine, or propose alternatives. This is a conversation, not a quiz.
 
-### Step 3: Converge on Vision
-
-Once the direction is clear:
-
-1. Read `.agents/vision.md` (if it exists)
-2. Synthesize the brainstorm conclusion into a vision delta
-3. Append the new direction as an incremental section:
-   ```markdown
-   ## [Date] — [Brief Title]
-   [2-3 sentence summary of the direction chosen and why]
-   ```
-4. Write back to `.agents/vision.md` (create if missing)
-
 ---
 
-## Phase 1: Plan Generation
-
-{{ planner_principles }}
-
-### Context Gathering
-
-1. Read `.agents/config.toml` and the updated `.agents/vision.md`
-2. Scan project structure: key directories, languages, frameworks, existing patterns
-3. Run `git log --oneline -10` for recent activity
-4. Determine next task number: `ls .agents/tasks/`
-
-### Produce Spec + Contract
-
-Write to `.agents/tasks/task-NNN/plan.md`:
-
-```markdown
-# Spec
-
-## Analysis
-(What problem, why it matters — reference the brainstorm exploration)
-
-## Approach
-(The chosen approach from Phase 0, with implementation details)
-
-## Impact
-(Files affected, blast radius, dependencies)
-
-## Risks
-(Potential risks and mitigations)
-
----
-
-# Contract
-
-## Deliverables
-- [ ] Deliverable 1: description + acceptance criteria
-- [ ] Deliverable 2: description + acceptance criteria
-
-## Acceptance Criteria
-- All tests pass
-- No regressions
-- (specific criteria)
-
-## Out of Scope
-- (explicitly list)
-```
-
-### Adversarial Review
-
-Dispatch a reviewer subagent to challenge the plan (same as harness-plan Step 3):
-
-- **subagent_type**: `"generalPurpose"`
-- Review on 5 dimensions: completeness, consistency, clarity, scope, feasibility
-- Max 3 review iterations, fix issues between rounds
-
-If plan has 5+ deliverables or touches 10+ files, also dispatch cross-model review
-via `harness-adversarial-reviewer` subagent.
-
----
-
+{# Recursive composition: brainstorm = Phase 0 + vision-content (which includes plan-content) #}
 {% with interaction_depth="high" %}
-{% include 'sections/_review-gate.md.j2' %}
+{% include 'sections/_vision-content.md.j2' %}
 {% endwith %}
-
----
-
-{% include 'sections/_execution-pipeline.md.j2' %}
 
 ---
 

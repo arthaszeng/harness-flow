@@ -2,7 +2,7 @@
 name: harness-vision
 description: >-
   Vision-driven pipeline: clarify an incremental vision, generate a plan with
-  adversarial review, then auto-execute build/eval/ship/retro. Use when saying
+  multi-role review, then auto-execute build/eval/ship/retro. Use when saying
   "vision", "I want to build this direction", "this is what I need",
   or "harness vision". (harness)
 ---
@@ -46,85 +46,12 @@ Examples of when to clarify:
 
 If the vision is clear enough to plan from, skip clarification and proceed.
 
-### Step 3: Update Vision
-
-1. Read `.agents/vision.md` (create if missing)
-2. Append the new direction as an incremental section:
-   ```markdown
-   ## [Date] — [Brief Title]
-   [2-3 sentence summary of the vision increment]
-   ```
-3. Write back to `.agents/vision.md`
-
 ---
 
-## Phase 1: Plan Generation
-
-{{ planner_principles }}
-
-### Context Gathering
-
-1. Read the updated `.agents/vision.md` as the planning north star
-2. Scan project structure: key directories, languages, frameworks, existing patterns
-3. Run `git log --oneline -10` for recent activity
-4. Determine next task number: `ls .agents/tasks/`
-
-### Produce Spec + Contract
-
-Write to `.agents/tasks/task-NNN/plan.md`:
-
-```markdown
-# Spec
-
-## Analysis
-(What problem, why it matters — trace back to the vision)
-
-## Approach
-(Implementation approach derived from the vision direction)
-
-## Impact
-(Files affected, blast radius, dependencies)
-
-## Risks
-(Potential risks and mitigations)
-
----
-
-# Contract
-
-## Deliverables
-- [ ] Deliverable 1: description + acceptance criteria
-- [ ] Deliverable 2: description + acceptance criteria
-
-## Acceptance Criteria
-- All tests pass
-- No regressions
-- (specific criteria)
-
-## Out of Scope
-- (explicitly list)
-```
-
-### Adversarial Review
-
-Dispatch a reviewer subagent to challenge the plan:
-
-- **subagent_type**: `"generalPurpose"`
-- Review on 5 dimensions: completeness, consistency, clarity, scope, feasibility
-- Max 3 review iterations, fix issues between rounds
-
-If plan has 5+ deliverables or touches 10+ files, also dispatch cross-model review
-via `harness-adversarial-reviewer` subagent.
-
----
-
+{# Recursive composition: vision = Phase 0 + vision-content (which includes plan-content) #}
 {% with interaction_depth="medium" %}
-{% include 'sections/_review-gate.md.j2' %}
+{% include 'sections/_vision-content.md.j2' %}
 {% endwith %}
-
----
-
-{% include 'sections/_execution-pipeline.md.j2' %}
 
 ---
 

@@ -59,9 +59,9 @@ Open your project in Cursor. You now have **three primary entry points** that co
 |-------|-------------|--------------|
 | `/harness-brainstorm` | "I have an idea" | Divergent exploration → vision → plan → review gate → auto build/eval/ship/retro |
 | `/harness-vision` | "I have a direction" | Clarify vision → plan → review gate → auto build/eval/ship/retro |
-| `/harness-plan` | "I have a requirement" | Refine plan + adversarial review → review gate → auto build/eval/ship/retro |
+| `/harness-plan` | "I have a requirement" | Refine plan + 5-role review → review gate → auto build/eval/ship/retro |
 
-All three share the same autonomous execution pipeline after plan approval: build → eval → iterate → ship → lightweight auto-retro with Memverse learning.
+All three use recursive composition (brainstorm ⊃ vision ⊃ plan) and share the same plan review → ship pipeline. After plan approval, `/harness-ship` handles build → eval → iterate → ship → PR.
 
 **Utility skills:**
 
@@ -76,7 +76,7 @@ All three share the same autonomous execution pipeline after plan approval: buil
 | Skill | What it does |
 |-------|-------------|
 | `/harness-build` | Implement the contract, run CI, triage failures, write a structured build log |
-| `/harness-eval` | Three-pass adversarial code review (evaluator + primary adversarial + cross-model) |
+| `/harness-eval` | 5-role code review (architect + product-owner + engineer + qa + project-manager) |
 | `/harness-ship` | Full pipeline: test → review → fix → commit → push → PR |
 | `/harness-doc-release` | Documentation sync: detect stale docs after code changes |
 
@@ -86,7 +86,7 @@ All three share the same autonomous execution pipeline after plan approval: buil
 /harness-plan add input validation to the user registration endpoint
 ```
 
-Harness will plan with adversarial review, apply a review gate, build, run three-pass adversarial code review, auto-fix trivial issues, create bisectable commits, and open a PR — all without leaving your IDE.
+Harness will plan with 5-role review, apply a review gate, build, run 5-role code evaluation, auto-fix trivial issues, create bisectable commits, and open a PR — all without leaving your IDE.
 
 ### Updating
 
@@ -102,23 +102,29 @@ harness update --check  # just check if a new version is available
 ```
 You type /harness-ship "add feature X"
   → Rebase onto main, run tests
-  → Three-pass adversarial review (all dispatched in parallel):
-      Pass 1: harness-evaluator structured review (4 dimensions)
-      Pass 2: Primary adversarial subagent (attack surface)
-      Pass 3: Cross-model review (independent perspective)
+  → 5-role code evaluation (all dispatched in parallel):
+      Architect:       design + security review
+      Product Owner:   completeness + behavior
+      Engineer:        quality + performance
+      QA:              regression + testing (only role running CI)
+      Project Manager: scope + delivery
   → Fix-First: auto-fix trivial issues, ask about important ones
   → Bisectable commits + push + PR
 ```
 
-### Three-pass adversarial review
+### Unified 5-role review system
 
-Every code change goes through three independent subagents, **all dispatched in parallel**:
+The same 5 specialized roles review both **plans** and **code**, dispatched in parallel:
 
-1. **Structured review** — The `harness-evaluator` subagent scores on completeness, quality, regression, and design
-2. **Primary adversarial** — A fresh adversarial subagent hunts for security holes, race conditions, edge cases, and resource leaks
-3. **Cross-model** — A reviewer from a different model family (default: `gpt-4.1`, configurable) provides independent perspective
+| Role | Plan Review Focus | Code Eval Focus |
+|------|------------------|-----------------|
+| **Architect** | Feasibility, module impact, dependency changes | Conformance, layering, coupling, security |
+| **Product Owner** | Vision alignment, user value, acceptance criteria | Requirement coverage, behavioral correctness |
+| **Engineer** | Implementation feasibility, code reuse, tech debt | Code quality, DRY, patterns, performance |
+| **QA** | Test strategy, boundary values, regression risk | Test coverage, edge cases, CI health |
+| **Project Manager** | Task decomposition, parallelism, scope | Scope drift, plan completion, delivery risk |
 
-All three passes are dispatched in parallel for maximum speed. Findings from 2+ passes are flagged as **high confidence**. The adversarial model is configurable in `.agents/config.toml`.
+Findings from 2+ roles are flagged as **high confidence**. Each role can use a different model via `[native.role_models]` in `.agents/config.toml`.
 
 ### Fix-First auto-remediation
 
@@ -131,13 +137,12 @@ Trivial issues never block shipping. Important decisions always get human judgme
 
 ### Graceful degradation
 
-| Pass 1 (Structured) | Pass 2 (Primary) | Pass 3 (Cross-model) | Behavior |
-|---------------------|-----------------|---------------|----------|
-| OK | OK | OK | Full three-pass synthesis |
-| OK | OK | Failed | Two-pass, tagged `[primary-only]` |
-| OK | Failed | OK | Two-pass without primary subagent |
-| OK | Failed | Failed | Single-reviewer mode |
-| Failed | — | — | Fatal — cannot evaluate |
+| Roles responding | Behavior |
+|-----------------|----------|
+| 5/5 | Full synthesis with cross-validation |
+| 3-4/5 | Proceed with available reviews, note missing perspectives |
+| 1-2/5 | Log warning, fall through to single-agent review |
+| 0/5 | Fall back to single generalPurpose subagent |
 
 ---
 
@@ -149,16 +154,19 @@ When you choose cursor-native mode, `harness init` generates:
 |----------|------|---------|
 | `/harness-brainstorm` | `.cursor/skills/harness/harness-brainstorm/SKILL.md` | Divergent exploration → vision → plan → auto-execute to PR |
 | `/harness-vision` | `.cursor/skills/harness/harness-vision/SKILL.md` | Clarify vision → plan → auto-execute to PR |
-| `/harness-plan` | `.cursor/skills/harness/harness-plan/SKILL.md` | Refine plan + adversarial review → auto-execute to PR |
+| `/harness-plan` | `.cursor/skills/harness/harness-plan/SKILL.md` | Refine plan + 5-role review → auto-execute to PR |
 | `/harness-build` | `.cursor/skills/harness/harness-build/SKILL.md` | Build: implement contract, run CI, triage failures |
-| `/harness-eval` | `.cursor/skills/harness/harness-eval/SKILL.md` | Three-pass review with Fix-First auto-remediation |
-| `/harness-ship` | `.cursor/skills/harness/harness-ship/SKILL.md` | Full pipeline: test → review → fix → commit → PR |
+| `/harness-eval` | `.cursor/skills/harness/harness-eval/SKILL.md` | 5-role code review with Fix-First auto-remediation |
+| `/harness-ship` | `.cursor/skills/harness/harness-ship/SKILL.md` | Full pipeline: test → 5-role review → fix → commit → PR |
 | `/harness-investigate` | `.cursor/skills/harness/harness-investigate/SKILL.md` | Systematic bug investigation and minimal fix |
 | `/harness-learn` | `.cursor/skills/harness/harness-learn/SKILL.md` | Memverse knowledge management |
 | `/harness-doc-release` | `.cursor/skills/harness/harness-doc-release/SKILL.md` | Documentation sync after code changes |
 | `/harness-retro` | `.cursor/skills/harness/harness-retro/SKILL.md` | Engineering retrospective and trend analysis |
-| Adversarial reviewer | `.cursor/agents/harness-adversarial-reviewer.md` | Cross-model code reviewer (configurable model) |
-| Evaluator | `.cursor/agents/harness-evaluator.md` | Structured evaluator, dispatched by eval/ship for Pass 1 |
+| Architect | `.cursor/agents/harness-architect.md` | Architecture reviewer (plan + code, dual-mode) |
+| Product Owner | `.cursor/agents/harness-product-owner.md` | Product reviewer (plan + code, dual-mode) |
+| Engineer | `.cursor/agents/harness-engineer.md` | Engineering reviewer (plan + code, dual-mode) |
+| QA | `.cursor/agents/harness-qa.md` | QA reviewer with CI ownership (plan + code, dual-mode) |
+| Project Manager | `.cursor/agents/harness-project-manager.md` | Delivery reviewer (plan + code, dual-mode) |
 | Trust boundary | `.cursor/rules/harness-trust-boundary.mdc` | Always-on: Builder output is untrusted |
 | Fix-First | `.cursor/rules/harness-fix-first.mdc` | Always-on: classify findings before presenting |
 | Workflow conventions | `.cursor/rules/harness-workflow.mdc` | Commit format, branch naming, task state |
@@ -190,6 +198,7 @@ Project settings live in `.agents/config.toml`:
 | `native.review_gate` | "eng" | Review gate strictness. Allowed: `eng` (hard gate), `advisory` (log only) |
 | `native.plan_review_gate` | "auto" | Plan review gate mode. Allowed: `human` (always stop), `ai` (auto-approve), `auto` (complexity-adaptive) |
 | `native.retro_window_days` | 14 | Default retro analysis window in days (1–365) |
+| `native.role_models.*` | `{}` | Per-role model overrides. Keys: `architect`, `product_owner`, `engineer`, `qa`, `project_manager` |
 | `autonomous.max_tasks_per_session` | 10 | Max tasks per autonomous session |
 | `autonomous.consecutive_block_limit` | 2 | Stop after this many consecutive blocks |
 

@@ -1,0 +1,59 @@
+## Plan Review — 5-Role Parallel Dispatch
+
+### Dispatch
+
+Launch **all 5 reviewers in parallel** via the Task tool, each with `mode: plan-review`.
+Send a SINGLE message containing all 5 Task tool calls:
+
+| # | Subagent | Prompt extras |
+|---|----------|---------------|
+| 1 | `harness-architect` | `mode: plan-review`, plan path, `ARCHITECTURE.md` path if exists |
+| 2 | `harness-product-owner` | `mode: plan-review`, plan path, `.agents/vision.md` path |
+| 3 | `harness-engineer` | `mode: plan-review`, plan path, source directory listing |
+| 4 | `harness-qa` | `mode: plan-review`, plan path, test directory listing, `ci_command: {{ ci_command }}` |
+| 5 | `harness-project-manager` | `mode: plan-review`, plan path, deliverable count, file impact count |
+
+Each prompt must include:
+- `memverse_domain: {{ project_name }}`
+- The plan file content (read it and embed, or provide the path)
+- Role-specific context listed above
+
+**Degradation ladder** (if Task tool calls fail):
+- **5/5 respond:** Full synthesis as described below
+- **3-4/5 respond:** Proceed with available reviews, note missing perspectives
+- **1-2/5 respond:** Log warning, fall through to single-agent review
+- **0/5 respond:** Fall back to single generalPurpose subagent review
+
+### Synthesis
+
+After all responses arrive:
+
+1. **Merge findings** from all 5 reviewers into a unified list
+2. **Cross-validate:** If 2+ roles flag the same issue → mark `[HIGH CONFIDENCE]`
+3. **Resolve conflicts:** If roles contradict each other, present both perspectives
+   and mark as `[TASTE DECISION]` for the review gate
+4. **Compute aggregate score:**
+   ```
+   Architecture:  [architect score]/10
+   Product:       [product-owner score]/10
+   Engineering:   [engineer score]/10
+   Testing:       [qa score]/10
+   Delivery:      [project-manager score]/10
+   ─────────────────────────────────
+   Weighted avg:  [avg]/10
+   ```
+5. **Determine verdict:**
+   - All PASS and avg ≥ {{ pass_threshold }} → `PLAN_APPROVED`
+   - Any CRITICAL finding → `PLAN_NEEDS_REVISION`
+   - avg < {{ pass_threshold }} → `PLAN_NEEDS_REVISION`
+
+### Re-Plan Loop (max 2 iterations)
+
+If verdict is `PLAN_NEEDS_REVISION`:
+
+1. Fix all CRITICAL and WARN findings in the plan file
+2. Re-dispatch the full 5-role review (same parallel pattern)
+3. If same issues recur (convergence guard) → accept and note as `## Unresolved Concerns`
+4. After 2 iterations → proceed to review gate with current state
+
+Persist the final synthesis as `## Plan Review Summary` in the plan file.
