@@ -9,9 +9,8 @@ description: >-
 
 # Harness Ship — Fully Automated Pipeline
 
-You are running the `/harness-ship` workflow. This is a **non-interactive, fully automated**
-pipeline. Do NOT ask for confirmation at any step. The user said `/harness-ship` which
-means DO IT. Run straight through and output the PR URL at the end.
+You are running the `/harness-ship` workflow. This is a **minimal-interaction** pipeline.
+Run straight through and output the PR URL at the end.
 
 **Only stop for:**
 - On the trunk branch (abort)
@@ -93,8 +92,6 @@ If conflicts are complex or ambiguous, run `git rebase --abort`, **STOP** and sh
 **If already up to date:** Continue silently.
 
 ---
-
-{% include 'sections/_ci-verification.md.j2' %}
 
 ## Step 3: Run Tests (on merged code)
 
@@ -220,32 +217,40 @@ If any NOT DONE items: note them in the PR body. Continue — this is informatio
 
 ## Step 3.8: Pre-Landing Review + Adversarial (always-on)
 
-Run the full `/harness-eval` workflow inline. This includes:
+Run the `/harness-eval` workflow inline. Dispatch all review passes in parallel using
+Task tool — the main agent orchestrates but does NOT perform the structured review itself.
 
-1. **Pass 1**: Structured review using the review checklist (`.cursor/skills/harness/harness-eval/review-checklist.md`).
-   Apply in two passes: Pass 1 CRITICAL, Pass 2 INFORMATIONAL.
-   Every finding MUST include a confidence score (1-10):
-   - 9-10: verified bug → show normally
-   - 7-8: high confidence pattern match → show normally
-   - 5-6: moderate → show with caveat "Medium confidence — verify"
-   - 3-4: low → suppress to appendix
-   - 1-2: speculation → only report if CRITICAL
-   Score on 4 dimensions, collect findings
-1b. **Specialist Dispatch** (conditional): If diff >= 50 lines, dispatch testing + security + performance specialists in parallel via Task tool (subagent_type: generalPurpose, model: fast). If diff > 200 lines or CRITICAL findings exist, also dispatch red-team. Each specialist reads its checklist from `.cursor/skills/harness/harness-eval/specialists/{name}.md` and outputs JSON findings. Deduplicate by fingerprint, boost confidence +1 for multi-specialist agreement. Compute PR Quality Score: `max(0, 10 - critical*2 - informational*0.5)`.
+{% if adversarial_mechanism == 'subagent' %}
+**Adversarial dispatch: subagent-only mode.**
+If a subagent fails, that pass is marked FAILED — no inline fallback.
+{% elif adversarial_mechanism == 'cli' %}
+**Adversarial dispatch: CLI mode.**
+Do NOT use Task tool for adversarial review. Use external CLI instead.
+{% else %}{# auto #}
+**Adversarial dispatch: auto mode.**
+Attempt subagent dispatch; degrade gracefully on failure.
+{% endif %}
 
-2. **Pass 2**: Claude adversarial subagent — dispatch via Task tool:
+**Dispatch all passes in one message** (multiple Task tool calls):
+
+1. **Pass 1**: Structured review — dispatch `harness-evaluator` subagent:
+   - **subagent_type**: `"harness-evaluator"`
+   - **description**: `"Structured code review + scoring"`
+   - **prompt**: "Task plan: .agents/tasks/task-NNN/plan.md (or 'No plan'). Build log: .agents/tasks/task-NNN/build-rN.log (or 'No build log'). Diff range: {{ trunk_branch }}..HEAD. CI command: {{ ci_command }}. Review and score following your agent instructions."
+
+2. **Pass 2**: Primary adversarial subagent:
    - **subagent_type**: `"generalPurpose"`
    - **prompt**: "Read the diff with `git diff {{ trunk_branch }}..HEAD`. Think like an attacker and chaos engineer. Find ways this code will fail in production. Edge cases, race conditions, security holes, resource leaks, failure modes, silent data corruption. No compliments — just problems. Output JSON findings: {\"severity\":\"CRITICAL|INFORMATIONAL\",\"confidence\":N,\"path\":\"file\",\"line\":N,\"category\":\"cat\",\"summary\":\"desc\",\"fix\":\"fix\",\"action\":\"FIXABLE|INVESTIGATE\"}"
    - **description**: `"Adversarial code review"`
 
-3. **Pass 3**: Cross-model adversarial — dispatch via Task tool:
+3. **Pass 3**: Cross-model adversarial:
    - **subagent_type**: `"harness-adversarial-reviewer"`
    - **prompt**: (same adversarial prompt — the subagent uses {{ adversarial_model }})
    - **description**: `"Cross-model adversarial review"`
 
-**Dispatch Passes 2 and 3 in parallel** (multiple Task calls in one message).
+3b. **Specialists** (if diff >= 50 lines): dispatch testing + security + performance specialists in parallel (subagent_type: generalPurpose, model: fast). After Pass 1 returns, if CRITICAL findings or diff > 200 lines, also dispatch red-team.
 
-4. **Cross-model synthesis**: Merge findings. High confidence = found by 2+ passes.
+4. **Cross-model synthesis**: Merge findings from all passes. High confidence = found by 2+ passes.
 
 5. **Fix-First flow**:
    - **AUTO-FIX** findings: apply fixes, commit: `git commit -m "fix: auto-fix review findings"`
@@ -447,7 +452,7 @@ Claiming work is complete without verification is dishonesty, not efficiency.
    ## Review Findings
    - High confidence: N findings
    - Auto-fixed: M findings
-   - Models used: Claude structured ✓ Claude adversarial ✓/✗ {{ adversarial_model }} ✓/✗
+   - Models used: Evaluator ✓/✗  Primary adversarial ✓/✗  {{ adversarial_model }} ✓/✗
 
    ## Plan Completion
    <completion checklist summary, or "No plan file">
@@ -508,7 +513,7 @@ Write ship metrics to `.agents/tasks/task-NNN/ship-metrics.json` for retrospecti
   "auto_fixed": 1,
   "test_count": 285,
   "eval_rounds": 1,
-  "models_used": ["claude", "{{ adversarial_model }}"]
+  "models_used": ["primary", "{{ adversarial_model }}"]
 }
 ```
 

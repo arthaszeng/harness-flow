@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import sys
 
@@ -62,8 +62,9 @@ class ModelsConfig(BaseModel):
 class NativeModeConfig(BaseModel):
     """Cursor-native mode settings — only used when workflow.mode = cursor-native."""
     adversarial_model: str = "gpt-4.1"
-    adversarial_mechanism: str = "auto"  # subagent / cli / auto
-    review_gate: str = "eng"  # which review layers are hard gates
+    adversarial_mechanism: Literal["subagent", "cli", "auto"] = "auto"
+    review_gate: Literal["eng", "advisory"] = "eng"
+    retro_window_days: int = 14
     hooks_pre_build: str = ""
     hooks_post_eval: str = ""
     hooks_pre_ship: str = ""

@@ -9,12 +9,12 @@ description: >-
 
 # Harness Plan
 
-You are running the `/harness-plan` workflow. This is a **non-interactive** planning
-pipeline. Do NOT ask for confirmation except when the requirement itself is ambiguous.
-Produce the plan, run adversarial review, and output the final hardened plan.
+You are running the `/harness-plan` workflow. This is a **minimal-interaction** planning
+pipeline. Produce the plan, run adversarial review, and output the final hardened plan.
 
 **Only stop for:**
 - Ambiguous requirements (ask for clarification ONCE, then proceed with best interpretation)
+- Taste decisions or user challenges identified by dual-model review (Step 5)
 
 **Never stop for:**
 - Plan format approval
@@ -192,7 +192,7 @@ Present findings under a `CROSS-MODEL REVIEW:` header.
 ```
 PLAN DUAL VOICES — CONSENSUS TABLE
 ═══════════════════════════════════════════════════
-  Dimension       Claude    Cross-Model   Consensus
+  Dimension       Primary   Cross-Model   Consensus
   Completeness    PASS      PASS          CONFIRMED
   Consistency     PASS      ISSUE         DISAGREE → [TASTE DECISION]
   Clarity         PASS      PASS          CONFIRMED

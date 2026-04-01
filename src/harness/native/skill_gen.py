@@ -7,6 +7,7 @@ and .cursor/rules/.
 
 from __future__ import annotations
 
+import functools
 import importlib.resources
 from pathlib import Path
 
@@ -94,6 +95,7 @@ def _build_context(cfg: HarnessConfig, *, role: str = "") -> dict[str, str]:
         "hooks_post_eval": cfg.native.hooks_post_eval,
         "hooks_pre_ship": cfg.native.hooks_pre_ship,
         "review_gate": cfg.native.review_gate,
+        "retro_window_days": str(cfg.native.retro_window_days),
     }
 
     if role == "adversarial_reviewer":
@@ -135,12 +137,17 @@ def _builder_principles() -> str:
     )
 
 
-def _render_template(tmpl_dir: Path, tmpl_name: str, context: dict[str, str]) -> str:
-    env = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(str(tmpl_dir)),
+@functools.lru_cache(maxsize=4)
+def _get_jinja_env(tmpl_dir: str) -> jinja2.Environment:
+    return jinja2.Environment(
+        loader=jinja2.FileSystemLoader(tmpl_dir),
         undefined=jinja2.Undefined,
         keep_trailing_newline=True,
     )
+
+
+def _render_template(tmpl_dir: Path, tmpl_name: str, context: dict[str, str]) -> str:
+    env = _get_jinja_env(str(tmpl_dir.resolve()))
     tmpl = env.get_template(tmpl_name)
     return tmpl.render(**context)
 

@@ -51,14 +51,25 @@ This generates skills, subagents, and rules directly into your `.cursor/` direct
 
 ### 3. Use it in Cursor
 
-Open your project in Cursor. You now have four skills available:
+Open your project in Cursor. You now have eight skills (four core + four auxiliary):
+
+**Core workflow skills:**
 
 | Skill | What it does |
 |-------|-------------|
 | `/harness-plan` | Analyze a requirement, produce a spec and contract with adversarial review |
 | `/harness-build` | Implement the contract, run CI, triage failures, write a structured build log |
-| `/harness-eval` | Three-pass adversarial code review (Claude + Claude adversarial + GPT cross-model) |
-| `/harness-ship` | **Full pipeline in one command**: plan → build → review → fix → commit → push → PR |
+| `/harness-eval` | Three-pass adversarial code review (evaluator + primary adversarial + cross-model) |
+| `/harness-ship` | Full pipeline: test → review → fix → commit → push → PR |
+
+**Auxiliary skills:**
+
+| Skill | What it does |
+|-------|-------------|
+| `/harness-investigate` | Systematic bug investigation: reproduce → hypothesize → verify → minimal fix |
+| `/harness-learn` | Memverse knowledge management: store, retrieve, update project learnings |
+| `/harness-doc-release` | Documentation sync: detect stale docs after code changes |
+| `/harness-retro` | Engineering retrospective: commit analytics, hotspot detection, trend tracking |
 
 **Try it now** — open Cursor chat and type:
 
@@ -66,7 +77,7 @@ Open your project in Cursor. You now have four skills available:
 /harness-ship add input validation to the user registration endpoint
 ```
 
-Harness will plan the work, implement it, run a three-pass adversarial review, auto-fix trivial issues, create bisectable commits, and open a PR — all without leaving your IDE.
+Harness will run tests, a three-pass adversarial review, auto-fix trivial issues, create bisectable commits, and open a PR — all without leaving your IDE.
 
 ### Updating
 
@@ -82,23 +93,23 @@ harness update --check  # just check if a new version is available
 ```
 You type /harness-ship "add feature X"
   → Rebase onto main, run tests
-  → Three-pass adversarial review:
-      Pass 1: Claude structured review (4 dimensions)
-      Pass 2: Claude adversarial subagent (attack surface)
-      Pass 3: GPT cross-model review (independent perspective)
+  → Three-pass adversarial review (all dispatched in parallel):
+      Pass 1: harness-evaluator structured review (4 dimensions)
+      Pass 2: Primary adversarial subagent (attack surface)
+      Pass 3: Cross-model review (independent perspective)
   → Fix-First: auto-fix trivial issues, ask about important ones
   → Bisectable commits + push + PR
 ```
 
 ### Three-pass adversarial review
 
-Every code change goes through three independent reviewers:
+Every code change goes through three independent subagents, **all dispatched in parallel**:
 
-1. **Structured review** — Claude scores on completeness, quality, regression, and design
-2. **Claude adversarial** — A fresh Claude subagent hunts for security holes, race conditions, edge cases, and resource leaks
-3. **GPT cross-model** — A GPT-based reviewer (default: `gpt-4.1`) provides perspective from a different model family
+1. **Structured review** — The `harness-evaluator` subagent scores on completeness, quality, regression, and design
+2. **Primary adversarial** — A fresh adversarial subagent hunts for security holes, race conditions, edge cases, and resource leaks
+3. **Cross-model** — A reviewer from a different model family (default: `gpt-4.1`, configurable) provides independent perspective
 
-Passes 2 and 3 are dispatched in parallel for speed. Findings from 2+ passes are flagged as **high confidence**. The adversarial model is configurable in `.agents/config.toml`.
+All three passes are dispatched in parallel for maximum speed. Findings from 2+ passes are flagged as **high confidence**. The adversarial model is configurable in `.agents/config.toml`.
 
 ### Fix-First auto-remediation
 
@@ -111,11 +122,11 @@ Trivial issues never block shipping. Important decisions always get human judgme
 
 ### Graceful degradation
 
-| Pass 1 (Structured) | Pass 2 (Claude) | Pass 3 (GPT) | Behavior |
+| Pass 1 (Structured) | Pass 2 (Primary) | Pass 3 (Cross-model) | Behavior |
 |---------------------|-----------------|---------------|----------|
 | OK | OK | OK | Full three-pass synthesis |
-| OK | OK | Failed | Two-pass, tagged `[claude-only]` |
-| OK | Failed | OK | Two-pass without Claude subagent |
+| OK | OK | Failed | Two-pass, tagged `[primary-only]` |
+| OK | Failed | OK | Two-pass without primary subagent |
 | OK | Failed | Failed | Single-reviewer mode |
 | Failed | — | — | Fatal — cannot evaluate |
 
@@ -130,12 +141,17 @@ When you choose cursor-native mode, `harness init` generates:
 | `/harness-plan` | `.cursor/skills/harness/harness-plan/SKILL.md` | Plan and decompose a task with adversarial spec review |
 | `/harness-build` | `.cursor/skills/harness/harness-build/SKILL.md` | Build: implement contract, run CI, triage failures |
 | `/harness-eval` | `.cursor/skills/harness/harness-eval/SKILL.md` | Three-pass review with Fix-First auto-remediation |
-| `/harness-ship` | `.cursor/skills/harness/harness-ship/SKILL.md` | Full automated pipeline: test → review → fix → commit → PR |
-| Adversarial reviewer | `.cursor/agents/harness-adversarial-reviewer.md` | Cross-model code reviewer (configurable model, `readonly: true`) |
-| Evaluator | `.cursor/agents/harness-evaluator.md` | Structured evaluator with JSON output (`readonly: true`) |
+| `/harness-ship` | `.cursor/skills/harness/harness-ship/SKILL.md` | Full pipeline: test → review → fix → commit → PR |
+| `/harness-investigate` | `.cursor/skills/harness/harness-investigate/SKILL.md` | Systematic bug investigation and minimal fix |
+| `/harness-learn` | `.cursor/skills/harness/harness-learn/SKILL.md` | Memverse knowledge management |
+| `/harness-doc-release` | `.cursor/skills/harness/harness-doc-release/SKILL.md` | Documentation sync after code changes |
+| `/harness-retro` | `.cursor/skills/harness/harness-retro/SKILL.md` | Engineering retrospective and trend analysis |
+| Adversarial reviewer | `.cursor/agents/harness-adversarial-reviewer.md` | Cross-model code reviewer (configurable model) |
+| Evaluator | `.cursor/agents/harness-evaluator.md` | Structured evaluator, dispatched by eval/ship for Pass 1 |
 | Trust boundary | `.cursor/rules/harness-trust-boundary.mdc` | Always-on: Builder output is untrusted |
 | Fix-First | `.cursor/rules/harness-fix-first.mdc` | Always-on: classify findings before presenting |
 | Workflow conventions | `.cursor/rules/harness-workflow.mdc` | Commit format, branch naming, task state |
+| Safety guardrails | `.cursor/rules/harness-safety-guardrails.mdc` | Always-on: destructive command detection and warning |
 
 To regenerate after config changes:
 

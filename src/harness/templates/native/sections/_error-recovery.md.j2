@@ -1,8 +1,10 @@
 ## Error Recovery Matrix
 
+Note: test failure triage (pre-existing vs in-branch) is handled in Step 4 above.
+This matrix covers non-test errors.
+
 | Error Type | Signal | Recovery Action |
 |-----------|--------|----------------|
-| CI failure (test) | test runner exit code != 0 | Read failure output, fix code, re-run `{{ ci_command }}` |
 | CI failure (lint) | linter errors in output | Auto-fix if linter supports it, commit, re-run |
 | CI failure (type) | type checker errors | Fix type annotations, re-run |
 | Git conflict | merge conflict markers | Report to user, do not attempt resolution |

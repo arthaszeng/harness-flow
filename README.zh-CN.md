@@ -51,14 +51,25 @@ Step 5/9  工作流模式
 
 ### 3. 在 Cursor 中使用
 
-在 Cursor 中打开项目，你现在拥有四个技能：
+在 Cursor 中打开项目，你现在拥有八个技能（四个核心 + 四个辅助）：
+
+**核心流程技能：**
 
 | 技能 | 功能 |
 |-------|-------------|
 | `/harness-plan` | 分析需求，产出 spec 和契约，含对抗式评审 |
 | `/harness-build` | 按契约实现，运行 CI，分流失败，输出结构化构建日志 |
-| `/harness-eval` | 三通道对抗代码评审（Claude + Claude 对抗 + GPT 跨模型） |
-| `/harness-ship` | **一条命令走完全流程**：计划 → 构建 → 评审 → 修复 → 提交 → push → PR |
+| `/harness-eval` | 三通道对抗代码评审（结构化评估器 + 主模型对抗 + 跨模型对抗） |
+| `/harness-ship` | 全自动流水线：测试 → 评审 → 修复 → 提交 → push → PR |
+
+**辅助技能：**
+
+| 技能 | 功能 |
+|-------|-------------|
+| `/harness-investigate` | 系统化 bug 调查：复现 → 假设 → 验证 → 最小修复 |
+| `/harness-learn` | Memverse 知识管理：存储、检索、更新项目经验 |
+| `/harness-doc-release` | 文档同步：检测代码变更导致的文档过时 |
+| `/harness-retro` | 工程回顾：提交分析、热点检测、趋势追踪 |
 
 **现在就试试** — 打开 Cursor 聊天窗口，输入：
 
@@ -66,7 +77,7 @@ Step 5/9  工作流模式
 /harness-ship 给用户注册接口添加输入校验
 ```
 
-Harness 会规划工作、实现代码、跑三通道对抗评审、自动修复琐碎问题、创建可二分提交并开 PR — 全程不离开 IDE。
+Harness 会跑测试、三通道对抗评审、自动修复琐碎问题、创建可二分提交并开 PR — 全程不离开 IDE。
 
 ### 更新
 
@@ -82,23 +93,23 @@ harness update --check  # 仅检查是否有新版本
 ```
 你输入 /harness-ship "添加功能 X"
   → Rebase 到 main，运行测试
-  → 三通道对抗评审：
-      第一通道：Claude 结构化评审（4 个维度）
-      第二通道：Claude 对抗子代理（攻击面）
-      第三通道：GPT 跨模型评审（独立视角）
+  → 三通道对抗评审（全部并行调度）：
+      第一通道：harness-evaluator 结构化评审（4 个维度）
+      第二通道：主模型对抗子代理（攻击面）
+      第三通道：跨模型评审（独立视角）
   → Fix-First：自动修复琐碎问题，重要问题询问你
   → 可二分提交 + push + PR
 ```
 
 ### 三通道对抗评审
 
-每次代码变更经过三个独立审查者：
+每次代码变更经过三个独立的子代理审查，**全部并行调度**以最大化速度：
 
-1. **结构化评审** — Claude 在完整性、质量、回归、设计四个维度评分
-2. **Claude 对抗** — 全新上下文的 Claude 子代理搜寻安全漏洞、竞态条件、边界场景、资源泄漏
-3. **GPT 跨模型** — 基于 GPT 的审查器（默认 `gpt-4.1`）从不同模型族提供独立视角
+1. **结构化评审** — `harness-evaluator` 子代理在完整性、质量、回归、设计四个维度评分
+2. **主模型对抗** — 全新上下文的对抗子代理搜寻安全漏洞、竞态条件、边界场景、资源泄漏
+3. **跨模型对抗** — 基于不同模型族的审查器（默认 `gpt-4.1`，可配置）提供独立视角
 
-第二、三通道并行调度以加速。被 2+ 通道发现的问题标注为**高置信度**。对抗模型可在 `.agents/config.toml` 中配置。
+三个通道并行调度。被 2+ 通道发现的问题标注为**高置信度**。对抗模型可在 `.agents/config.toml` 中配置。
 
 ### Fix-First 自动修复
 
@@ -111,11 +122,11 @@ harness update --check  # 仅检查是否有新版本
 
 ### 优雅降级
 
-| 第一通道（结构化） | 第二通道（Claude） | 第三通道（GPT） | 行为 |
+| 第一通道（结构化） | 第二通道（主模型对抗） | 第三通道（跨模型） | 行为 |
 |---------------------|-----------------|---------------|----------|
 | 正常 | 正常 | 正常 | 完整三通道综合 |
-| 正常 | 正常 | 失败 | 双通道，标记 `[claude-only]` |
-| 正常 | 失败 | 正常 | 双通道，无 Claude 子代理 |
+| 正常 | 正常 | 失败 | 双通道，标记 `[primary-only]` |
+| 正常 | 失败 | 正常 | 双通道，无主模型对抗 |
 | 正常 | 失败 | 失败 | 单审查器模式 |
 | 失败 | — | — | 致命 — 无法评估 |
 
@@ -131,11 +142,16 @@ harness update --check  # 仅检查是否有新版本
 | `/harness-build` | `.cursor/skills/harness/harness-build/SKILL.md` | 构建：按契约实现、运行 CI、分流失败 |
 | `/harness-eval` | `.cursor/skills/harness/harness-eval/SKILL.md` | 三通道评审 + Fix-First 自动修复 |
 | `/harness-ship` | `.cursor/skills/harness/harness-ship/SKILL.md` | 全自动流水线：测试 → 评审 → 修复 → 提交 → PR |
-| 对抗审查器 | `.cursor/agents/harness-adversarial-reviewer.md` | 跨模型代码审查器（模型可配置，`readonly: true`） |
-| 评估器 | `.cursor/agents/harness-evaluator.md` | 结构化评估器，JSON 输出（`readonly: true`） |
+| `/harness-investigate` | `.cursor/skills/harness/harness-investigate/SKILL.md` | 系统化 bug 调查与最小修复 |
+| `/harness-learn` | `.cursor/skills/harness/harness-learn/SKILL.md` | Memverse 知识管理 |
+| `/harness-doc-release` | `.cursor/skills/harness/harness-doc-release/SKILL.md` | 代码变更后文档同步 |
+| `/harness-retro` | `.cursor/skills/harness/harness-retro/SKILL.md` | 工程回顾与趋势分析 |
+| 对抗审查器 | `.cursor/agents/harness-adversarial-reviewer.md` | 跨模型代码审查器（模型可配置） |
+| 评估器 | `.cursor/agents/harness-evaluator.md` | 结构化评估器，由 eval/ship 调度执行 Pass 1 |
 | 信任边界 | `.cursor/rules/harness-trust-boundary.mdc` | 始终生效：Builder 产出视为不可信 |
 | Fix-First | `.cursor/rules/harness-fix-first.mdc` | 始终生效：发现先分类再呈现 |
 | 工作流约定 | `.cursor/rules/harness-workflow.mdc` | 提交格式、分支命名、任务状态 |
+| 安全护栏 | `.cursor/rules/harness-safety-guardrails.mdc` | 始终生效：破坏性命令检测与警告 |
 
 更新配置后重新生成：
 

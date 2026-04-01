@@ -25,16 +25,16 @@ Run these commands in parallel:
 
 ```bash
 # Commit history
-git log --oneline --since="N days ago" --format="%H|%ai|%an|%s"
+git log --oneline --since="{{ retro_window_days }} days ago" --format="%H|%ai|%an|%s"
 
 # Shortlog for per-author summary
-git shortlog --since="N days ago" -sne
+git shortlog --since="{{ retro_window_days }} days ago" -sne
 
 # File change stats
-git log --since="N days ago" --numstat --format=""
+git log --since="{{ retro_window_days }} days ago" --numstat --format=""
 
 # Diff stats
-git diff HEAD~$(git rev-list --count --since="N days ago" HEAD)..HEAD --stat
+git diff HEAD~$(git rev-list --count --since="{{ retro_window_days }} days ago" HEAD)..HEAD --stat
 ```
 
 ---
