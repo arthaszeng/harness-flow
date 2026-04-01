@@ -40,7 +40,7 @@ cd /path/to/your/project
 harness init
 ```
 
-向导引导你完成配置：项目信息、主干分支、CI 命令和可选的 Memverse 集成。Skills、subagents 和 rules 直接生成到 `.cursor/` 目录。
+向导引导你完成配置：项目信息、主干分支、CI 命令、Memverse 集成和评估器模型。Skills、subagents 和 rules 直接生成到 `.cursor/` 目录。
 
 ### 3. 开始使用
 
@@ -127,7 +127,7 @@ harness init
 | `workflow.pass_threshold` | 7.0 | 评审通过阈值（1-10） |
 | `workflow.auto_merge` | true | 通过后自动合并分支 |
 | `workflow.branch_prefix` | "agent" | 任务分支前缀 |
-| `native.adversarial_model` | "gpt-4.1" | 跨模型审查器 |
+| `native.evaluator_model` | "inherit" | 评审角色使用的模型（`inherit` = 使用 IDE 默认模型） |
 | `native.review_gate` | "eng" | 评审门禁（`eng` = 硬门禁，`advisory` = 仅记录） |
 | `native.plan_review_gate` | "auto" | 计划审阅门控（`human` / `ai` / `auto`） |
 | `native.gate_full_review_min` | 5 | 完整人工审查的升级分数阈值 |
@@ -141,8 +141,7 @@ harness init
 
 | 命令 | 说明 |
 |------|------|
-| `harness init [--name] [--ci] [-y]` | 初始化项目（交互式向导） |
-| `harness install [--force] [--lang]` | 重新生成 `.cursor/` 产物 |
+| `harness init [--name] [--ci] [-y] [--force]` | 初始化项目（交互式向导）；`--force` 重新生成产物 |
 | `harness status` | 显示当前任务进度 |
 | `harness update [--check] [--force]` | 自更新，重装产物 |
 | `harness --version` | 显示版本 |
@@ -155,7 +154,7 @@ harness init
 harness-flow/
 ├── src/harness/
 │   ├── cli.py              # CLI 入口（Typer）
-│   ├── commands/            # init、install、update、status
+│   ├── commands/            # init、update、status
 │   ├── core/                # 配置、状态、UI、事件
 │   ├── native/              # Cursor 原生产物生成器
 │   ├── templates/           # Jinja2 模板
