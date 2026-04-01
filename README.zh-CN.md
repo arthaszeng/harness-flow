@@ -171,12 +171,60 @@ harness update --check  # 仅检查是否有新版本
 | Fix-First | `.cursor/rules/harness-fix-first.mdc` | 始终生效：发现先分类再呈现 |
 | 工作流约定 | `.cursor/rules/harness-workflow.mdc` | 提交格式、分支命名、任务状态 |
 | 安全护栏 | `.cursor/rules/harness-safety-guardrails.mdc` | 始终生效：破坏性命令检测与警告 |
+| Worktrees 配置 | `.cursor/worktrees.json` | 并行开发：worktree 初始化脚本，隔离各 agent 的工作目录 |
 
 更新配置后重新生成：
 
 ```bash
 harness install --force
 ```
+
+---
+
+## 并行开发
+
+> **重要功能** — 同时运行多个 harness 任务，互不干扰。
+
+在同一项目中打开多个 Cursor agent tab 时，它们共享同一个工作目录。一个任务未提交的修改会泄漏到另一个任务中，导致混乱和构建失败。
+
+Harness 通过 **Cursor Parallel Agents** 自动解决此问题 — 每个 agent 获得独立的 git worktree，拥有独立的文件检出。Cursor 自动创建、使用和清理这些 worktree。
+
+### 工作原理
+
+`harness init` 生成 `.cursor/worktrees.json`，告诉 Cursor 如何初始化每个 worktree。生成的脚本会：
+
+1. 创建 `.agents/tasks/` 和 `.agents/archive/` 目录
+2. 从主 worktree 复制 `.agents/config.toml` 和 `.agents/vision.md`
+3. 从主 worktree 复制整个 `.cursor/` 目录（skills、agents、rules）
+
+这确保每个并行 agent 都拥有完整的 harness 上下文 — skills、评审角色和项目配置 — 无需手动设置。
+
+### 使用方式
+
+无需额外步骤。`harness init` 之后，直接在 Cursor 中打开多个 agent tab 开始不同任务即可。每个 agent 在独立的隔离检出中运行。
+
+### 自定义
+
+编辑 `.cursor/worktrees.json` 添加项目特定的初始化命令（如依赖安装）：
+
+```json
+{
+  "setup-worktree-unix": [
+    "mkdir -p .agents/tasks .agents/archive",
+    "cp \"$ROOT_WORKTREE_PATH/.agents/config.toml\" .agents/ 2>/dev/null || true",
+    "cp \"$ROOT_WORKTREE_PATH/.agents/vision.md\" .agents/ 2>/dev/null || true",
+    "cp -r \"$ROOT_WORKTREE_PATH/.cursor\" . 2>/dev/null || true",
+    "pip install -e '.[dev]' -q"
+  ]
+}
+```
+
+> **注意：** `harness install --force` 会重新生成默认的 `worktrees.json`。如果你有自定义的初始化命令，请先备份或在重新生成后重新添加。
+
+### 已知限制
+
+- **worktree 中的 LSP 支持**尚不可用 — Cursor worktree 检出中的 lint 和类型检查可能无法工作。这是 Cursor 侧的限制，正在积极开发中。
+- **需要 Cursor 2.0+** 的 Parallel Agents 支持。在旧版本上，`worktrees.json` 文件是无害的，会被忽略。
 
 ---
 

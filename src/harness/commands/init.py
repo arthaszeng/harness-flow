@@ -492,6 +492,7 @@ def run_init(
         typer.echo(t("native.hint_build"))
         typer.echo(t("native.hint_eval"))
         typer.echo(t("native.hint_ship"))
+        typer.echo(t("native.hint_parallel"))
     else:
         typer.echo(t("init.next_auto"))
         typer.echo(t("init.next_status"))
