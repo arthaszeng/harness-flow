@@ -31,13 +31,13 @@ Assess whether the plan needs human review by calculating an **escalation score*
 | Quality | plan review aggregate score < {{ pass_threshold }}/10 | +2 |
 | Type | new feature (not fix or refactor) | +1 |
 
-**Score >= 5 → FULL REVIEW**
+**Score >= {{ gate_full_review_min }} → FULL REVIEW**
 Present the complete plan + 5-role review summary. Wait for:
 - **approve** → continue
 - **edit: [feedback]** → re-plan
 - **reject** → terminate
 
-**Score 3–4 → SUMMARY CONFIRM**
+**Score {{ gate_summary_confirm_min }}–{{ gate_full_review_min | int - 1 }} → SUMMARY CONFIRM**
 Show a concise summary:
 ```
 PLAN SUMMARY
@@ -53,7 +53,7 @@ PLAN SUMMARY
 Continue? [approve / edit / reject]
 ```
 
-**Score < 3 → AUTO PROCEED**
+**Score < {{ gate_summary_confirm_min }} → AUTO PROCEED**
 Log: `"Plan auto-approved (gate score N, aggregate review score X/10)"` and continue.
 {% else %}
 Plan is auto-approved after plan review completes. Continue immediately.
