@@ -445,7 +445,7 @@ ruff check src/ tests/
 ruff format src/ tests/
 ```
 
-Ruff 面向 Python 3.9，行宽 100。
+Ruff 面向 Python 3.9，行宽 100。发布流程参见 [docs/releasing.md](docs/releasing.md)。
 
 ---
 
@@ -455,6 +455,7 @@ Ruff 面向 Python 3.9，行宽 100。
 |-----|-------------|
 | [docs/zh-CN/state-machine.md](docs/zh-CN/state-machine.md) | 任务状态机 |
 | [docs/zh-CN/compatibility.md](docs/zh-CN/compatibility.md) | CLI 版本要求 |
+| [docs/releasing.md](docs/releasing.md) | 发布流程和 PyPI 发布 |
 | [examples/todo-api-benchmark/](examples/todo-api-benchmark/) | 基准：五个任务，三种模式 |
 
 ---
