@@ -175,8 +175,9 @@ Project settings live in `.agents/config.toml`:
 | `workflow.dual_evaluation` | false | Add alignment review after quality review |
 | `workflow.branch_prefix` | "agent" | Task branch prefix |
 | `native.adversarial_model` | "gpt-4.1" | Cross-model reviewer model |
-| `native.adversarial_mechanism` | "auto" | Adversarial dispatch: `subagent` / `cli` / `auto` |
-| `native.review_gate` | "eng" | Which review layers are hard gates |
+| `native.adversarial_mechanism` | "auto" | Adversarial dispatch mode. Allowed: `subagent`, `cli`, `auto` |
+| `native.review_gate` | "eng" | Review gate strictness. Allowed: `eng` (hard gate), `advisory` (log only) |
+| `native.retro_window_days` | 14 | Default retro analysis window in days (1–365) |
 | `autonomous.max_tasks_per_session` | 10 | Max tasks per autonomous session |
 | `autonomous.consecutive_block_limit` | 2 | Stop after this many consecutive blocks |
 

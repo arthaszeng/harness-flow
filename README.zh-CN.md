@@ -175,8 +175,9 @@ harness install --force
 | `workflow.dual_evaluation` | false | 质量评审后再跑对齐评审 |
 | `workflow.branch_prefix` | "agent" | 任务分支前缀 |
 | `native.adversarial_model` | "gpt-4.1" | 跨模型审查器模型 |
-| `native.adversarial_mechanism` | "auto" | 对抗评审调度：`subagent` / `cli` / `auto` |
-| `native.review_gate` | "eng" | 哪些评审层为硬门禁 |
+| `native.adversarial_mechanism` | "auto" | 对抗评审调度模式。允许值：`subagent`、`cli`、`auto` |
+| `native.review_gate` | "eng" | 评审门禁严格度。允许值：`eng`（硬门禁）、`advisory`（仅记录） |
+| `native.retro_window_days` | 14 | 回顾分析默认时间窗口（天数，1–365） |
 | `autonomous.max_tasks_per_session` | 10 | 每自主会话最大任务数 |
 | `autonomous.consecutive_block_limit` | 2 | 连续阻塞达到此次数后停止 |
 

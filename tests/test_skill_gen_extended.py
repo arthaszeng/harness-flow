@@ -561,3 +561,33 @@ def test_config_rejects_invalid_review_gate(tmp_path: Path):
     from harness.core.config import NativeModeConfig
     with __import__("pytest").raises(pydantic.ValidationError):
         NativeModeConfig(review_gate="invalid_value")
+
+
+def test_templates_have_no_undefined_variables(tmp_path: Path):
+    """All templates render without UndefinedError when given the full context.
+
+    Uses StrictUndefined to catch typos that the lenient prod mode would silently swallow.
+    """
+    import jinja2
+    from harness.native.skill_gen import _build_context, _get_template_dir
+
+    cfg = _make_cfg(tmp_path)
+    tmpl_dir = _get_template_dir()
+    context = _build_context(cfg)
+
+    strict_env = jinja2.Environment(
+        loader=jinja2.FileSystemLoader(str(tmpl_dir)),
+        undefined=jinja2.StrictUndefined,
+        keep_trailing_newline=True,
+    )
+
+    for tmpl_name in strict_env.loader.list_templates():
+        if not tmpl_name.endswith(".j2"):
+            continue
+        tmpl = strict_env.get_template(tmpl_name)
+        try:
+            tmpl.render(**context)
+        except jinja2.UndefinedError as exc:
+            __import__("pytest").fail(
+                f"Undefined variable in {tmpl_name}: {exc}"
+            )

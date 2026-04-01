@@ -33,8 +33,9 @@ git shortlog --since="{{ retro_window_days }} days ago" -sne
 # File change stats
 git log --since="{{ retro_window_days }} days ago" --numstat --format=""
 
-# Diff stats
-git diff HEAD~$(git rev-list --count --since="{{ retro_window_days }} days ago" HEAD)..HEAD --stat
+# Diff stats (uses merge-base for shallow-clone safety)
+OLDEST=$(git rev-list --since="{{ retro_window_days }} days ago" HEAD | tail -1)
+if [ -n "$OLDEST" ]; then git diff "$OLDEST"..HEAD --stat; else echo "No commits in window"; fi
 ```
 
 ---
