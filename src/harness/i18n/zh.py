@@ -403,13 +403,15 @@ MESSAGES: dict[str, str] = {
     "update.upgrade_ok": "  ✓ 升级完成",
     "update.upgrade_fail": "  ✗ 升级失败（见上方错误）",
     "update.skip_reinstall": "  由于升级失败，跳过 agent 重装",
-    "update.reinstall": "\n  重新安装 agent 定义 (--force)...\n",
+    "update.reinstall": "\n  重新安装 agent 定义...\n",
+    "update.skip_reinstall_unreachable": "  ⚠ 无法确认版本，跳过 agent 重装（使用 --force 强制重装）",
     "update.migrate_title": "\n  配置迁移检查:\n",
     "update.config_parse_error": "  [警告] 无法解析 {path}",
     "update.config_missing_section": "  [提示] 缺少 [{section}] 配置段 ({desc}) — 建议添加",
     "update.config_new_key": "  [提示] 新增配置 [{section}] {config_key} = \"{default}\"（最新版本可用）",
     "update.config_deprecated": "  [警告] 已废弃配置 {config_key} — 请改用 {replacement}（自 {version} 起）",
     "update.config_ok": "  ✓ 配置已是最新",
+    "update.skip_reinstall_up_to_date": "  ✓ 版本未变更，跳过 agent 重装（使用 --force 强制重装）",
     "update.done": "\n  更新完成。{warnings} 个配置警告。",
 
 }

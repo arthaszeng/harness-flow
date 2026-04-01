@@ -108,16 +108,20 @@ def update(
         False, "--check", "-c",
         help="Only check for updates, do not install",
     ),
+    force: bool = typer.Option(
+        False, "--force", "-f",
+        help="Force reinstall agent definitions even when already up to date",
+    ),
 ) -> None:
     """Self-update harness, reinstall artifacts, and migrate config.
 
-    Performs three steps:
+    Steps:
     1. Check PyPI for newer version and upgrade via pip
-    2. Reinstall agent definitions (equivalent to harness install --force)
+    2. Reinstall agent definitions (only after upgrade, or with --force)
     3. Check .agents/config.toml for new/deprecated keys
     """
     from harness.commands.update import run_update
-    run_update(check=check)
+    run_update(check=check, force=force)
 
 
 @app.command()

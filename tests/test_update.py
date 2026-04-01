@@ -92,3 +92,75 @@ class TestRunUpdate:
             with pytest.raises(typer.Exit) as exc_info:
                 run_update(check=True)
             assert exc_info.value.exit_code == 1
+
+    def test_up_to_date_skips_install(self):
+        """When already at latest version, run_install should NOT be called."""
+        from harness import __version__
+        with (
+            patch("harness.commands.update._get_latest_version", return_value=__version__),
+            patch("harness.commands.update._migrate_config", return_value=0),
+            patch("harness.commands.update.Path") as mock_path_cls,
+        ):
+            mock_path_cls.cwd.return_value = Path("/fake")
+            with patch.dict("sys.modules", {"harness.commands.install": MagicMock()}):
+                import harness.commands.install as mock_install_mod
+                with patch.object(mock_install_mod, "run_install", create=True) as mock_install:
+                    run_update(check=False, force=False)
+                    mock_install.assert_not_called()
+
+    def test_upgrade_runs_install(self):
+        """After a successful pip upgrade, run_install SHOULD be called."""
+        with (
+            patch("harness.commands.update._get_latest_version", return_value="99.0.0"),
+            patch("harness.commands.update._pip_upgrade", return_value=True),
+            patch("harness.commands.update._migrate_config", return_value=0),
+            patch("harness.commands.update.Path") as mock_path_cls,
+        ):
+            mock_path_cls.cwd.return_value = Path("/fake")
+            mock_run_install = MagicMock()
+            with patch("harness.commands.install.run_install", mock_run_install, create=True):
+                run_update(check=False, force=False)
+            mock_run_install.assert_called_once_with(force=True, lang=None)
+
+    def test_force_runs_install_when_up_to_date(self):
+        """With --force, run_install should be called even when already at latest."""
+        from harness import __version__
+        with (
+            patch("harness.commands.update._get_latest_version", return_value=__version__),
+            patch("harness.commands.update._migrate_config", return_value=0),
+            patch("harness.commands.update.Path") as mock_path_cls,
+        ):
+            mock_path_cls.cwd.return_value = Path("/fake")
+            mock_run_install = MagicMock()
+            with patch("harness.commands.install.run_install", mock_run_install, create=True):
+                run_update(check=False, force=True)
+            mock_run_install.assert_called_once_with(force=True, lang=None)
+
+    def test_pypi_unreachable_skips_install_runs_migration(self):
+        """When PyPI is unreachable (non-check mode), skip install but run config migration."""
+        with (
+            patch("harness.commands.update._get_latest_version", return_value=None),
+            patch("harness.commands.update._migrate_config", return_value=0) as mock_migrate,
+            patch("harness.commands.update.Path") as mock_path_cls,
+        ):
+            mock_path_cls.cwd.return_value = Path("/fake")
+            with patch.dict("sys.modules", {"harness.commands.install": MagicMock()}):
+                import harness.commands.install as mock_install_mod
+                with patch.object(mock_install_mod, "run_install", create=True) as mock_install:
+                    run_update(check=False, force=False)
+                    mock_install.assert_not_called()
+            mock_migrate.assert_called_once()
+
+    def test_pip_upgrade_failure_does_not_install(self):
+        """When pip upgrade fails, run_install should NOT be called and exit with code 1."""
+        with (
+            patch("harness.commands.update._get_latest_version", return_value="99.0.0"),
+            patch("harness.commands.update._pip_upgrade", return_value=False),
+        ):
+            with patch.dict("sys.modules", {"harness.commands.install": MagicMock()}):
+                import harness.commands.install as mock_install_mod
+                with patch.object(mock_install_mod, "run_install", create=True) as mock_install:
+                    with pytest.raises(typer.Exit) as exc_info:
+                        run_update(check=False, force=False)
+                    assert exc_info.value.exit_code == 1
+                    mock_install.assert_not_called()

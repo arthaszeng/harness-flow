@@ -20,7 +20,6 @@ def _get_latest_version() -> str | None:
             capture_output=True, text=True, timeout=15,
         )
         if result.returncode == 0:
-            # Output: "harness-orchestrator (X.Y.Z)"
             for line in result.stdout.splitlines():
                 if "harness-orchestrator" in line and "(" in line:
                     return line.split("(")[1].split(")")[0].strip()
@@ -64,7 +63,6 @@ def _migrate_config(project_root: Path) -> int:
 
     warnings = 0
 
-    # Check for recommended sections
     recommended_sections = {
         "project": "project name and language",
         "ci": "CI gate command",
@@ -75,7 +73,6 @@ def _migrate_config(project_root: Path) -> int:
             typer.echo(t("update.config_missing_section", section=section, desc=desc))
             warnings += 1
 
-    # Check for new keys that may have been added in recent versions
     workflow = data.get("workflow", {})
     new_workflow_keys = {
         "mode": "orchestrator",
@@ -86,7 +83,6 @@ def _migrate_config(project_root: Path) -> int:
             typer.echo(t("update.config_new_key", section="workflow", config_key=key, default=default))
             warnings += 1
 
-    # Check for deprecated keys (none yet, but extensible)
     deprecated: list[tuple[str, str, str]] = [
         # ("old_section.old_key", "replacement", "version"),
     ]
@@ -110,7 +106,7 @@ def _migrate_config(project_root: Path) -> int:
     return warnings
 
 
-def run_update(*, check: bool = False) -> None:
+def run_update(*, check: bool = False, force: bool = False) -> None:
     """Execute the harness update workflow."""
     typer.echo(t("update.title"))
     typer.echo(t("update.current_version", version=__version__))
@@ -119,34 +115,43 @@ def run_update(*, check: bool = False) -> None:
     typer.echo(t("update.checking"))
     latest = _get_latest_version()
 
+    upgraded = False
+    pypi_unreachable = False
+
     if latest is None:
         typer.echo(t("update.check_failed"))
+        pypi_unreachable = True
         if check:
             raise typer.Exit(1)
     elif latest == __version__:
         typer.echo(t("update.up_to_date"))
+        if check:
+            raise typer.Exit(0)
     else:
         typer.echo(t("update.new_version", version=latest))
         if check:
             raise typer.Exit(0)
-
-        # Step 2: Self-update via pip
         if not _pip_upgrade():
             typer.echo(t("update.skip_reinstall"))
             raise typer.Exit(1)
+        upgraded = True
 
     if check:
         raise typer.Exit(0)
 
-    # Step 3: Reinstall agent definitions (equivalent to harness install --force)
-    typer.echo(t("update.reinstall"))
-    from harness.commands.install import run_install
-    run_install(force=True, lang=None)
+    # Step 2: Reinstall agent definitions (only after upgrade or with --force)
+    if upgraded or force:
+        typer.echo(t("update.reinstall"))
+        from harness.commands.install import run_install
+        run_install(force=True, lang=None)
+    elif pypi_unreachable:
+        typer.echo(t("update.skip_reinstall_unreachable"))
+    else:
+        typer.echo(t("update.skip_reinstall_up_to_date"))
 
-    # Step 4: Config migration
+    # Step 3: Config migration (always runs as lightweight health check)
     typer.echo(t("update.migrate_title"))
     project_root = Path.cwd()
     warning_count = _migrate_config(project_root)
 
-    # Summary
     typer.echo(t("update.done", warnings=warning_count))
