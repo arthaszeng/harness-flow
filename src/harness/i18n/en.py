@@ -414,13 +414,15 @@ MESSAGES: dict[str, str] = {
     "update.upgrade_ok": "  ✓ Upgrade complete",
     "update.upgrade_fail": "  ✗ Upgrade failed (see errors above)",
     "update.skip_reinstall": "  Skipping artifact reinstall due to upgrade failure",
-    "update.reinstall": "\n  Reinstalling agent definitions (--force)...\n",
+    "update.reinstall": "\n  Reinstalling agent definitions...\n",
+    "update.skip_reinstall_unreachable": "  ⚠ Could not verify version, skipping agent reinstall (use --force to reinstall)",
     "update.migrate_title": "\n  Config migration check:\n",
     "update.config_parse_error": "  [warn] Could not parse {path}",
     "update.config_missing_section": "  [info] Missing [{section}] section ({desc}) — consider adding it",
     "update.config_new_key": "  [info] New key [{section}] {config_key} = \"{default}\" available since latest version",
     "update.config_deprecated": "  [warn] Deprecated key {config_key} — use {replacement} instead (since {version})",
     "update.config_ok": "  ✓ Config is up to date",
+    "update.skip_reinstall_up_to_date": "  ✓ Already at latest version, skipping agent reinstall (use --force to reinstall)",
     "update.done": "\n  Update complete. {warnings} config warning(s).",
 
 }
