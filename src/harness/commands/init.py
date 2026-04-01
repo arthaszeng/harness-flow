@@ -175,6 +175,7 @@ def _step_evaluator_model() -> str:
     console = get_ui().console
     _cyber_step(console, 5, 5, t("init.step_evaluator_label"))
     console.print(f"  [cyber.dim]{t('init.evaluator_desc')}[/]")
+    console.print(f"  [cyber.dim]{t('init.evaluator_rule_vs_agents')}[/]")
     console.print(f"  [cyber.dim]{t('init.evaluator_fallback_note')}[/]")
 
     recent_models = detect_cursor_recent_models()
