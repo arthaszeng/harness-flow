@@ -481,6 +481,28 @@ If no task directory exists, write to `.agents/ship-metrics.jsonl` (append one J
 
 ---
 
+## Step 9: Local Branch Cleanup
+
+After the PR is created and pushed, the feature branch's purpose is complete — all code
+lives on the remote. Clean up to prevent stale branch accumulation.
+
+```bash
+FEATURE_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+git checkout {{ trunk_branch }}
+git pull origin {{ trunk_branch }}
+git branch -D "$FEATURE_BRANCH"
+git remote prune origin
+```
+
+**Why `-D` (force)?** GitHub squash-merge rewrites commits, so `git branch -d` considers
+the branch "not fully merged" even after the PR is merged. `-D` is safe here because
+the code was just pushed and a PR was created.
+
+**If checkout fails** (e.g., trunk has conflicts): skip cleanup, warn the user.
+The branch can be manually deleted later.
+
+---
+
 ## State Persistence
 
 All state is persisted in `.agents/tasks/task-NNN/`:
