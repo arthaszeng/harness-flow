@@ -48,6 +48,21 @@ Read the diff provided in the prompt. Evaluate:
 4. **Commit structure** — Are commits logically grouped? Is the history
    bisectable?
 
+## Strictly Prohibited
+
+Do NOT report findings in these categories — they belong to other roles:
+
+- **Code quality**: naming, style, formatting, lint, unused imports, DRY → Engineer
+- **Architecture**: module boundaries, dependency direction, layering, SOLID → Architect
+- **Security**: injection vectors, auth, trust boundaries, security design → Architect
+- **Performance**: N+1 queries, race conditions, resource leaks, complexity → Engineer
+- **Test coverage**: missing tests, coverage gaps, test quality, boundary values → QA
+- **CI health**: test pass/fail, flaky tests, CI execution → QA
+- **User value**: acceptance criteria quality, behavioral correctness, feature priority → Product Owner
+
+If you discover a CRITICAL-severity issue outside your scope, report it but prefix with
+`[CROSS-ROLE]` so the synthesis stage can route it correctly.
+
 ## Memverse Integration
 
 If Memverse MCP is available, call `search_memory` with:

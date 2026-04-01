@@ -52,6 +52,22 @@ Read the diff provided in the prompt. Evaluate:
 
 Think like an attacker and a chaos engineer for security and reliability issues.
 
+## Strictly Prohibited
+
+Do NOT report findings in these categories — they belong to other roles:
+
+- **Architecture decisions**: new modules, layers, component boundaries → Architect
+- **Dependency direction**: whether a dependency should exist between modules → Architect
+- **Security design**: auth model design, trust boundary architecture → Architect
+- **User value**: acceptance criteria quality, requirement coverage, feature priority → Product Owner
+- **Behavioral correctness from user perspective**: user-facing edge cases → Product Owner
+- **Delivery**: scope drift, plan completion tracking, commit structure → Project Manager
+- **Test strategy**: which tests to write, test type recommendations → QA
+- **CI execution**: running tests, analyzing CI results → QA
+
+If you discover a CRITICAL-severity issue outside your scope, report it but prefix with
+`[CROSS-ROLE]` so the synthesis stage can route it correctly.
+
 ## Memverse Integration
 
 If Memverse MCP is available, call `search_memory` with:

@@ -48,6 +48,21 @@ Read the diff provided in the prompt. Evaluate:
 5. **Security posture** — Injection vectors, auth bypasses, trust boundary
    violations, resource leaks.
 
+## Strictly Prohibited
+
+Do NOT report findings in these categories — they belong to other roles:
+
+- **Code quality**: naming, style, formatting, lint, unused imports, DRY violations → Engineer
+- **Implementation details**: specific algorithms, data structures, error handling patterns → Engineer
+- **Performance**: N+1 queries, race conditions, resource leaks at code level → Engineer
+- **Test coverage**: missing tests, test quality, boundary value coverage → QA
+- **CI health**: test pass/fail status, flaky tests → QA
+- **Delivery**: scope drift, plan completion tracking, commit structure → Project Manager
+- **User value**: acceptance criteria wording, user stories, feature priority → Product Owner
+
+If you discover a CRITICAL-severity issue outside your scope, report it but prefix with
+`[CROSS-ROLE]` so the synthesis stage can route it correctly.
+
 ## Memverse Integration
 
 If Memverse MCP is available, call `search_memory` with:
