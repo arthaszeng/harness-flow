@@ -148,7 +148,7 @@ def _render_template(tmpl_dir: Path, tmpl_name: str, context: dict[str, str]) ->
 def generate_native_artifacts(
     project_root: Path,
     *,
-    lang: str = "en",
+    lang: str = "en",  # reserved for future i18n
     cfg: HarnessConfig | None = None,
 ) -> int:
     """Generate all Cursor-native mode artifacts. Returns count of files written."""
@@ -200,6 +200,7 @@ def generate_native_artifacts(
     for resource_path in _RESOURCE_FILES:
         src = tmpl_dir / resource_path
         if not src.exists():
+            typer.echo(f"  [warn] resource not found: {resource_path}", err=True)
             continue
         dest = eval_resource_dir / resource_path
         dest.parent.mkdir(parents=True, exist_ok=True)

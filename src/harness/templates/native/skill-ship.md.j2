@@ -75,6 +75,8 @@ If conflicts are complex or ambiguous, run `git rebase --abort`, **STOP** and sh
 
 ---
 
+{% include 'sections/_ci-verification.md.j2' %}
+
 ## Step 3: Run Tests (on merged code)
 
 Run the full test suite:
@@ -298,7 +300,11 @@ If no `TODOS.md` exists: skip silently.
 
 ## Step 6: Version + Commit (bisectable chunks)
 
+{% if review_gate == 'advisory' %}
+Once evaluation completes (advisory mode — ITERATE verdict is logged but does not block):
+{% else %}
 Once evaluation PASSES:
+{% endif %}
 
 1. **Version bump**: If a `VERSION` file exists, bump PATCH (auto-decide).
    If `pyproject.toml` has a version field, bump it too.
@@ -345,11 +351,13 @@ Claiming work is complete without verification is dishonesty, not efficiency.
 2. If tests fail: STOP. Fix and return to Step 3.
 3. Verify git status is clean (no stray untracked files).
 
+{% if hooks_pre_build or hooks_post_eval or hooks_pre_ship %}
 ---
 
 {% include 'sections/_hook-points.md.j2' %}
 
 ---
+{% endif %}
 
 ## Step 8: Push + PR
 
