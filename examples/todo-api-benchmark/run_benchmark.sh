@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+# DEPRECATED (v4.0.0): This script requires orchestrator mode (harness run),
+# which has been removed. See README.md for details.
 set -euo pipefail
 
 # Benchmark runner for the TODO API demo story.

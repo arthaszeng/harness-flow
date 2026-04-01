@@ -1,3 +1,5 @@
+> **Note (v4.0.0):** This benchmark was designed for orchestrator mode (`harness run`), which has been removed. The benchmark scripts will not work with v4.0.0+. For cursor-native workflows, use `/harness-plan` in Cursor IDE instead.
+
 # Benchmark: TODO API
 
 Compare Harness orchestration with using Codex or Cursor directly.

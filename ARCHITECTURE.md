@@ -1,5 +1,7 @@
 # Architecture
 
+> **Note (v4.0.0):** This architecture document describes the pre-4.0 design including orchestrator mode, drivers, and methodology modules. These have been removed in v4.0.0. The remaining architecture consists of: CLI (init/install/status/update), core config/state, native mode generator (skill_gen + templates), and integrations (git/memverse). A full rewrite of this document is planned.
+
 This document explains **why** harness-orchestrator is designed the way it is. For **what** each module does, read the code and docstrings. For **how** to use it, see README.md.
 
 ## Core Design: GAN-style Builder vs Evaluator
