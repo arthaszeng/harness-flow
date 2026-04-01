@@ -2,6 +2,8 @@
 
 # Vision — harness-orchestrator
 
+> **Note (v4.0.0):** Orchestrator mode and CLI drivers are removed; Harness is Cursor-native (skills run in the IDE). Goals below still describe the methodology; “unified abstraction across agent backends” is now IDE-first rather than CLI-driver-based.
+
 ## Vision statement
 
 The long-term goal of harness-orchestrator is to be a local-first development orchestration layer for real codebases: it does not replace engineers outright or try to reinvent the IDE, but organizes multiple agent capabilities into an executable, auditable, recoverable engineering loop. For teams and individuals using Cursor, Codex, and similar tools, the value is not “yet another AI entry point,” but converging scattered agent behavior into a single methodology so requirement progress, implementation, and quality gates stay aligned over time.

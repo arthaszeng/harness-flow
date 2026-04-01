@@ -1,171 +1,220 @@
-# Architecture
+# Architecture (v4.0.0 — native-only)
 
-> **Note (v4.0.0):** This architecture document describes the pre-4.0 design including orchestrator mode, drivers, and methodology modules. These have been removed in v4.0.0. The remaining architecture consists of: CLI (init/install/status/update), core config/state, native mode generator (skill_gen + templates), and integrations (git/memverse). A full rewrite of this document is planned.
+This document explains **why** harness-orchestrator is structured the way it is after the native-only refactor. Execution lives in **Cursor**: the Python package bootstraps configuration, generates IDE artifacts, and maintains local state—not an external orchestration loop.
 
-This document explains **why** harness-orchestrator is designed the way it is. For **what** each module does, read the code and docstrings. For **how** to use it, see README.md.
+For module-level behavior, read the code and docstrings. For day-to-day usage, see `README.md`.
 
-## Core Design: GAN-style Builder vs Evaluator
-
-The central insight is borrowed from Generative Adversarial Networks: a **Builder** (generator) produces code while an **Evaluator** (discriminator) reviews it. The **Planner** acts as the shared latent space — both Builder and Evaluator work from the same Spec + Contract.
+## System overview
 
 ```
-Requirement
-    │
-    ▼
-┌──────────┐     Spec + Contract     ┌──────────┐
-│  Planner │ ────────────────────────►│  Builder  │
-│ (readonly)│                          │(readwrite)│
-└──────────┘                          └─────┬─────┘
-    ▲                                       │ code changes
-    │ feedback                              ▼
-┌──────────┐     score + verdict     ┌──────────┐
-│  Planner │ ◄───────────────────────│ Evaluator│
-│  (re-plan)│                         │(readonly) │
-└──────────┘                          └──────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│  harness CLI (Typer)                                             │
+│  init · install · status · update                                │
+└────────────────────────────┬────────────────────────────────────┘
+                             │
+         ┌───────────────────┼───────────────────┐
+         ▼                   ▼                   ▼
+   .agents/*            core/*              native/skill_gen
+   config, vision,      config, state,      Jinja2 → .cursor/
+   state, progress      scanner, ui, …      skills, agents, rules
+                             │
+                             ▼
+                    integrations/
+                    git_ops, memverse
+                             │
+                             ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Cursor IDE — skills, subagents, rules execute the workflow      │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
-This adversarial loop continues until the Evaluator passes the work or max iterations are reached. The key property: **the Builder cannot grade its own work**.
+**Principle:** Cursor is the execution engine. Harness generates and refreshes the artifacts Cursor runs; there is no separate process supervisor or IDE driver layer in this package.
 
-### Why this works
+---
 
-- **Separation of concerns**: Planner thinks about design, Builder writes code, Evaluator judges quality. No single agent has all permissions and responsibilities.
-- **Iterative refinement**: Evaluator feedback flows to Planner, not directly to Builder. This forces structural fixes rather than superficial patches.
-- **Trust boundaries**: Builder output is explicitly marked as untrusted in Evaluator prompts, preventing rubber-stamp approvals.
+## CLI layer (`src/harness/cli.py`)
 
-## State Machine
+Built with **Typer**. Four commands:
 
-Task progression follows a strict transition graph (see `core/state.py`):
+| Command   | Purpose |
+|-----------|---------|
+| `init`    | Interactive project bootstrap (see below). |
+| `install` | Regenerate `.cursor/` native artifacts from current config. |
+| `status`  | Load session state and render a Rich dashboard. |
+| `update`  | Check PyPI, optional pip upgrade, reinstall artifacts, config migration hints. |
 
-```
-IDLE → PLANNING → CONTRACTED → BUILDING → EVALUATING
-                                               │
-                                    ┌──────────┼──────────┐
-                                    ▼          ▼          ▼
-                                  DONE      PLANNING   BLOCKED
-                                   │       (re-iterate)   │
-                                   ▼                      ▼
-                                  IDLE                   IDLE
-```
+---
 
-Every transition is validated at runtime — illegal transitions raise `RuntimeError`. State is checkpointed to `.agents/state.json` on every transition, enabling resume after interruption.
+## Commands (`src/harness/commands/`)
 
-## Role Registry (SSOT)
+### `init.py`
 
-`core/roles.py` is the single source of truth for all agent roles. It serves:
+Wizard (interactive by default; `--non-interactive` / `-y` for defaults):
 
-- **Runtime**: role → agent name lookup, capability checks
-- **Configuration**: `KNOWN_MODEL_ROLES` for config validation
-- **Routing**: `ROLE_AGENT_MAP` for driver resolution
-- **Tests**: agent definition file validation
+1. **Language** — `en` or `zh`; drives i18n for the session.
+2. **Project info** — name and description.
+3. **Trunk branch** — detected from git when possible, user-confirmed.
+4. **CI** — project scan (`scanner`) suggests commands; user picks or enters a custom gate command.
+5. **Memverse** — enable/disable and domain prefix for the Memverse MCP integration.
+6. **Vision** — optional immediate vision flow vs. deferred (placeholder file still created when skipped).
 
-The registry runs load-time consistency checks on import — duplicate agent names, naming convention violations, or key/name mismatches raise immediately rather than failing at runtime.
+**Writes:** `.agents/config.toml` (from `templates/config.toml.j2`), `.agents/vision.md` when appropriate, then calls `generate_native_artifacts()` so `.cursor/` is populated. Updates `.gitignore` for harness-local files (e.g. `.agents/state.json`, `.agents/.stop`).
 
-## Driver Abstraction
+### `install.py`
 
-`AgentDriver` is a Protocol (structural typing) with two implementations:
+Resolves language (CLI flag or project config), loads `HarnessConfig`, calls **`generate_native_artifacts()`** with optional `--force` to overwrite generated files.
 
-- **CursorDriver**: invokes `cursor-agent` CLI
-- **CodexDriver**: invokes `codex exec` CLI
+### `status.py`
 
-`DriverResolver` routes roles to drivers based on config:
-- `auto` mode: Builder → Cursor (better for code edits), others → Codex (better for analysis)
-- Per-role overrides available in config
-- Probes at startup detect which CLIs are functional
+Loads **`SessionState`** from `.agents/state.json` and renders progress via **Rich** (`core/ui.py` patterns).
 
-The driver abstraction means adding a new IDE backend (e.g., Windsurf, Kiro) requires only implementing `invoke()`, `is_available()`, and `probe()`.
+### `update.py`
 
-## Error Translation Layer
+Queries PyPI for newer versions, runs **`pip install --upgrade harness-orchestrator`** when requested, reinstalls native artifacts, and runs lightweight **config migration** checks with user-visible warnings.
 
-Inspired by gstack's `wrapError()`, the `methodology/error_hints.py` module translates raw CI/builder output into structured feedback for the next iteration:
+---
 
-1. **Classify**: regex-based pattern matching categorizes errors (syntax, test failure, lint, timeout, etc.)
-2. **Extract**: key error lines are pulled from verbose output
-3. **Suggest**: each category maps to an actionable next-step suggestion
-4. **Format**: structured Markdown with category, key lines, suggestion, and truncated raw output
+## Core (`src/harness/core/`)
 
-The design principle: **error messages target AI agents, not human developers**. An agent needs "Fix the syntax error at line 42 in foo.py" more than a full stack trace.
+### `config.py`
 
-## Configuration Cascade
+**Pydantic** models: `ProjectConfig`, `CIConfig`, `ModelsConfig`, `NativeModeConfig`, `WorkflowConfig`, `HarnessConfig`, plus nested integration config (e.g. Memverse).
 
-Config is loaded from TOML with cascading precedence:
+- **`HarnessConfig` uses `ConfigDict(extra="ignore")`** so older TOML keys do not break loading.
+- **`HarnessConfig.load()`** builds the effective config by deep-merging, then validates:
+  - Start from **project** `.agents/config.toml` (if present).
+  - Merge **`~/.harness/config.toml`** under it so **project wins** on conflicts.
+  - Merge **`HARNESS_*` environment variables** on top (highest precedence).
+  - Missing keys fall back to **model defaults**.
 
-```
-~/.harness/config.toml  (global defaults)
-       ▼  deep merge
-.agents/config.toml     (project overrides — wins)
-       ▼  Pydantic validation
-HarnessConfig           (runtime object)
-```
+`ModelsConfig` carries `default`, `role_overrides`, and `role_configs`; unknown keys under `[models]` are ignored. Native workflows primarily use `native.*` and project/CI/workflow fields.
 
-Model resolution follows its own cascade: `role_overrides[role]` → `role_configs[role].model` → `driver_defaults[driver]` → `default`. Empty string means "use IDE default model."
+### `roles.py`
 
-## Autonomous Mode
+Minimal constants only:
 
-The autonomous loop adds two more roles around the single-task workflow:
+- **`ALL_ROLES`** — empty `frozenset` (no orchestrator-routed roles in native-only mode).
+- **`NATIVE_REVIEW_ROLES`** — the five native review roles: `architect`, `product_owner`, `engineer`, `qa`, `project_manager`.
+- **`SCORING_DIMENSIONS`** — evaluation dimensions used in templates and scoring copy.
 
-- **Strategist**: picks the next task from the vision
-- **Reflector**: periodically summarizes progress and detects vision drift
+### `state.py`
 
-Safety valves prevent runaway execution:
-- `.agents/.stop` file (graceful stop signal)
-- `max_tasks_per_session` cap
-- Consecutive blocked circuit breaker
+**`SessionState`**, **`TaskRecord`**, **`CompletedTask`** (and related types) with **JSON** persistence under `.agents/state.json` for resume-friendly dashboards.
 
-## Artifact Layout
+### `progress.py`
 
-All artifacts live under `.agents/` in the target project:
+**`suggest_next_action`** and **`update_progress`** helpers for markdown progress narratives (e.g. `.agents/progress.md`) aligned with native workflows.
 
-```
-.agents/
-├── config.toml          # Project configuration
-├── state.json           # State machine checkpoint (gitignored)
-├── vision.md            # Project vision
-├── progress.md          # Task history
-├── .stop                # Graceful stop signal (gitignored)
-├── tasks/
-│   └── task-001/
-│       ├── spec-r1.md
-│       ├── contract-r1.md
-│       ├── contract-r1.json    # Machine-readable sidecar
-│       ├── build-r1.log
-│       ├── evaluation-r1.md
-│       ├── evaluation-r1.json  # Machine-readable sidecar
-│       └── insights.json
-├── archive/             # Completed tasks moved here
-│   └── task-001/
-└── runs/
-    └── <session-id>/
-        └── events.jsonl  # Append-only event log
-```
+### `scanner.py`
 
-## Testing Philosophy
+Scans the repository layout to **suggest CI commands** during `init`.
 
-Tests are organized by cost and scope:
+### `ui.py`
 
-- **Unit tests** (`test_config`, `test_state`, `test_scoring`): fast, no I/O, test pure logic
-- **Integration tests** (`test_workflow`): use tmp git repos with mocked drivers — verify the full plan→build→eval loop without real LLM calls
-- **Definition tests** (`test_agent_definitions`): static validation that agent files, install mappings, role registries, and localization stay in sync — inspired by gstack's skill-validation approach
+**Rich** helpers for terminal output (tables, panels, styling) used by status and other commands.
 
-The key testing principle: **agent definition files are executable documentation**. If they drift from the code, tests catch it before runtime does.
+### `events.py`
 
-## i18n
+Structured **JSONL** event logging for observability of harness-adjacent activity.
 
-Lightweight module-level catalogs (`i18n/en.py`, `i18n/zh.py`) with `t(key, **kwargs)` lookup. Falls back to English if a key is missing in the current language. Prompts are fully localized so agents receive instructions in the project's configured language.
+### `registry.py`
 
-## Design Decisions Log
+**SQLite**-backed registry for agent run metadata (local audit trail).
 
-### Why contracts instead of free-form prompts?
+### `context.py`
 
-Contracts give the Evaluator a concrete checklist to score against. Without them, evaluation becomes subjective and scores drift. The Planner adjusts contracts between iterations based on feedback, so they evolve without losing structure.
+**Task execution context** shared by code paths that still need a unified “where is the task root / config” view.
 
-### Why rebase-and-merge instead of merge commits?
+---
 
-Linear history makes it easy to see what each task added. The task branch is deleted after merge, keeping the branch list clean. If rebase fails (conflicts), the branch is preserved for manual resolution.
+## Native mode generator (`src/harness/native/`)
 
-### Why shortest-plank weighting for scores?
+### `skill_gen.py`
 
-A task that scores 5/5/5/1 (great code quality but broken tests) should not pass. The weighted score pulls toward the minimum dimension, ensuring all four quality aspects meet the threshold.
+- Loads **Jinja2** templates from `src/harness/templates/native/`.
+- Builds a **template context** from `HarnessConfig` (CI command, trunk branch, native gates, hooks, per-role model hints, etc.) plus small static principle blocks where templates expect them.
+- **`generate_native_artifacts()`** writes:
+  - **10 skills** under `.cursor/skills/harness/<skill-name>/SKILL.md`
+  - **5 agents** under `.cursor/agents/*.md`
+  - **4 rules** under `.cursor/rules/*.mdc`
+  - **Eval resources** (checklist and specialist docs) under `.cursor/skills/harness/harness-eval/`
+  - **`.cursor/worktrees.json`** for parallel worktree setup (skipped if the file already exists unless `force`)
 
-### Why separate Planner and Builder roles?
+Idempotent by default for `worktrees.json`; skills/agents/rules are regenerated according to `install`/`force` behavior.
 
-The Builder has write access to the codebase. If it also planned, it could rationalize scope creep or skip design thinking. Separation forces the plan to be reviewed (by the Evaluator) independently of who wrote the code.
+---
+
+## Templates (`src/harness/templates/`)
+
+- **`config.toml.j2`** — project config emitted by `init`.
+- **`native/`** — Jinja2 sources for skills, agents, rules, and shared **sections** (e.g. plan/review gates, trust boundary, CI verification).
+- **`vision.md.j2` / `vision.zh.md.j2`** — initial vision stubs.
+
+All user-visible harness **behavior** in the IDE is intended to flow from these templates plus `HarnessConfig`, so upgrades can refresh prompts without forking business logic across Python files.
+
+---
+
+## Integrations (`src/harness/integrations/`)
+
+- **`git_ops.py`** — git helpers (rebase, merge, cleanup) used where the workflow still touches branches.
+- **`memverse.py`** — Memverse MCP integration for learnings and memory sync aligned with skills.
+
+---
+
+## Design principles
+
+1. **Cursor IDE is the execution engine** — Harness generates **skills, agents, and rules** that Cursor’s agent runtime executes. No in-package external CLI orchestration of other IDEs.
+2. **Five-role adversarial review** — The five native roles review **plans and code** in parallel; templates encode how dispatch and aggregation behave.
+3. **Fix-First auto-remediation** — Review output is classified into **AUTO-FIX** vs **ASK** before presentation (encoded in generated rules/skills, not in a Python state machine).
+4. **Config cascade** — **Project** and **global** TOML merge with **project overriding global**; **`HARNESS_*` env vars** override both; Pydantic validates the result.
+5. **Backward compatibility** — **`extra="ignore"`** on `HarnessConfig` allows stale keys from older installs to load safely.
+6. **Template-driven generation** — Native artifacts are rendered from **Jinja2**; Python supplies context and file placement only.
+7. **Local-first** — State, config, registry, and logs are **on disk**; PyPI is only needed for **package updates**, not for routine development.
+
+---
+
+## Artifact layout (high level)
+
+**Project (`.agents/`)**
+
+- `config.toml` — harness configuration.
+- `vision.md` — product/engineering vision for skills.
+- `state.json` — session state (typically gitignored).
+- `progress.md` — human-readable progress log.
+- `.stop` — optional graceful stop flag (typically gitignored).
+- `tasks/`, `archive/` — task artifacts and history (convention from harness workflow docs).
+
+**Generated IDE (`.cursor/`)**
+
+- `skills/harness/**` — generated skills and eval resources.
+- `agents/*.md` — five review agents plus any future template outputs.
+- `rules/*.mdc` — always-on rules (workflow, trust boundary, Fix-First, safety).
+- `worktrees.json` — optional parallel-agent worktree bootstrap commands.
+
+---
+
+## Internationalization
+
+Module-level catalogs (`i18n/en.py`, `i18n/zh.py`) expose `t(key, **kwargs)`. Missing keys fall back to English. CLI and generator user-facing strings go through this layer when applicable.
+
+---
+
+## Testing orientation
+
+Tests are organized around **fast, local behavior**: configuration loading (including env overrides), state/progress, scanner suggestions, skill generation output, install/update flows, git helpers, registry, and UI pieces—without requiring a live Cursor session. Template and config drift is caught by tests that assert on generated files or loaded models.
+
+---
+
+## Design decisions (native era)
+
+### Why generate `.cursor/` instead of shipping static files?
+
+Project-specific **CI command**, **trunk branch**, **review gates**, and **hooks** must flow into prompts. Templating from `HarnessConfig` keeps one SSOT and allows `harness install` to refresh IDE assets after config edits.
+
+### Why keep `ALL_ROLES` empty?
+
+Older configs and code paths referenced a unified role set for model validation. An empty `ALL_ROLES` preserves **compatibility** while native mode keys off **`NATIVE_REVIEW_ROLES`** only.
+
+### Why SQLite for the registry?
+
+A **local, queryable** history of runs supports debugging and audit without a hosted service—consistent with the local-first stance.

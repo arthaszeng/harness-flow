@@ -2,6 +2,8 @@
 
 # Runtime Compatibility Matrix
 
+> **Note (v4.0.0):** The driver-based architecture described here has been removed. Harness no longer invokes Cursor or Codex CLIs directly. This document is preserved for historical reference. In cursor-native mode, Cursor IDE executes skills directly — no external CLI is needed.
+
 Harness depends on the Cursor CLI and/or Codex CLI for actual agent capability. This document records validated version ranges and known limitations.
 
 ## Cursor CLI

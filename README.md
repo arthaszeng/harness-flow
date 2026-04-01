@@ -19,6 +19,8 @@ Version 4.0.0 removes orchestrator mode entirely. If you used `harness run`, `ha
 - `harness vision` → Use `/harness-vision` in Cursor IDE
 - `harness stop` → Not needed (Cursor IDE manages task lifecycle)
 - `[drivers]` config section → Ignored (safe to leave in config)
+- `[autonomous]` config section → Removed (native mode has no autonomous loop)
+- `models.driver_defaults` → Removed (no drivers in native mode)
 - `workflow.mode` → Removed (always cursor-native)
 
 Your `.agents/config.toml` will continue to load without errors — unknown sections are silently ignored.
@@ -214,8 +216,6 @@ Project settings live in `.agents/config.toml`:
 | `native.plan_review_gate` | "auto" | Plan review gate mode (`human` / `ai` / `auto`) |
 | `native.retro_window_days` | 14 | Default retro analysis window in days (1–365) |
 | `native.role_models.*` | `{}` | Per-role model overrides: `architect`, `product_owner`, `engineer`, `qa`, `project_manager` |
-| `autonomous.max_tasks_per_session` | 10 | Max tasks per autonomous session |
-| `autonomous.consecutive_block_limit` | 2 | Stop after this many consecutive blocks |
 
 ---
 
