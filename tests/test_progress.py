@@ -96,7 +96,8 @@ class TestSuggestNextAction:
             current_task=TaskRecord(id="t1", requirement="x"),
         )
         action = suggest_next_action(state)
-        assert "harness run --resume" in action
+        assert "会话可恢复" in action
+        assert "harness 技能" in action
 
     def test_resumable_auto(self):
         state = SessionState(
@@ -104,7 +105,7 @@ class TestSuggestNextAction:
             current_task=TaskRecord(id="t1", requirement="x"),
         )
         action = suggest_next_action(state)
-        assert "harness auto --resume" in action
+        assert "会话可恢复" in action
 
     def test_idle_with_completed(self):
         state = SessionState(
@@ -112,7 +113,7 @@ class TestSuggestNextAction:
             completed=[CompletedTask(id="t1", requirement="x", score=4.0, verdict="PASS")],
         )
         action = suggest_next_action(state)
-        assert "harness auto" in action
+        assert "harness 技能" in action
 
     def test_all_blocked(self):
         state = SessionState(
@@ -125,7 +126,7 @@ class TestSuggestNextAction:
     def test_fresh_state(self):
         state = SessionState()
         action = suggest_next_action(state)
-        assert "harness run" in action or "harness auto" in action
+        assert "harness 技能" in action
 
 
 # ---------------------------------------------------------------------------
@@ -183,7 +184,7 @@ class TestUpdateProgress:
         update_progress(agents_dir, state)
         content = (agents_dir / "progress.md").read_text(encoding="utf-8")
         assert "会话可恢复" in content
-        assert "harness run --resume" in content
+        assert "harness 技能" in content
 
     def test_idle_not_resumable(self, tmp_path: Path):
         agents_dir = tmp_path / ".agents"
