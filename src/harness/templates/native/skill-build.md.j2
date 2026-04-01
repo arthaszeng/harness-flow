@@ -157,11 +157,13 @@ Write a structured build log to `.agents/tasks/task-NNN/build-rN.log`:
 - (issues discovered but not fixed — outside contract scope)
 ```
 
+{% if hooks_pre_build or hooks_post_eval or hooks_pre_ship %}
 ---
 
 {% include 'sections/_hook-points.md.j2' %}
 
 ---
+{% endif %}
 
 ## Step 6: Commit
 
