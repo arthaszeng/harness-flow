@@ -30,8 +30,12 @@ which means DO IT. Implement everything and output the build result.
 ## Step 1: Read the Contract
 
 1. Find the current task: most recent `task-NNN` directory under `.agents/tasks/`
-2. Read `.agents/tasks/task-NNN/plan.md`
-3. Extract the deliverables checklist from the Contract section
+2. **Check for handoff:** If `TASK_DIR/handoff-plan.json` exists, read it first —
+   it provides a compact summary of the plan (decisions, risks, open items).
+   Use this as your primary context; only read the full `plan.md` for details
+   not covered by the handoff.
+3. Read `.agents/tasks/task-NNN/plan.md` — extract the deliverables checklist
+   from the Contract section
 4. If this is a subsequent round (feedback exists from evaluation), also read
    `.agents/tasks/task-NNN/evaluation-rN.md` for the fix suggestions
 5. If `.agents/tasks/task-NNN/workflow-state.json` exists, treat it as the canonical
@@ -167,6 +171,28 @@ phase, build artifact ref, iteration, and any blocker reason.
 
 ---
 {% endif %}
+
+## Step 5.5: Write Build Handoff
+
+Write `TASK_DIR/handoff-build.json` summarizing the build outcome:
+```json
+{
+  "schema_version": 1,
+  "source_phase": "build",
+  "target_phase": "eval",
+  "task_id": "task-NNN",
+  "summary": "<what was built, CI result, key decisions made during implementation>",
+  "decisions": [{"what": "...", "why": "...", "classification": "mechanical|taste"}],
+  "risks": [{"description": "...", "mitigation": "...", "severity": "low|medium|high"}],
+  "open_items": [{"description": "...", "owner": "evaluator|builder", "priority": "..."}],
+  "artifacts_produced": ["build-rN.log", "<list of new/modified source files>"],
+  "scope_changes": ["<any deviations from the plan, or empty>"],
+  "created_at": "<ISO 8601 UTC>"
+}
+```
+
+Then update `workflow-state.json` → `artifacts.handoff` to `"handoff-build.json"`.
+If `workflow-state.json` does not exist, skip the update.
 
 ## Step 6: Commit
 

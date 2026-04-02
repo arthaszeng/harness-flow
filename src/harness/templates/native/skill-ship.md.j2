@@ -48,7 +48,9 @@ Run straight through and output the PR URL at the end.
    mkdir -p .agents/tasks/task-NNN
    ```
 
-   If a plan exists at `TASK_DIR/plan.md`, read it for context.
+   If a handoff file exists (e.g. `TASK_DIR/handoff-build.json` or
+   `TASK_DIR/handoff-eval.json`), read the most recent one first for a compact
+   summary of prior stage results. Then read `TASK_DIR/plan.md` for full context.
    If `TASK_DIR/workflow-state.json` exists, treat it as the canonical task-level
    source for phase / gate / blocker / artifact refs. Update it instead of inventing
    a parallel gate record elsewhere.
@@ -490,6 +492,29 @@ artifact ref, ship metrics ref, and final phase/blocker outcome before finishing
 
 ---
 
+## Ship Handoff
+
+Write `TASK_DIR/handoff-ship.json` summarizing the ship outcome:
+```json
+{
+  "schema_version": 1,
+  "source_phase": "ship",
+  "target_phase": "plan",
+  "task_id": "task-NNN",
+  "summary": "<PR URL, commit count, review scores, key findings addressed>",
+  "decisions": [],
+  "risks": [],
+  "open_items": [{"description": "...", "owner": "user|next-task", "priority": "..."}],
+  "artifacts_produced": ["ship-metrics.json", "evaluation-rN.md"],
+  "scope_changes": [],
+  "created_at": "<ISO 8601 UTC>"
+}
+```
+
+Update `workflow-state.json` → `artifacts.handoff` to `"handoff-ship.json"`.
+
+---
+
 ## State Persistence
 
 All state is persisted in `.agents/tasks/task-NNN/`:
@@ -497,6 +522,7 @@ All state is persisted in `.agents/tasks/task-NNN/`:
 - `build-rN.log` — build logs per round
 - `evaluation-rN.md` — evaluations per round
 - `evaluation-rN.json` — machine-readable scores
+- `handoff-*.json` — structured stage handoffs
 
 If interrupted, resume by checking which artifacts exist and which round number is latest.
 

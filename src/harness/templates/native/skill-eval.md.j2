@@ -22,13 +22,16 @@ pipeline. Run straight through and output the evaluation result at the end.
 ## Step 0: Context Gathering
 
 1. Detect the current task: find the most recent `task-NNN` directory under `.agents/tasks/`
-2. Read `.agents/tasks/task-NNN/plan.md` (the contract)
-3. Read `.agents/tasks/task-NNN/build-rN.log` (the latest build log)
-4. Run `git diff {{ trunk_branch }}..HEAD --stat` to understand the scope
-5. **Prior Learnings**: Search Memverse for learnings relevant to the changed files/modules.
+2. **Check for handoff:** If `TASK_DIR/handoff-build.json` exists, read it first —
+   it provides a compact summary of the build (what was built, CI result, decisions,
+   risks, open items). Use this as your primary context for understanding what changed.
+3. Read `.agents/tasks/task-NNN/plan.md` (the contract)
+4. Read `.agents/tasks/task-NNN/build-rN.log` (the latest build log)
+5. Run `git diff {{ trunk_branch }}..HEAD --stat` to understand the scope
+6. **Prior Learnings**: Search Memverse for learnings relevant to the changed files/modules.
    If Memverse MCP is available, call `search_memory` with key topics from the diff.
    Display any relevant prior learnings (especially pitfalls) before starting the review.
-6. If `.agents/tasks/task-NNN/workflow-state.json` exists, treat it as the canonical
+7. If `.agents/tasks/task-NNN/workflow-state.json` exists, treat it as the canonical
    task state file. Evaluation may append or update gate/blocker snapshots there,
    but registry/events must remain audit-only and must not become workflow gate sources.
 
