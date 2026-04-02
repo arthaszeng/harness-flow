@@ -8,6 +8,7 @@ gate, blocker, and artifact references; session state remains a derived summary.
 from __future__ import annotations
 
 import json
+import os
 import re
 from datetime import datetime, timezone
 from enum import Enum
@@ -119,9 +120,18 @@ def resolve_task_dir(
     agents_dir: Path,
     *,
     explicit_task_id: str | None = None,
+    env_task_id: str | None = None,
     session_task_id: str | None = None,
 ) -> Path | None:
+    """Resolve the active task directory.
+
+    Priority: explicit_task_id → env_task_id → session_task_id → latest numeric.
+    ``env_task_id`` defaults to ``os.environ.get("HARNESS_TASK_ID")`` when
+    ``None`` is passed by the caller.
+    """
     tasks_dir = agents_dir / "tasks"
+    if env_task_id is None:
+        env_task_id = os.environ.get("HARNESS_TASK_ID") or None
 
     def _safe_child(name: str) -> Path | None:
         """Resolve *name* under tasks_dir, rejecting path-traversal attempts."""
@@ -134,6 +144,10 @@ def resolve_task_dir(
 
     if explicit_task_id:
         return _safe_child(explicit_task_id)
+    if env_task_id:
+        result = _safe_child(env_task_id)
+        if result:
+            return result
     if session_task_id:
         result = _safe_child(session_task_id)
         if result:
@@ -167,14 +181,29 @@ def load_current_workflow_state(
     agents_dir: Path,
     *,
     explicit_task_id: str | None = None,
+    env_task_id: str | None = None,
     session_task_id: str | None = None,
 ) -> tuple[Path | None, WorkflowState | None]:
+    """Load workflow state for the currently active task.
+
+    When *explicit_task_id* or *env_task_id* (including ``HARNESS_TASK_ID``)
+    resolves to a directory, that result is authoritative — the session
+    mismatch guard is skipped so that worktree-copied ``state.json`` with
+    a stale ``session_task_id`` does not block state loading.
+    """
+    if env_task_id is None:
+        env_task_id = os.environ.get("HARNESS_TASK_ID") or None
     task_dir = resolve_task_dir(
         agents_dir,
         explicit_task_id=explicit_task_id,
+        env_task_id=env_task_id,
         session_task_id=session_task_id,
     )
-    if explicit_task_id is None and session_task_id and task_dir is not None and task_dir.name != session_task_id:
+    authoritative_hit = (
+        (explicit_task_id and task_dir is not None and task_dir.name == explicit_task_id)
+        or (env_task_id and task_dir is not None and task_dir.name == env_task_id)
+    )
+    if not authoritative_hit and session_task_id and task_dir is not None and task_dir.name != session_task_id:
         return None, None
     if task_dir is None:
         return None, None
