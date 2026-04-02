@@ -16,6 +16,7 @@ from harness.core.progress import (
 )
 from harness.core.state import SessionState
 from harness.core.ui import get_ui
+from harness.core.worktree import detect_worktree, extract_task_id_from_branch
 from harness.core.workflow_state import (
     WorkflowState,
     artifact_pairs,
@@ -49,6 +50,7 @@ def run_status() -> None:
 
     agents_dir = Path.cwd() / ".agents"
     state = SessionState.load(agents_dir)
+    wt = detect_worktree()
     _, workflow_state = load_current_workflow_state(
         agents_dir,
         session_task_id=state.current_task.id if state.current_task else None,
@@ -59,6 +61,12 @@ def run_status() -> None:
         return
 
     pass_threshold = _load_pass_threshold()
+
+    if wt is not None:
+        label = wt.branch or str(wt.git_dir)
+        task_hint = extract_task_id_from_branch(wt.branch) if wt.branch else None
+        suffix = f" → {task_hint}" if task_hint else ""
+        console.print(f"  [dim]\\[Worktree: {label}{suffix}][/dim]")
 
     _render_header(console, state)
     _render_current(console, state, workflow_state=workflow_state)
