@@ -49,6 +49,7 @@ class ArtifactRefs(BaseModel):
     evaluation: str = Field(default="", max_length=400)
     feedback_ledger: str = Field(default="", max_length=400)
     ship_metrics: str = Field(default="", max_length=400)
+    handoff: str = Field(default="", max_length=400)
 
 
 class GateSnapshot(BaseModel):
@@ -187,6 +188,7 @@ def artifact_pairs(state: WorkflowState) -> list[tuple[str, str]]:
         ("evaluation", state.artifacts.evaluation),
         ("feedback", state.artifacts.feedback_ledger),
         ("ship", state.artifacts.ship_metrics),
+        ("handoff", state.artifacts.handoff),
     ]
     return [(label, value) for label, value in pairs if value]
 
