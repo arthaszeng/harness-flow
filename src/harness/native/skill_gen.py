@@ -320,12 +320,14 @@ _WORKTREES_JSON = {
         'cp "$ROOT_WORKTREE_PATH/.agents/config.toml" .agents/ 2>/dev/null || true',
         'cp "$ROOT_WORKTREE_PATH/.agents/vision.md" .agents/ 2>/dev/null || true',
         'cp -r "$ROOT_WORKTREE_PATH/.cursor" . 2>/dev/null || true',
+        'TASK_ID=$(git branch --show-current 2>/dev/null | sed -n "s|^agent/\\(task-[0-9]*\\).*|\\1|p") && [ -n "$TASK_ID" ] && export HARNESS_TASK_ID="$TASK_ID"',
     ],
     "setup-worktree-windows": [
         "mkdir .agents\\tasks 2>nul & mkdir .agents\\archive 2>nul",
         'copy "%ROOT_WORKTREE_PATH%\\.agents\\config.toml" .agents\\ 2>nul',
         'copy "%ROOT_WORKTREE_PATH%\\.agents\\vision.md" .agents\\ 2>nul',
         'xcopy /E /I /Y "%ROOT_WORKTREE_PATH%\\.cursor" .cursor\\ 2>nul',
+        'for /f "tokens=2 delims=/" %%a in (\'git branch --show-current 2^>nul\') do for /f "tokens=1,2 delims=-" %%b in ("%%a") do if "%%b"=="task" set "HARNESS_TASK_ID=task-%%c"',
     ],
 }
 

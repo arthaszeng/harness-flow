@@ -175,3 +175,106 @@ def test_artifact_pairs_omits_empty_handoff():
     pairs = artifact_pairs(state)
     labels = [label for label, _ in pairs]
     assert "handoff" not in labels
+
+
+# --- B6: HARNESS_TASK_ID env support ---
+
+
+def test_resolve_task_dir_explicit_takes_priority_over_env(tmp_path: Path):
+    """explicit_task_id wins over env_task_id."""
+    agents_dir = tmp_path / ".agents"
+    task3 = agents_dir / "tasks" / "task-003"
+    task3.mkdir(parents=True)
+    task5 = agents_dir / "tasks" / "task-005"
+    task5.mkdir(parents=True)
+
+    result = resolve_task_dir(agents_dir, explicit_task_id="task-003", env_task_id="task-005")
+    assert result is not None
+    assert result.name == "task-003"
+
+
+def test_resolve_task_dir_env_takes_priority_over_session(tmp_path: Path):
+    """HARNESS_TASK_ID env takes priority over session_task_id."""
+    agents_dir = tmp_path / ".agents"
+    task5 = agents_dir / "tasks" / "task-005"
+    task5.mkdir(parents=True)
+    task3 = agents_dir / "tasks" / "task-003"
+    task3.mkdir(parents=True)
+
+    result = resolve_task_dir(agents_dir, env_task_id="task-005", session_task_id="task-003")
+    assert result is not None
+    assert result.name == "task-005"
+
+
+def test_resolve_task_dir_env_fallback_on_missing(tmp_path: Path):
+    """If env task dir doesn't exist, falls back to session."""
+    agents_dir = tmp_path / ".agents"
+    task3 = agents_dir / "tasks" / "task-003"
+    task3.mkdir(parents=True)
+
+    result = resolve_task_dir(agents_dir, env_task_id="task-999", session_task_id="task-003")
+    assert result is not None
+    assert result.name == "task-003"
+
+
+def test_resolve_task_dir_env_rejects_traversal(tmp_path: Path):
+    """Invalid env task id (traversal) is rejected."""
+    agents_dir = tmp_path / ".agents"
+    (agents_dir / "tasks" / "task-001").mkdir(parents=True)
+
+    result = resolve_task_dir(agents_dir, env_task_id="../etc", session_task_id="task-001")
+    assert result is not None
+    assert result.name == "task-001"
+
+
+def test_resolve_task_dir_env_rejects_non_task_format(tmp_path: Path):
+    """Non task-NNN format env value is rejected."""
+    agents_dir = tmp_path / ".agents"
+    (agents_dir / "tasks" / "task-001").mkdir(parents=True)
+
+    result = resolve_task_dir(agents_dir, env_task_id="not-a-task")
+    assert result is not None
+    assert result.name == "task-001"
+
+
+def test_resolve_task_dir_reads_env_var(tmp_path: Path, monkeypatch):
+    """os.environ HARNESS_TASK_ID is read when env_task_id is None."""
+    agents_dir = tmp_path / ".agents"
+    (agents_dir / "tasks" / "task-007").mkdir(parents=True)
+    (agents_dir / "tasks" / "task-001").mkdir(parents=True)
+
+    monkeypatch.setenv("HARNESS_TASK_ID", "task-007")
+    result = resolve_task_dir(agents_dir)
+    assert result is not None
+    assert result.name == "task-007"
+
+
+def test_load_current_workflow_state_env_skips_session_guard(tmp_path: Path):
+    """When env_task_id resolves, session mismatch guard is skipped."""
+    agents_dir = tmp_path / ".agents"
+    task5 = agents_dir / "tasks" / "task-005"
+    WorkflowState(task_id="task-005", phase=TaskState.BUILDING).save(task5)
+
+    task_dir, state = load_current_workflow_state(
+        agents_dir,
+        env_task_id="task-005",
+        session_task_id="task-001",
+    )
+    assert task_dir is not None
+    assert task_dir.name == "task-005"
+    assert state is not None
+    assert state.task_id == "task-005"
+
+
+def test_load_current_workflow_state_no_env_keeps_session_guard(tmp_path: Path):
+    """Without env/explicit, session mismatch guard still triggers."""
+    agents_dir = tmp_path / ".agents"
+    task5 = agents_dir / "tasks" / "task-005"
+    WorkflowState(task_id="task-005", phase=TaskState.BUILDING).save(task5)
+
+    task_dir, state = load_current_workflow_state(
+        agents_dir,
+        session_task_id="task-001",
+    )
+    assert task_dir is None
+    assert state is None

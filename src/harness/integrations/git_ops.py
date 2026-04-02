@@ -10,9 +10,10 @@ from typing import Optional
 log = logging.getLogger(__name__)
 
 
-def _run_git(
+def run_git(
     args: list[str], cwd: Path, *, timeout: int = 30,
 ) -> subprocess.CompletedProcess[str]:
+    """Run a git command and return the completed process."""
     return subprocess.run(
         ["git", *args],
         cwd=str(cwd),
@@ -20,6 +21,9 @@ def _run_git(
         text=True,
         timeout=timeout,
     )
+
+
+_run_git = run_git
 
 
 def current_branch(cwd: Path) -> str:
