@@ -14,7 +14,6 @@ from enum import Enum
 from pathlib import Path
 
 from harness.core.workflow_state import (
-    GateSnapshot,
     GateStatus,
     load_workflow_state,
 )
