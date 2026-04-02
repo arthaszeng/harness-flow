@@ -155,7 +155,7 @@ Structured **JSONL** event logging for observability of harness-adjacent activit
 - Loads **Jinja2** templates from `src/harness/templates/native/`.
 - Builds a **layered template context** via `_build_layered_context()` from `HarnessConfig`.
   Context is organized into three layers:
-  - **Layer 0 (Base)** — project-wide scalars (CI command, trunk branch, project lang, etc.)
+  - **Layer 0 (Base)** — project-wide scalars (CI command, trunk branch, project lang, memverse config, etc.)
   - **Layer 1 (Role)** — principles (planner/builder), per-role model hints, evaluator model
   - **Layer 2 (Stage)** — pipeline gates, hooks, thresholds
   Each artifact receives only the layers it needs; e.g. agents get Layer 0+1 (no stage hooks),
@@ -187,7 +187,7 @@ All user-visible harness **behavior** in the IDE is intended to flow from these 
 ## Integrations (`src/harness/integrations/`)
 
 - **`git_ops.py`** — git helpers (rebase, merge, cleanup) used where the workflow still touches branches.
-- **`memverse.py`** — Memverse MCP integration for learnings and memory sync aligned with skills.
+- **`memverse.py`** — Memverse integration anchor. Actual search/add runs via Cursor MCP tools in the IDE; Python only provides the `integrations.memverse` config which is projected into templates as `memverse_enabled` and `memverse_domain` (Layer 0).
 
 ---
 
