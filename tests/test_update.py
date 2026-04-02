@@ -128,8 +128,8 @@ class TestRunUpdate:
             mock_path_cls.cwd.return_value = Path("/fake")
             run_update(check=False, force=False)
 
-    def test_upgrade_runs_artifact_generation(self):
-        """After a successful pip upgrade, artifacts SHOULD be regenerated."""
+    def test_upgrade_does_not_generate_artifacts_and_shows_easter_egg(self, capsys):
+        """After a successful pip upgrade, update should not write project artifacts."""
         mock_gen = MagicMock(return_value=10)
         with (
             patch("harness.commands.update._get_latest_version", return_value="99.0.0"),
@@ -137,16 +137,17 @@ class TestRunUpdate:
             patch("harness.commands.update._migrate_config", return_value=0),
             patch("harness.commands.update.Path") as mock_path_cls,
             patch("harness.native.skill_gen.generate_native_artifacts", mock_gen),
-            patch("harness.native.skill_gen.resolve_native_lang", return_value="en"),
-            patch("harness.core.config.HarnessConfig.load", return_value=MagicMock()),
         ):
             mock_path_cls.cwd.return_value = Path("/fake")
             run_update(check=False, force=False)
-        mock_gen.assert_called_once()
-        assert mock_gen.call_args.kwargs.get("force") is True
+        mock_gen.assert_not_called()
+        logs = capsys.readouterr()
+        rendered = f"{logs.out}\n{logs.err}"
+        assert "init --force" in rendered
+        assert "Upgrade buff acquired +1" in rendered
 
-    def test_force_runs_artifact_generation_when_up_to_date(self):
-        """With --force, artifacts should be regenerated even when already at latest."""
+    def test_force_no_longer_runs_artifact_generation_when_up_to_date(self, capsys):
+        """With --force, update still should not write project artifacts."""
         from harness import __version__
         mock_gen = MagicMock(return_value=10)
         with (
@@ -154,13 +155,13 @@ class TestRunUpdate:
             patch("harness.commands.update._migrate_config", return_value=0),
             patch("harness.commands.update.Path") as mock_path_cls,
             patch("harness.native.skill_gen.generate_native_artifacts", mock_gen),
-            patch("harness.native.skill_gen.resolve_native_lang", return_value="en"),
-            patch("harness.core.config.HarnessConfig.load", return_value=MagicMock()),
         ):
             mock_path_cls.cwd.return_value = Path("/fake")
             run_update(check=False, force=True)
-        mock_gen.assert_called_once()
-        assert mock_gen.call_args.kwargs.get("force") is True
+        mock_gen.assert_not_called()
+        logs = capsys.readouterr()
+        rendered = f"{logs.out}\n{logs.err}"
+        assert "init --force" in rendered
 
     def test_pypi_unreachable_skips_generation_runs_migration(self):
         """When PyPI is unreachable (non-check mode), skip generation but run config migration."""
