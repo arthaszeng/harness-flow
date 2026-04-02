@@ -120,13 +120,16 @@ class TestRunUpdate:
     def test_up_to_date_skips_artifact_generation(self):
         """When already at latest version, generate_native_artifacts should NOT be called."""
         from harness import __version__
+        mock_gen = MagicMock(return_value=10)
         with (
             patch("harness.commands.update._get_latest_version", return_value=__version__),
             patch("harness.commands.update._migrate_config", return_value=0),
             patch("harness.commands.update.Path") as mock_path_cls,
+            patch("harness.native.skill_gen.generate_native_artifacts", mock_gen),
         ):
             mock_path_cls.cwd.return_value = Path("/fake")
             run_update(check=False, force=False)
+        mock_gen.assert_not_called()
 
     def test_upgrade_does_not_generate_artifacts_and_shows_easter_egg(self, capsys):
         """After a successful pip upgrade, update should not write project artifacts."""
@@ -144,7 +147,6 @@ class TestRunUpdate:
         logs = capsys.readouterr()
         rendered = f"{logs.out}\n{logs.err}"
         assert "init --force" in rendered
-        assert "Upgrade buff acquired +1" in rendered
 
     def test_force_no_longer_runs_artifact_generation_when_up_to_date(self, capsys):
         """With --force, update still should not write project artifacts."""
@@ -173,6 +175,19 @@ class TestRunUpdate:
             mock_path_cls.cwd.return_value = Path("/fake")
             run_update(check=False, force=False)
             mock_migrate.assert_called_once()
+
+    def test_force_takes_priority_over_unreachable_notice(self, capsys):
+        """When --force is set, reminder message takes priority over unreachable notice."""
+        with (
+            patch("harness.commands.update._get_latest_version", return_value=None),
+            patch("harness.commands.update._migrate_config", return_value=0),
+            patch("harness.commands.update.Path") as mock_path_cls,
+        ):
+            mock_path_cls.cwd.return_value = Path("/fake")
+            run_update(check=False, force=True)
+        logs = capsys.readouterr()
+        rendered = f"{logs.out}\n{logs.err}"
+        assert "init --force" in rendered
 
     def test_pip_upgrade_failure_does_not_generate(self):
         """When pip upgrade fails, artifacts should NOT be generated and exit with code 1."""

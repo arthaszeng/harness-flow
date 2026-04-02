@@ -318,7 +318,7 @@ class TestRunInitNonInteractive:
         assert mock_gen.call_args.kwargs.get("lang") == "en"
         logs = capsys.readouterr()
         rendered = f"{logs.out}\n{logs.err}"
-        assert "Artifact forge online" in rendered
+        assert "/harness-plan" in rendered
 
     def test_loads_business_oriented_zh_vision_template(self):
         tmpl = _load_template("vision.zh.md.j2")
@@ -359,7 +359,7 @@ class TestRunInitReinit:
         assert call_kwargs.get("force") is True
         logs = capsys.readouterr()
         rendered = f"{logs.out}\n{logs.err}"
-        assert "产物锻造台已上线" in rendered
+        assert "/harness-plan" in rendered
 
     @patch("harness.native.skill_gen.generate_native_artifacts", return_value=10)
     def test_reinit_uses_config_lang(self, mock_gen, monkeypatch, tmp_path):
