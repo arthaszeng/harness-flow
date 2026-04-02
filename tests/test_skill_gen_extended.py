@@ -1051,8 +1051,10 @@ def test_zh_directory_parity():
 
     en_files = _relative_files(en_dir, exclude_subdir="zh/")
     zh_files = _relative_files(zh_dir)
-    missing = en_files - zh_files
-    assert not missing, f"zh/ is missing files present in en/: {sorted(missing)}"
+    missing_in_zh = en_files - zh_files
+    assert not missing_in_zh, f"zh/ is missing files present in en/: {sorted(missing_in_zh)}"
+    extra_in_zh = zh_files - en_files
+    assert not extra_in_zh, f"zh/ has extra files not in en/: {sorted(extra_in_zh)}"
 
 
 def test_zh_templates_render_without_errors(tmp_path: Path):
