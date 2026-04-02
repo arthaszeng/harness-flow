@@ -1327,3 +1327,46 @@ def test_ship_en_and_zh_reference_harness_gate(tmp_path: Path):
     ship_zh = (tmp_path / ".cursor" / "skills" / "harness" / "harness-ship" / "SKILL.md")
     content_zh = ship_zh.read_text(encoding="utf-8")
     assert "harness gate" in content_zh, "zh ship template must reference 'harness gate'"
+
+
+# --- Handoff references in templates ---
+
+
+def test_en_templates_reference_handoff(tmp_path: Path):
+    """EN plan/build/eval/ship templates reference handoff JSON files."""
+    cfg = _make_cfg(tmp_path)
+    generate_native_artifacts(tmp_path, lang="en", cfg=cfg)
+    skills_base = tmp_path / ".cursor" / "skills" / "harness"
+
+    plan_content = (skills_base / "harness-plan" / "SKILL.md").read_text(encoding="utf-8")
+    assert "handoff-plan.json" in plan_content
+
+    build_content = (skills_base / "harness-build" / "SKILL.md").read_text(encoding="utf-8")
+    assert "handoff-plan.json" in build_content
+    assert "handoff-build.json" in build_content
+
+    eval_content = (skills_base / "harness-eval" / "SKILL.md").read_text(encoding="utf-8")
+    assert "handoff-build.json" in eval_content
+
+    ship_content = (skills_base / "harness-ship" / "SKILL.md").read_text(encoding="utf-8")
+    assert "handoff-ship.json" in ship_content
+
+
+def test_zh_templates_reference_handoff(tmp_path: Path):
+    """ZH plan/build/eval/ship templates reference handoff JSON files."""
+    cfg = _make_cfg(tmp_path)
+    generate_native_artifacts(tmp_path, lang="zh", cfg=cfg)
+    skills_base = tmp_path / ".cursor" / "skills" / "harness"
+
+    plan_content = (skills_base / "harness-plan" / "SKILL.md").read_text(encoding="utf-8")
+    assert "handoff-plan.json" in plan_content
+
+    build_content = (skills_base / "harness-build" / "SKILL.md").read_text(encoding="utf-8")
+    assert "handoff-plan.json" in build_content
+    assert "handoff-build.json" in build_content
+
+    eval_content = (skills_base / "harness-eval" / "SKILL.md").read_text(encoding="utf-8")
+    assert "handoff-build.json" in eval_content
+
+    ship_content = (skills_base / "harness-ship" / "SKILL.md").read_text(encoding="utf-8")
+    assert "handoff-ship.json" in ship_content
