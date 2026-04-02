@@ -1409,15 +1409,14 @@ def test_layered_context_skills_have_all_layers(tmp_path: Path):
     assert "review_gate" in ctx
 
 
-def test_layered_context_unknown_artifact_gets_full(tmp_path: Path):
-    """Unknown artifact type/name falls back to full context."""
+def test_layered_context_unknown_artifact_raises(tmp_path: Path):
+    """Unknown artifact type/name raises KeyError (fail-closed)."""
+    import pytest
     from harness.native.skill_gen import _build_layered_context
 
     cfg = _make_cfg(tmp_path)
-    ctx = _build_layered_context(cfg, "unknown", "unknown-name", lang="en")
-    assert "ci_command" in ctx
-    assert "builder_principles" in ctx
-    assert "hooks_pre_build" in ctx
+    with pytest.raises(KeyError, match="Unregistered artifact"):
+        _build_layered_context(cfg, "unknown", "unknown-name", lang="en")
 
 
 def test_dead_variables_removed(tmp_path: Path):

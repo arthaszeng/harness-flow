@@ -92,4 +92,21 @@ MESSAGES: dict[str, str] = {
     "update.config_ok": "Config is up to date",
     "update.skip_reinstall_up_to_date": "Already at latest, skipping reinstall (use --force)",
 
+    # ── progress / suggest_next_action ───────────────────────────
+    "progress.blocked": "Current task is blocked — {reason}",
+    "progress.phase_with_plan": "Task is in {phase} phase — continue `{title}` in Cursor",
+    "progress.phase_active": "Task is in {phase} phase — continue with harness skills in Cursor",
+    "progress.resumable": "Session resumable — continue current task with harness skills in Cursor",
+    "progress.in_progress": "Session in progress, waiting for current flow to complete",
+    "progress.all_blocked": "All tasks blocked, check blockers and retry",
+    "progress.has_completed": "Start a new plan, build, or review flow using harness skills in Cursor",
+    "progress.fresh": "Get started using harness skills in Cursor",
+
+    # ── gate command ─────────────────────────────────────────────
+    "gate.no_task": "no task directory found{suffix}",
+    "gate.no_task_hint": "run from a project with .agents/tasks/task-NNN/ directories",
+    "gate.config_fallback": "could not load harness config — defaulting to review_gate_mode='eng'",
+    "gate.pass": "GATE: PASS — ready to ship",
+    "gate.blocked": "GATE: BLOCKED — {summary}",
+
 }

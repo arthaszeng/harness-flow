@@ -11,6 +11,7 @@ from unittest.mock import patch
 from harness.core.gates import (
     CheckStatus,
     GateVerdict,
+    _file_exists_and_nonempty,
     check_ship_readiness,
     write_gate_snapshot,
 )
@@ -431,3 +432,84 @@ class TestPermissionFailGraceful:
             assert isinstance(verdict, GateVerdict)
         finally:
             plan.chmod(0o644)
+
+
+# ---------------------------------------------------------------------------
+# D4: _file_exists_and_nonempty — bounded read, whitespace-only = empty
+# ---------------------------------------------------------------------------
+
+
+class TestFileExistsAndNonempty:
+    def test_whitespace_only_returns_false(self, tmp_path: Path):
+        f = tmp_path / "blank.md"
+        f.write_text("   \n  \n  ", encoding="utf-8")
+        assert not _file_exists_and_nonempty(f)
+
+    def test_nonexistent_returns_false(self, tmp_path: Path):
+        assert not _file_exists_and_nonempty(tmp_path / "nope.md")
+
+    def test_empty_file_returns_false(self, tmp_path: Path):
+        f = tmp_path / "empty.md"
+        f.write_text("", encoding="utf-8")
+        assert not _file_exists_and_nonempty(f)
+
+    def test_content_file_returns_true(self, tmp_path: Path):
+        f = tmp_path / "ok.md"
+        f.write_text("# Plan", encoding="utf-8")
+        assert _file_exists_and_nonempty(f)
+
+
+# ---------------------------------------------------------------------------
+# D5: EvalVerdict enum — case-insensitive parsing
+# ---------------------------------------------------------------------------
+
+
+class TestEvalVerdict:
+    def test_pass_uppercase(self):
+        from harness.core.gates import EvalVerdict
+        assert EvalVerdict.parse("PASS") == EvalVerdict.PASS
+
+    def test_pass_lowercase(self):
+        from harness.core.gates import EvalVerdict
+        assert EvalVerdict.parse("pass") == EvalVerdict.PASS
+
+    def test_pass_mixed_case(self):
+        from harness.core.gates import EvalVerdict
+        assert EvalVerdict.parse("Pass") == EvalVerdict.PASS
+
+    def test_iterate_case_insensitive(self):
+        from harness.core.gates import EvalVerdict
+        assert EvalVerdict.parse("iterate") == EvalVerdict.ITERATE
+
+    def test_unknown_verdict_returns_none(self):
+        from harness.core.gates import EvalVerdict
+        assert EvalVerdict.parse("FAIL") is None
+        assert EvalVerdict.parse("") is None
+        assert EvalVerdict.parse("UNKNOWN") is None
+
+
+# ---------------------------------------------------------------------------
+# D5: task_id pattern enforcement
+# ---------------------------------------------------------------------------
+
+
+class TestTaskIdValidation:
+    def test_valid_task_id(self):
+        ws = WorkflowState(task_id="task-001")
+        assert ws.task_id == "task-001"
+
+    def test_valid_short_task_id(self):
+        ws = WorkflowState(task_id="task-42")
+        assert ws.task_id == "task-42"
+
+    def test_invalid_task_id_alpha(self):
+        import pytest
+        from pydantic import ValidationError as PydanticValidationError
+        with pytest.raises(PydanticValidationError):
+            WorkflowState(task_id="task-abc")
+
+    def test_invalid_task_id_traversal(self):
+        import pytest
+        from pydantic import ValidationError as PydanticValidationError
+        with pytest.raises(PydanticValidationError):
+            WorkflowState(task_id="../task-001")

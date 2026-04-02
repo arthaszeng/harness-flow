@@ -19,6 +19,7 @@ __all__ = [
 ]
 
 import json
+import warnings
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Literal
@@ -95,21 +96,29 @@ def save_handoff(task_dir: Path, handoff: StageHandoff) -> Path:
 
 
 def load_handoff(task_dir: Path, source_phase: HandoffPhase) -> StageHandoff | None:
-    """Load a specific handoff file.  Returns ``None`` on any failure."""
+    """Load a specific handoff file.  Returns ``None`` on any failure with a warning."""
     path = task_dir / _handoff_filename(source_phase)
     if not path.exists():
         return None
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError) as exc:
+        warnings.warn(f"Corrupt handoff at {path} ({type(exc).__name__})", stacklevel=2)
         return None
     if not isinstance(raw, dict):
+        warnings.warn(f"Corrupt handoff at {path} (not a JSON object)", stacklevel=2)
         return None
     if raw.get("schema_version") != HANDOFF_SCHEMA_VERSION:
+        warnings.warn(
+            f"Schema version mismatch in {path} "
+            f"(got {raw.get('schema_version')!r}, expected {HANDOFF_SCHEMA_VERSION})",
+            stacklevel=2,
+        )
         return None
     try:
         return StageHandoff.model_validate(raw)
-    except ValidationError:
+    except ValidationError as exc:
+        warnings.warn(f"Invalid handoff at {path} ({exc})", stacklevel=2)
         return None
 
 

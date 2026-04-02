@@ -93,4 +93,21 @@ MESSAGES: dict[str, str] = {
     "update.config_ok": "配置已是最新",
     "update.skip_reinstall_up_to_date": "已是最新版本，跳过重装（使用 --force）",
 
+    # ── progress / suggest_next_action ───────────────────────────
+    "progress.blocked": "当前任务被阻塞 — {reason}",
+    "progress.phase_with_plan": "当前任务处于 {phase} 阶段 — 在 Cursor 中继续 `{title}`",
+    "progress.phase_active": "当前任务处于 {phase} 阶段 — 在 Cursor 中通过 harness 技能继续",
+    "progress.resumable": "会话可恢复 — 在 Cursor 中通过 harness 技能继续当前任务",
+    "progress.in_progress": "会话进行中，等待当前流程完成",
+    "progress.all_blocked": "所有任务已阻塞，检查阻塞原因后重新发起",
+    "progress.has_completed": "使用 Cursor 中的 harness 技能开始新的计划、构建或评审流程",
+    "progress.fresh": "使用 Cursor 中的 harness 技能开始",
+
+    # ── gate command ─────────────────────────────────────────────
+    "gate.no_task": "未找到任务目录{suffix}",
+    "gate.no_task_hint": "请在包含 .agents/tasks/task-NNN/ 目录的项目中运行",
+    "gate.config_fallback": "无法加载 harness 配置 — 回退到 review_gate_mode='eng'",
+    "gate.pass": "门禁通过：可以交付",
+    "gate.blocked": "门禁阻塞 — {summary}",
+
 }

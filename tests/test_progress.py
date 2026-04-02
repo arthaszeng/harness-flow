@@ -91,6 +91,16 @@ class TestIsResumable:
 
 
 class TestSuggestNextAction:
+    @classmethod
+    def setup_class(cls):
+        from harness.i18n import set_lang
+        set_lang("zh")
+
+    @classmethod
+    def teardown_class(cls):
+        from harness.i18n import set_lang
+        set_lang("en")
+
     def test_workflow_blocker_takes_precedence(self):
         state = SessionState(mode="idle")
         workflow_state = WorkflowState(task_id="task-001")

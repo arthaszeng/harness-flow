@@ -1,6 +1,7 @@
 """state.py unit tests"""
 
 import json
+import warnings as _warnings
 from pathlib import Path
 
 from harness.core.progress import update_progress
@@ -285,3 +286,80 @@ def test_task_record_and_completed_task_roundtrip(tmp_path: Path):
     assert loaded.current_task is not None
     assert loaded.current_task.state == TaskState.BUILDING
     assert loaded.completed[0].verdict == "PASS"
+
+
+# ---------------------------------------------------------------------------
+# D1: Defensive loading — SessionState never crashes
+# ---------------------------------------------------------------------------
+
+
+def test_load_invalid_json_returns_default(tmp_path: Path):
+    """Corrupt JSON in state.json should not crash; returns default + warns."""
+    agents_dir = tmp_path / ".agents"
+    agents_dir.mkdir()
+    (agents_dir / "state.json").write_text("{invalid json!!", encoding="utf-8")
+
+    with _warnings.catch_warnings(record=True) as w:
+        _warnings.simplefilter("always")
+        loaded = SessionState.load(agents_dir)
+    assert loaded.session_id == ""
+    assert loaded.mode == "idle"
+    assert any("Corrupt session state" in str(x.message) for x in w)
+
+
+def test_load_truncated_json_returns_default(tmp_path: Path):
+    """Truncated JSON should not crash."""
+    agents_dir = tmp_path / ".agents"
+    agents_dir.mkdir()
+    (agents_dir / "state.json").write_text('{"session_id": "x', encoding="utf-8")
+
+    with _warnings.catch_warnings(record=True) as w:
+        _warnings.simplefilter("always")
+        loaded = SessionState.load(agents_dir)
+    assert loaded.mode == "idle"
+    assert len(w) >= 1
+
+
+def test_load_valid_json_invalid_schema_returns_default(tmp_path: Path):
+    """Valid JSON but invalid Pydantic model should not crash."""
+    agents_dir = tmp_path / ".agents"
+    agents_dir.mkdir()
+    (agents_dir / "state.json").write_text(
+        json.dumps({"mode": 12345, "current_task": "not-a-dict"}),
+        encoding="utf-8",
+    )
+
+    with _warnings.catch_warnings(record=True) as w:
+        _warnings.simplefilter("always")
+        loaded = SessionState.load(agents_dir)
+    assert loaded.mode == "idle"
+    assert any("Corrupt session state" in str(x.message) for x in w)
+
+
+# ---------------------------------------------------------------------------
+# D3: i18n — suggest_next_action respects language
+# ---------------------------------------------------------------------------
+
+
+def test_suggest_next_action_english():
+    """suggest_next_action output switches with set_lang('en')."""
+    from harness.core.progress import suggest_next_action
+    from harness.i18n import set_lang
+
+    set_lang("en")
+    state = SessionState()
+    result = suggest_next_action(state)
+    assert "Get started" in result
+    set_lang("zh")
+
+
+def test_suggest_next_action_chinese():
+    """suggest_next_action output switches with set_lang('zh')."""
+    from harness.core.progress import suggest_next_action
+    from harness.i18n import set_lang
+
+    set_lang("zh")
+    state = SessionState()
+    result = suggest_next_action(state)
+    assert "技能" in result
+    set_lang("en")

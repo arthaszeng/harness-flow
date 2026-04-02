@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import json
+import warnings
 from enum import Enum
 from pathlib import Path
 from typing import Any
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ValidationError
 
 
 class TaskState(str, Enum):
@@ -87,12 +88,24 @@ class SessionState(BaseModel):
 
     @classmethod
     def load(cls, agents_dir: Path) -> SessionState:
-        """Restore from .agents/state.json."""
+        """Restore from .agents/state.json.
+
+        Never raises on corrupt or invalid data — returns a fresh default
+        state and emits a visible warning so the user knows recovery occurred.
+        """
         state_file = agents_dir / "state.json"
         if not state_file.exists():
             return cls()
-        data = json.loads(state_file.read_text(encoding="utf-8"))
-        return cls.model_validate(data)
+        try:
+            data = json.loads(state_file.read_text(encoding="utf-8"))
+            return cls.model_validate(data)
+        except (json.JSONDecodeError, ValidationError, OSError) as exc:
+            warnings.warn(
+                f"Corrupt session state at {state_file} ({type(exc).__name__}: {exc}); "
+                "using fresh default state",
+                stacklevel=2,
+            )
+            return cls()
 
     @classmethod
     def detect_incomplete(cls, agents_dir: Path) -> SessionState | None:

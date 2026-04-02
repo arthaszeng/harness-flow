@@ -228,10 +228,18 @@ def _filter_context(
     artifact_type: ArtifactType,
     artifact_name: str,
 ) -> dict[str, str]:
-    """Filter a pre-built full context to the layers needed by one artifact."""
+    """Filter a pre-built full context to the layers needed by one artifact.
+
+    Raises ``KeyError`` if the artifact is not registered in ``_ARTIFACT_LAYERS``.
+    Adding a new template **requires** registering it in ``_ARTIFACT_LAYERS`` to
+    prevent unintended context leakage.
+    """
     layers = _ARTIFACT_LAYERS.get((artifact_type, artifact_name))
     if layers is None:
-        return dict(full)
+        raise KeyError(
+            f"Unregistered artifact ({artifact_type!r}, {artifact_name!r}). "
+            "Register it in _ARTIFACT_LAYERS before rendering."
+        )
     allowed_keys: set[str] = set()
     for layer_id in layers:
         allowed_keys |= _LAYER_KEYS.get(layer_id, set())
