@@ -124,6 +124,8 @@ _LAYER_KEYS: dict[int, set[str]] = {
         "project_name",
         "project_lang",
         "retro_window_days",
+        "memverse_enabled",
+        "memverse_domain",
     },
     1: {
         "planner_principles",
@@ -191,6 +193,12 @@ def _build_full_context(cfg: HarnessConfig, *, lang: str = "en") -> dict[str, st
         "project_name": cfg.project.name,
         "project_lang": _detect_project_lang(cfg),
         "retro_window_days": str(cfg.native.retro_window_days),
+        "memverse_enabled": "true" if cfg.integrations.memverse.enabled else "false",
+        "memverse_domain": (
+            cfg.integrations.memverse.domain_prefix.strip()
+            or cfg.project.name
+            or "default"
+        ),
         # Layer 1 — Role
         "evaluator_model": effective_evaluator_model or "IDE default",
         "planner_principles": _planner_principles(lang),
