@@ -1019,6 +1019,7 @@ def test_worktrees_json_unix_scripts_correct(tmp_path: Path):
     assert any("config.toml" in cmd for cmd in unix)
     assert any("vision.md" in cmd for cmd in unix)
     assert any(".cursor" in cmd and "cp" in cmd for cmd in unix)
+    assert any("HARNESS_TASK_ID" in cmd for cmd in unix), "unix scripts should export HARNESS_TASK_ID"
 
 
 def test_worktrees_json_windows_scripts_correct(tmp_path: Path):
@@ -1032,6 +1033,7 @@ def test_worktrees_json_windows_scripts_correct(tmp_path: Path):
     assert any("config.toml" in cmd for cmd in win)
     assert any("vision.md" in cmd for cmd in win)
     assert any("xcopy" in cmd and ".cursor" in cmd for cmd in win)
+    assert any("HARNESS_TASK_ID" in cmd for cmd in win), "windows scripts should set HARNESS_TASK_ID"
 
 
 def test_worktrees_json_skip_when_exists_no_force(tmp_path: Path):
