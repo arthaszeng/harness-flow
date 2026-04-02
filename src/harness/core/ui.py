@@ -10,7 +10,7 @@ from __future__ import annotations
 import time
 from collections import deque
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Callable, Generator
+from typing import Callable, Generator
 
 from rich.console import Console, ConsoleOptions, RenderResult
 from rich.live import Live
@@ -19,9 +19,6 @@ from rich.rule import Rule
 from rich.style import Style
 from rich.text import Text
 from rich.theme import Theme
-
-if TYPE_CHECKING:
-    pass
 
 # ── Cyber color theme ───────────────────────────────────────────
 

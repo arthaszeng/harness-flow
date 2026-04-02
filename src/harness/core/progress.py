@@ -42,22 +42,24 @@ def suggest_next_action(
     workflow_state: WorkflowState | None = None,
 ) -> str:
     """Derive a human-readable next-step suggestion from the current state."""
+    from harness.i18n import t
+
     if workflow_state and workflow_state.blocker.reason:
-        return f"当前任务被阻塞 — {workflow_state.blocker.reason}"
+        return t("progress.blocked", reason=workflow_state.blocker.reason)
     if workflow_state and workflow_state.phase not in {TaskState.IDLE, TaskState.DONE}:
         phase = workflow_state.phase.value
         if workflow_state.active_plan.title:
-            return f"当前任务处于 {phase} 阶段 — 在 Cursor 中继续 `{workflow_state.active_plan.title}`"
-        return f"当前任务处于 {phase} 阶段 — 在 Cursor 中通过 harness 技能继续"
+            return t("progress.phase_with_plan", phase=phase, title=workflow_state.active_plan.title)
+        return t("progress.phase_active", phase=phase)
     if is_resumable(state):
-        return "会话可恢复 — 在 Cursor 中通过 harness 技能继续当前任务"
+        return t("progress.resumable")
     if state.mode != "idle":
-        return "会话进行中，等待当前流程完成"
+        return t("progress.in_progress")
     if state.blocked and not state.completed:
-        return "所有任务已阻塞，检查阻塞原因后重新发起"
+        return t("progress.all_blocked")
     if state.completed:
-        return "使用 Cursor 中的 harness 技能开始新的计划、构建或评审流程"
-    return "使用 Cursor 中的 harness 技能开始"
+        return t("progress.has_completed")
+    return t("progress.fresh")
 
 
 # ---------------------------------------------------------------------------

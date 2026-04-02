@@ -132,13 +132,23 @@ class TestRenderRecentResult:
 
 
 class TestRenderNextAction:
+    @classmethod
+    def setup_class(cls):
+        from harness.i18n import set_lang
+        set_lang("zh")
+
+    @classmethod
+    def teardown_class(cls):
+        from harness.i18n import set_lang
+        set_lang("en")
+
     def test_fresh_state(self):
         console, buf = _make_console()
         state = SessionState(mode="idle")
         _render_next_action(console, state)
         output = buf.getvalue()
         assert "Next Action" in output
-        assert "harness 技能" in output
+        assert "harness" in output
 
     def test_resumable_shows_ide_hint(self):
         console, buf = _make_console()
@@ -149,7 +159,7 @@ class TestRenderNextAction:
         _render_next_action(console, state)
         output = buf.getvalue()
         assert "Next Action" in output
-        assert "会话可恢复" in output
+        assert "恢复" in output or "resumable" in output.lower()
         assert "harness run" not in output
         assert "harness auto" not in output
 
@@ -164,6 +174,16 @@ class TestRenderNextAction:
 
 
 class TestRunStatusScenarios:
+    @classmethod
+    def setup_class(cls):
+        from harness.i18n import set_lang
+        set_lang("zh")
+
+    @classmethod
+    def teardown_class(cls):
+        from harness.i18n import set_lang
+        set_lang("en")
+
     def test_empty_state_renders_header(self):
         console, buf = _make_console()
         state = SessionState()
@@ -214,7 +234,7 @@ class TestRunStatusScenarios:
         assert "in-flight work" in output
         assert "building" in output
         assert "s-resume" in output
-        assert "会话可恢复" in output
+        assert "恢复" in output or "resumable" in output.lower()
         assert "harness run" not in output
 
     def test_blocked_scenario(self):

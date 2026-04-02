@@ -12,7 +12,6 @@ import re
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import List
 
 from harness.core.workflow_state import (
     GateSnapshot,
@@ -29,6 +28,20 @@ class CheckStatus(str, Enum):
     SKIPPED = "skipped"
 
 
+class EvalVerdict(str, Enum):
+    """Recognized eval verdict values (case-insensitive on parse)."""
+    PASS = "PASS"
+    ITERATE = "ITERATE"
+
+    @classmethod
+    def parse(cls, value: str) -> "EvalVerdict | None":
+        """Parse a verdict string, case-insensitively. Returns None if unknown."""
+        try:
+            return cls(value.upper())
+        except ValueError:
+            return None
+
+
 @dataclass
 class CheckItem:
     name: str
@@ -39,7 +52,7 @@ class CheckItem:
 @dataclass
 class GateVerdict:
     passed: bool
-    checks: List[CheckItem] = field(default_factory=list)
+    checks: list[CheckItem] = field(default_factory=list)
     summary: str = ""
 
     @property
@@ -53,7 +66,7 @@ class GateVerdict:
 
 _EVAL_ROUND_RE = re.compile(r"evaluation-r(\d+)\.md$")
 _BUILD_ROUND_RE = re.compile(r"build-r(\d+)\.log$")
-_VERDICT_LINE_RE = re.compile(r"^##\s+Verdict:\s+(PASS|ITERATE)\s*$", re.MULTILINE)
+_VERDICT_LINE_RE = re.compile(r"^##\s+Verdict:\s+(\S+)\s*$", re.MULTILINE | re.IGNORECASE)
 
 
 def _latest_numbered_file(task_dir: Path, pattern: re.Pattern[str]) -> Path | None:
@@ -73,10 +86,16 @@ def _latest_numbered_file(task_dir: Path, pattern: re.Pattern[str]) -> Path | No
 
 
 def _file_exists_and_nonempty(path: Path) -> bool:
-    if not path.exists():
+    resolved = path.resolve()
+    if not resolved.exists():
         return False
     try:
-        return path.stat().st_size > 0 and bool(path.read_text(encoding="utf-8").strip())
+        size = resolved.stat().st_size
+        if size == 0:
+            return False
+        with open(resolved, "r", encoding="utf-8") as f:
+            head = f.read(64)
+        return bool(head.strip())
     except OSError:
         return False
 
@@ -120,8 +139,15 @@ def check_ship_readiness(
             content = ""
         m = _VERDICT_LINE_RE.search(content)
         if m:
-            verdict_value = m.group(1)
-            checks.append(CheckItem("eval_verdict_parseable", CheckStatus.PASS))
+            parsed = EvalVerdict.parse(m.group(1))
+            if parsed is not None:
+                verdict_value = parsed.value
+                checks.append(CheckItem("eval_verdict_parseable", CheckStatus.PASS))
+            else:
+                checks.append(CheckItem(
+                    "eval_verdict_parseable", CheckStatus.BLOCKED,
+                    f"unknown verdict '{m.group(1)}' — expected PASS or ITERATE",
+                ))
         else:
             checks.append(CheckItem(
                 "eval_verdict_parseable", CheckStatus.BLOCKED,

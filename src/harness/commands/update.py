@@ -15,7 +15,35 @@ from harness.i18n import t
 
 
 def _get_latest_version() -> str | None:
-    """Query PyPI for the latest harness-flow version."""
+    """Query PyPI for the latest harness-flow version.
+
+    Prefers the stable JSON API; falls back to ``pip index`` subprocess.
+    """
+    version = _get_latest_version_http()
+    if version is not None:
+        return version
+    return _get_latest_version_pip()
+
+
+def _get_latest_version_http() -> str | None:
+    """Query PyPI JSON API (fast, no subprocess)."""
+    import json
+    import urllib.request
+
+    try:
+        req = urllib.request.Request(
+            "https://pypi.org/pypi/harness-flow/json",
+            headers={"Accept": "application/json"},
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read())
+        return data.get("info", {}).get("version")
+    except Exception:
+        return None
+
+
+def _get_latest_version_pip() -> str | None:
+    """Fallback: query via pip index subprocess."""
     try:
         result = subprocess.run(
             [sys.executable, "-m", "pip", "index", "versions", "harness-flow"],

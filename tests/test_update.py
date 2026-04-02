@@ -16,22 +16,35 @@ from harness.commands.update import (
 
 
 class TestGetLatestVersion:
-    def test_parses_version_from_pip_output(self):
+    def test_http_preferred(self):
+        with patch("harness.commands.update._get_latest_version_http", return_value="5.0.0"):
+            assert _get_latest_version() == "5.0.0"
+
+    def test_fallback_to_pip_when_http_fails(self):
         mock_result = MagicMock()
         mock_result.returncode = 0
         mock_result.stdout = "harness-flow (2.3.0)\n"
-        with patch("harness.commands.update.subprocess.run", return_value=mock_result):
+        with (
+            patch("harness.commands.update._get_latest_version_http", return_value=None),
+            patch("harness.commands.update.subprocess.run", return_value=mock_result),
+        ):
             assert _get_latest_version() == "2.3.0"
 
-    def test_returns_none_on_failure(self):
+    def test_returns_none_when_both_fail(self):
         mock_result = MagicMock()
         mock_result.returncode = 1
         mock_result.stdout = ""
-        with patch("harness.commands.update.subprocess.run", return_value=mock_result):
+        with (
+            patch("harness.commands.update._get_latest_version_http", return_value=None),
+            patch("harness.commands.update.subprocess.run", return_value=mock_result),
+        ):
             assert _get_latest_version() is None
 
     def test_returns_none_on_timeout(self):
-        with patch("harness.commands.update.subprocess.run", side_effect=Exception("timeout")):
+        with (
+            patch("harness.commands.update._get_latest_version_http", return_value=None),
+            patch("harness.commands.update.subprocess.run", side_effect=Exception("timeout")),
+        ):
             assert _get_latest_version() is None
 
 

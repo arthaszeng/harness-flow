@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import warnings
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
@@ -157,20 +158,32 @@ def resolve_task_dir(
 
 
 def load_workflow_state(task_dir: Path) -> WorkflowState | None:
+    """Load workflow state, returning ``None`` on any failure with a warning."""
     path = task_dir / WORKFLOW_STATE_FILENAME
     if not path.exists():
         return None
     try:
         raw = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
+    except (OSError, json.JSONDecodeError) as exc:
+        warnings.warn(
+            f"Corrupt workflow state at {path} ({type(exc).__name__})",
+            stacklevel=2,
+        )
         return None
     if not isinstance(raw, dict):
+        warnings.warn(f"Corrupt workflow state at {path} (not a JSON object)", stacklevel=2)
         return None
     if raw.get("schema_version") != SCHEMA_VERSION:
+        warnings.warn(
+            f"Schema version mismatch in {path} "
+            f"(got {raw.get('schema_version')!r}, expected {SCHEMA_VERSION})",
+            stacklevel=2,
+        )
         return None
     try:
         state = WorkflowState.model_validate(raw)
-    except ValidationError:
+    except ValidationError as exc:
+        warnings.warn(f"Invalid workflow state at {path} ({exc})", stacklevel=2)
         return None
     if state.task_id != task_dir.name:
         return None
