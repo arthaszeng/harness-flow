@@ -105,6 +105,15 @@ artifact refs, gate snapshots, blocker reason, and deterministic task discovery.
 `SessionState` is a session-summary compatibility layer; registry/events remain
 audit-only metadata, not gate authorities.
 
+### `handoff.py`
+
+Structured stage handoff contract. Each pipeline stage (plan → build → eval → ship)
+writes a compact JSON summary at its exit point via `save_handoff()`. The next stage
+reads that handoff via `load_handoff()` or `load_latest_handoff()` instead of
+re-processing full upstream artifacts. Handoff files live at
+`.agents/tasks/task-NNN/handoff-<phase>.json` with `PHASE_ORDER = (plan, build, eval, ship)`.
+Schema uses Pydantic with `extra="ignore"` and versioning for forward compatibility.
+
 ### `gates.py`
 
 Ship-readiness gate validation. `check_ship_readiness(task_dir)` runs hard checks

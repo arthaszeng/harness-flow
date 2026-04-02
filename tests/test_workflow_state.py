@@ -8,6 +8,7 @@ from harness.core.state import TaskState
 from harness.core.workflow_state import (
     WORKFLOW_STATE_FILENAME,
     WorkflowState,
+    artifact_pairs,
     iter_task_dirs,
     load_current_workflow_state,
     load_workflow_state,
@@ -143,3 +144,34 @@ def test_load_current_workflow_state_does_not_fallback_when_session_task_missing
     task_dir, state = load_current_workflow_state(agents_dir, session_task_id="task-001")
     assert task_dir is None
     assert state is None
+
+
+def test_handoff_field_round_trip(tmp_path: Path):
+    task_dir = tmp_path / ".agents" / "tasks" / "task-001"
+    state = WorkflowState(task_id="task-001")
+    state.artifacts.handoff = "handoff-build.json"
+    state.save(task_dir)
+
+    loaded = load_workflow_state(task_dir)
+    assert loaded is not None
+    assert loaded.artifacts.handoff == "handoff-build.json"
+
+
+def test_artifact_pairs_includes_handoff(tmp_path: Path):
+    state = WorkflowState(task_id="task-001")
+    state.artifacts.plan = "plan.md"
+    state.artifacts.handoff = "handoff-plan.json"
+
+    pairs = artifact_pairs(state)
+    labels = [label for label, _ in pairs]
+    assert "plan" in labels
+    assert "handoff" in labels
+
+
+def test_artifact_pairs_omits_empty_handoff():
+    state = WorkflowState(task_id="task-001")
+    state.artifacts.plan = "plan.md"
+
+    pairs = artifact_pairs(state)
+    labels = [label for label, _ in pairs]
+    assert "handoff" not in labels
