@@ -14,6 +14,8 @@ def test_default_config():
     cfg = HarnessConfig()
     assert cfg.workflow.max_iterations == 3
     assert cfg.workflow.pass_threshold == 7.0
+    assert cfg.workflow.task_id_strategy == "hybrid"
+    assert cfg.workflow.task_id_custom_pattern == ""
     assert not hasattr(cfg, "drivers")
     assert cfg.integrations.memverse.enabled is False
     assert cfg.integrations.memverse.domain_prefix == ""

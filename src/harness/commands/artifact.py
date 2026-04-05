@@ -3,25 +3,26 @@
 from __future__ import annotations
 
 import json
-import re
 import sys
 from pathlib import Path
 
 import typer
 
+from harness.core.config import HarnessConfig
+from harness.core.task_identity import TaskIdentityResolver
 from harness.core.ui import get_ui
-
-_TASK_DIR_RE = re.compile(r"^task-\d+$")
 
 
 def _resolve_task_dir(task: str) -> Path:
     """Resolve task ID to a task directory path, creating if needed.
 
-    Rejects values that don't match ``task-NNN`` to prevent path traversal.
+    Rejects values that don't match configured task identity strategy.
     """
-    if not _TASK_DIR_RE.match(task):
+    cfg = HarnessConfig.load(Path.cwd())
+    resolver = TaskIdentityResolver.from_config(cfg)
+    if not resolver.is_valid_task_key(task):
         raise typer.BadParameter(
-            f"Invalid task ID '{task}': must match task-NNN (e.g. task-001)"
+            f"Invalid task ID '{task}' for strategy '{resolver.strategy}'"
         )
     agents_dir = Path.cwd() / ".harness-flow"
     task_dir = (agents_dir / "tasks" / task).resolve()

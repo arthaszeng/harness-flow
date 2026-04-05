@@ -55,6 +55,14 @@ class TestHelpOutput:
         clean = _ANSI_RE.sub("", result.output)
         assert "--force" in clean
 
+    def test_help_lists_git_lifecycle_commands(self):
+        result = runner.invoke(app, ["--help"])
+        assert result.exit_code == 0
+        clean = _ANSI_RE.sub("", result.output)
+        assert "git-preflight" in clean
+        assert "git-prepare-branch" in clean
+        assert "git-sync-trunk" in clean
+
 
 class TestGateCommand:
     def test_gate_pass(self, tmp_path: Path, monkeypatch):
@@ -186,3 +194,55 @@ class TestSaveFeedbackLedgerCommand:
             ["save-feedback-ledger", "--task", "task-022", "--body", '{"id":"broken"'],
         )
         assert result.exit_code != 0
+
+
+class TestGitLifecycleCommands:
+    def test_git_preflight_json_output(self, monkeypatch):
+        from harness.integrations.git_ops import GitOperationResult
+
+        class _Manager:
+            def preflight_repo_state(self):
+                return GitOperationResult(ok=True, code="OK", message="ready", context={"branch": "agent/task-001-x"})
+
+        monkeypatch.setattr(
+            "harness.commands.git_lifecycle.BranchLifecycleManager.create",
+            lambda *_args, **_kwargs: _Manager(),
+        )
+        result = runner.invoke(app, ["git-preflight", "--json"])
+        assert result.exit_code == 0
+        assert '"ok": true' in result.output
+        assert '"code": "OK"' in result.output
+
+    def test_git_prepare_branch_failure_returns_exit_1(self, monkeypatch):
+        from harness.integrations.git_ops import GitOperationResult
+
+        class _Manager:
+            def prepare_task_branch(self, *_args, **_kwargs):
+                return GitOperationResult(ok=False, code="INVALID_TASK_KEY", message="invalid")
+
+        monkeypatch.setattr(
+            "harness.commands.git_lifecycle.BranchLifecycleManager.create",
+            lambda *_args, **_kwargs: _Manager(),
+        )
+        result = runner.invoke(
+            app,
+            ["git-prepare-branch", "--task-key", "bad", "--short-desc", "x"],
+        )
+        assert result.exit_code == 1
+        clean = _ANSI_RE.sub("", result.output)
+        assert "INVALID_TASK_KEY" in clean
+
+    def test_git_sync_trunk_json_output(self, monkeypatch):
+        from harness.integrations.git_ops import GitOperationResult
+
+        class _Manager:
+            def sync_feature_with_trunk(self):
+                return GitOperationResult(ok=True, code="OK", message="synced")
+
+        monkeypatch.setattr(
+            "harness.commands.git_lifecycle.BranchLifecycleManager.create",
+            lambda *_args, **_kwargs: _Manager(),
+        )
+        result = runner.invoke(app, ["git-sync-trunk", "--json"])
+        assert result.exit_code == 0
+        assert '"code": "OK"' in result.output

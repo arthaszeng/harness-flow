@@ -34,13 +34,16 @@ For module-level behavior, read the code and docstrings. For day-to-day usage, s
 
 ## CLI layer (`src/harness/cli.py`)
 
-Built with **Typer**. Three commands:
+Built with **Typer**. Core commands:
 
 | Command   | Purpose |
 |-----------|---------|
 | `init`    | Project bootstrap wizard; when config already exists, reinit mode regenerates artifacts. |
 | `gate`    | Check ship-readiness gates for the current task (hard + soft checks). |
 | `status`  | Load session state and render a Rich dashboard. |
+| `git-preflight` | Structured git preflight checks with deterministic result codes. |
+| `git-prepare-branch` | Create/resume task branch on top of configured trunk. |
+| `git-sync-trunk` | Sync the current feature branch against configured trunk. |
 | `update`  | Check PyPI, optional pip upgrade, config migration hints; no project artifact writes. |
 
 ---
@@ -114,6 +117,19 @@ Detects whether the current cwd is inside a Cursor parallel-agent git worktree
 with branch, common dir, and git dir. Used by `status` for worktree identity
 display and by worktree setup scripts for automatic `HARNESS_TASK_ID` binding.
 Isolation is task-resolution + UX scoped; no file-level distributed locking.
+
+### `task_identity.py`
+
+Task key resolution for workflow and branch lifecycle. Supports configurable
+strategies (`numeric`, `jira`, `custom`, `hybrid`) so task identifiers are not
+hard-wired to `task-NNN`. Provides validation and branch extraction helpers,
+with backward compatibility for `task-NNN`.
+
+### `branch_lifecycle.py`
+
+Structured git lifecycle orchestration used by workflow entry points:
+preflight checks, trunk sync, task-branch prepare/resume, and feature rebase.
+Returns structured result codes/messages for deterministic agent handling.
 
 ### `handoff.py`
 
@@ -196,7 +212,7 @@ All user-visible harness **behavior** in the IDE is intended to flow from these 
 
 ## Integrations (`src/harness/integrations/`)
 
-- **`git_ops.py`** — git helpers (rebase, merge, cleanup) used where the workflow still touches branches.
+- **`git_ops.py`** — git helpers (rebase, merge, cleanup) plus structured command results (`GitOperationResult`) for deterministic error handling.
 - **`memverse.py`** — Memverse integration anchor. Actual search/add runs via Cursor MCP tools in the IDE; Python only provides the `integrations.memverse` config which is projected into templates as `memverse_enabled` and `memverse_domain` (Layer 0).
 
 ---

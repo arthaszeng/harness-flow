@@ -141,6 +141,8 @@ class WorkflowConfig(BaseModel):
     auto_merge: bool = True
     branch_prefix: str = "agent"
     trunk_branch: str = "main"
+    task_id_strategy: Literal["numeric", "jira", "custom", "hybrid"] = "hybrid"
+    task_id_custom_pattern: str = ""
 
 
 class MemverseConfig(BaseModel):

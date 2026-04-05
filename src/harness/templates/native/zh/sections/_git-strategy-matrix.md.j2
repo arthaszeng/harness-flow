@@ -1,0 +1,12 @@
+## Git 策略矩阵（SSOT）
+
+按 skill 入口使用统一的 Git 行为来源：
+
+- `plan`：严格预检 + 分支准备（`harness git-preflight`、`harness git-prepare-branch`）
+- `build`：低干扰模式，默认不做隐式分支改写
+- `eval`：只读诊断，不做隐式分支变更
+- `ship`：全自动同步/rebase/错误码恢复流程
+- `investigate`：隔离分支或 worktree 优先的排障路径
+- `doc-release`：跟随当前任务分支，不创建长期新分支
+
+当存在结构化命令时，模板应优先引用结构化命令，避免散落的裸 `git` 片段。

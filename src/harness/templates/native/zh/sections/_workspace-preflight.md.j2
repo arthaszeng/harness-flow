@@ -8,6 +8,14 @@
 {% if preflight_mode == "entry" %}
 在开始规划或探索之前，确保工作区已准备好接受新任务。
 
+优先使用结构化预检命令：
+
+```bash
+harness git-preflight --json
+```
+
+若该命令不可用或输出不可执行，再回退到下述手动检查步骤。
+
 ### 1. 清洁检查
 
 ```bash

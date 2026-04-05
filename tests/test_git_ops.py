@@ -9,7 +9,9 @@ from harness.integrations.git_ops import (
     DirtyWorktreeError,
     current_branch,
     ensure_clean,
+    ensure_clean_result,
     has_changes,
+    run_git_result,
     rebase_and_merge,
     safe_cleanup,
 )
@@ -60,6 +62,28 @@ class TestEnsureClean:
         _git(["add", "staged.txt"], repo)
         with pytest.raises(DirtyWorktreeError):
             ensure_clean(repo)
+
+    def test_ensure_clean_result_reports_code(self, tmp_path: Path):
+        repo = _init_repo(tmp_path)
+        (repo / "dirty.txt").write_text("x", encoding="utf-8")
+        result = ensure_clean_result(repo)
+        assert result.ok is False
+        assert result.code == "DIRTY_WORKTREE"
+
+
+class TestRunGitResult:
+    def test_run_git_result_success(self, tmp_path: Path):
+        repo = _init_repo(tmp_path)
+        result = run_git_result(["status", "--porcelain"], repo)
+        assert result.ok is True
+        assert result.code == "OK"
+
+    def test_run_git_result_failure_code(self, tmp_path: Path):
+        repo = _init_repo(tmp_path)
+        result = run_git_result(["checkout", "does-not-exist"], repo, code_on_error="CHECKOUT_FAILED")
+        assert result.ok is False
+        assert result.code == "CHECKOUT_FAILED"
+        assert "returncode" in result.context
 
 
 # ── rebase_and_merge ─────────────────────────────────────────────

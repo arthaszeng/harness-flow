@@ -4,10 +4,74 @@ from __future__ import annotations
 
 import logging
 import subprocess
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
 log = logging.getLogger(__name__)
+
+
+@dataclass(frozen=True)
+class GitOperationResult:
+    ok: bool
+    code: str
+    message: str = ""
+    stdout: str = ""
+    stderr: str = ""
+    context: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def diagnostic(self) -> str:
+        if self.message:
+            return self.message
+        text = self.stderr.strip() or self.stdout.strip()
+        return text[:300]
+
+
+def run_git_result(
+    args: list[str],
+    cwd: Path,
+    *,
+    timeout: int = 30,
+    code_on_error: str = "GIT_COMMAND_FAILED",
+    message: str = "",
+) -> GitOperationResult:
+    """Run git command and return structured result."""
+    try:
+        completed = run_git(args, cwd, timeout=timeout)
+    except subprocess.TimeoutExpired as exc:
+        return GitOperationResult(
+            ok=False,
+            code="GIT_TIMEOUT",
+            message=f"git {' '.join(args)} timed out",
+            stderr=str(exc),
+            context={"args": " ".join(args)},
+        )
+    except OSError as exc:
+        return GitOperationResult(
+            ok=False,
+            code="GIT_IO_ERROR",
+            message=f"unable to execute git {' '.join(args)}",
+            stderr=str(exc),
+            context={"args": " ".join(args)},
+        )
+    if completed.returncode != 0:
+        return GitOperationResult(
+            ok=False,
+            code=code_on_error,
+            message=message or f"git {' '.join(args)} failed",
+            stdout=completed.stdout,
+            stderr=completed.stderr,
+            context={"args": " ".join(args), "returncode": str(completed.returncode)},
+        )
+    return GitOperationResult(
+        ok=True,
+        code="OK",
+        message=message or f"git {' '.join(args)} succeeded",
+        stdout=completed.stdout,
+        stderr=completed.stderr,
+        context={"args": " ".join(args)},
+    )
 
 
 def run_git(
@@ -117,6 +181,17 @@ def ensure_clean(cwd: Path) -> None:
             "Working tree has uncommitted changes. "
             "Commit or stash them before starting a task."
         )
+
+
+def ensure_clean_result(cwd: Path) -> GitOperationResult:
+    """Structured variant of clean check."""
+    if has_changes(cwd):
+        return GitOperationResult(
+            ok=False,
+            code="DIRTY_WORKTREE",
+            message="working tree has uncommitted changes",
+        )
+    return GitOperationResult(ok=True, code="OK", message="working tree is clean")
 
 
 def rebase_and_merge(source: str, target: str, cwd: Path) -> bool:

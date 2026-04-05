@@ -8,6 +8,14 @@
 {% if preflight_mode == "entry" %}
 Before any planning or exploration, ensure the workspace is ready for a new task.
 
+Preferred structured preflight:
+
+```bash
+harness git-preflight --json
+```
+
+When this command is unavailable or returns non-actionable diagnostics, fall back to the manual checks below.
+
 ### 1. Clean Check
 
 ```bash

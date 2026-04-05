@@ -17,12 +17,14 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from harness.core.config import HarnessConfig
 from harness.core.state import TaskState
+from harness.core.task_identity import TaskIdentityResolver
 
 WORKFLOW_STATE_FILENAME = "workflow-state.json"
 SCHEMA_VERSION = 1
 
-_TASK_DIR_RE = re.compile(r"^task-(\d+)$")
+_NUMERIC_TASK_DIR_RE = re.compile(r"^task-(\d+)$")
 
 
 def _now_iso() -> str:
@@ -106,7 +108,7 @@ class WorkflowState(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     schema_version: int = SCHEMA_VERSION
-    task_id: str = Field(..., pattern=r"^task-\d+$")
+    task_id: str = Field(..., pattern=r"^[A-Za-z0-9][A-Za-z0-9_.-]{1,95}$")
     branch: str = Field(default="", max_length=240)
     phase: TaskState = TaskState.IDLE
     iteration: int = Field(default=0, ge=0)
@@ -123,18 +125,35 @@ class WorkflowState(BaseModel):
 
 
 def task_dir_number(task_dir: Path) -> int | None:
-    match = _TASK_DIR_RE.match(task_dir.name)
+    match = _NUMERIC_TASK_DIR_RE.match(task_dir.name)
     if not match:
         return None
     return int(match.group(1))
+
+
+def _resolver_for_agents_dir(agents_dir: Path) -> TaskIdentityResolver:
+    try:
+        cfg = HarnessConfig.load(agents_dir.parent)
+        return TaskIdentityResolver.from_config(cfg)
+    except Exception as exc:
+        warnings.warn(
+            f"failed to load task identity strategy from config ({type(exc).__name__}); "
+            "falling back to default resolver",
+            stacklevel=2,
+        )
+        return TaskIdentityResolver()
 
 
 def iter_task_dirs(agents_dir: Path) -> list[Path]:
     tasks_dir = agents_dir / "tasks"
     if not tasks_dir.exists():
         return []
-    task_dirs = [p for p in tasks_dir.iterdir() if p.is_dir() and task_dir_number(p) is not None]
-    return sorted(task_dirs, key=lambda p: task_dir_number(p) or -1)
+    resolver = _resolver_for_agents_dir(agents_dir)
+    task_dirs = [p for p in tasks_dir.iterdir() if p.is_dir() and resolver.is_valid_task_key(p.name)]
+    return sorted(
+        task_dirs,
+        key=lambda p: (0, task_dir_number(p) or -1) if task_dir_number(p) is not None else (1, p.name),
+    )
 
 
 def resolve_task_dir(
@@ -156,7 +175,8 @@ def resolve_task_dir(
 
     def _safe_child(name: str) -> Path | None:
         """Resolve *name* under tasks_dir, rejecting path-traversal attempts."""
-        if not _TASK_DIR_RE.match(name):
+        resolver = _resolver_for_agents_dir(agents_dir)
+        if not resolver.is_valid_task_key(name):
             return None
         candidate = (tasks_dir / name).resolve()
         if not candidate.is_relative_to(tasks_dir.resolve()):
