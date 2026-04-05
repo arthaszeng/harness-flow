@@ -68,6 +68,9 @@ class BranchLifecycleManager:
         )
 
     def prepare_task_branch(self, task_key: str, short_desc: str = "") -> GitOperationResult:
+        clean = ensure_clean_result(self.project_root)
+        if not clean.ok:
+            return clean
         if not self.resolver.is_valid_task_key(task_key):
             return GitOperationResult(
                 ok=False,

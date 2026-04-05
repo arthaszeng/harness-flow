@@ -85,6 +85,15 @@ def git_prepare_branch(
     run_git_prepare_branch(task_key=task_key, short_desc=short_desc, as_json=as_json)
 
 
+@app.command(name="git-sync-trunk")
+def git_sync_trunk(
+    as_json: bool = typer.Option(False, "--json", help="Print machine-readable JSON result"),
+) -> None:
+    """Sync current feature branch with configured trunk."""
+    from harness.commands.git_lifecycle import run_git_sync_trunk
+    run_git_sync_trunk(as_json=as_json)
+
+
 @app.command(name="save-eval")
 def save_eval(
     kind: str = typer.Option(

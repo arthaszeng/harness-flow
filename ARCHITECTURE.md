@@ -34,7 +34,7 @@ For module-level behavior, read the code and docstrings. For day-to-day usage, s
 
 ## CLI layer (`src/harness/cli.py`)
 
-Built with **Typer**. Three commands:
+Built with **Typer**. Core commands:
 
 | Command   | Purpose |
 |-----------|---------|
@@ -43,6 +43,7 @@ Built with **Typer**. Three commands:
 | `status`  | Load session state and render a Rich dashboard. |
 | `git-preflight` | Structured git preflight checks with deterministic result codes. |
 | `git-prepare-branch` | Create/resume task branch on top of configured trunk. |
+| `git-sync-trunk` | Sync the current feature branch against configured trunk. |
 | `update`  | Check PyPI, optional pip upgrade, config migration hints; no project artifact writes. |
 
 ---

@@ -61,6 +61,7 @@ class TestHelpOutput:
         clean = _ANSI_RE.sub("", result.output)
         assert "git-preflight" in clean
         assert "git-prepare-branch" in clean
+        assert "git-sync-trunk" in clean
 
 
 class TestGateCommand:
@@ -230,3 +231,18 @@ class TestGitLifecycleCommands:
         assert result.exit_code == 1
         clean = _ANSI_RE.sub("", result.output)
         assert "INVALID_TASK_KEY" in clean
+
+    def test_git_sync_trunk_json_output(self, monkeypatch):
+        from harness.integrations.git_ops import GitOperationResult
+
+        class _Manager:
+            def sync_feature_with_trunk(self):
+                return GitOperationResult(ok=True, code="OK", message="synced")
+
+        monkeypatch.setattr(
+            "harness.commands.git_lifecycle.BranchLifecycleManager.create",
+            lambda *_args, **_kwargs: _Manager(),
+        )
+        result = runner.invoke(app, ["git-sync-trunk", "--json"])
+        assert result.exit_code == 0
+        assert '"code": "OK"' in result.output

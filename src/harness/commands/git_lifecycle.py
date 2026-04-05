@@ -43,3 +43,20 @@ def run_git_prepare_branch(*, task_key: str, short_desc: str = "", as_json: bool
     if not result.ok:
         raise typer.Exit(code=1)
 
+
+def run_git_sync_trunk(*, as_json: bool = False) -> None:
+    manager = BranchLifecycleManager.create(Path.cwd())
+    result = manager.sync_feature_with_trunk()
+    payload = {
+        "ok": result.ok,
+        "code": result.code,
+        "message": result.diagnostic,
+        "context": result.context,
+    }
+    if as_json:
+        typer.echo(json.dumps(payload, ensure_ascii=False))
+    else:
+        typer.echo(f"[{result.code}] {result.diagnostic}")
+    if not result.ok:
+        raise typer.Exit(code=1)
+

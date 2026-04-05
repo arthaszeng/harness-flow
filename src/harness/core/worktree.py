@@ -66,10 +66,12 @@ def extract_task_key_from_branch(branch: str, *, cwd: Path | None = None) -> str
     try:
         cfg = HarnessConfig.load(cwd or Path.cwd())
         resolver = TaskIdentityResolver.from_config(cfg)
+        branch_prefix = cfg.workflow.branch_prefix
     except Exception:
         log.debug("failed to load task identity config; using default resolver", exc_info=True)
         resolver = TaskIdentityResolver()
-    return resolver.extract_from_branch(branch, branch_prefix="agent")
+        branch_prefix = "agent"
+    return resolver.extract_from_branch(branch, branch_prefix=branch_prefix)
 
 
 def extract_task_id_from_branch(branch: str) -> str | None:

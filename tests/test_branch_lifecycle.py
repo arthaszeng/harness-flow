@@ -49,6 +49,17 @@ def test_prepare_task_branch_rejects_invalid_key(tmp_path: Path):
     assert result.code == "INVALID_TASK_KEY"
 
 
+def test_prepare_task_branch_rejects_dirty_repo(tmp_path: Path, monkeypatch):
+    manager = _manager(tmp_path)
+    monkeypatch.setattr(
+        "harness.core.branch_lifecycle.ensure_clean_result",
+        lambda _cwd: GitOperationResult(ok=False, code="DIRTY_WORKTREE", message="dirty"),
+    )
+    result = manager.prepare_task_branch("task-001", "demo")
+    assert result.ok is False
+    assert result.code == "DIRTY_WORKTREE"
+
+
 def test_sync_feature_with_trunk_reports_rebase_conflict(tmp_path: Path, monkeypatch):
     manager = _manager(tmp_path)
     responses = iter(

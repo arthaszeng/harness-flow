@@ -94,3 +94,14 @@ class TestExtractTaskIdFromBranch:
     ])
     def test_patterns(self, branch: str, expected: str | None):
         assert extract_task_id_from_branch(branch) == expected
+
+    def test_uses_configured_branch_prefix(self, tmp_path: Path):
+        agents_dir = tmp_path / ".harness-flow"
+        agents_dir.mkdir(parents=True)
+        (agents_dir / "config.toml").write_text(
+            "[workflow]\nbranch_prefix = 'feat'\n",
+            encoding="utf-8",
+        )
+        from harness.core.worktree import extract_task_key_from_branch
+
+        assert extract_task_key_from_branch("feat/task-123-scope", cwd=tmp_path) == "task-123"
