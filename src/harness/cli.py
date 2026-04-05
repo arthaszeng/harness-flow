@@ -65,6 +65,26 @@ def status() -> None:
     run_status()
 
 
+@app.command(name="git-preflight")
+def git_preflight(
+    as_json: bool = typer.Option(False, "--json", help="Print machine-readable JSON result"),
+) -> None:
+    """Run structured git preflight checks."""
+    from harness.commands.git_lifecycle import run_git_preflight
+    run_git_preflight(as_json=as_json)
+
+
+@app.command(name="git-prepare-branch")
+def git_prepare_branch(
+    task_key: str = typer.Option(..., "--task-key", "-t", help="Task key (e.g. task-001 or PROJ-123)"),
+    short_desc: str = typer.Option("", "--short-desc", "-s", help="Short branch description"),
+    as_json: bool = typer.Option(False, "--json", help="Print machine-readable JSON result"),
+) -> None:
+    """Create or resume task branch on top of trunk."""
+    from harness.commands.git_lifecycle import run_git_prepare_branch
+    run_git_prepare_branch(task_key=task_key, short_desc=short_desc, as_json=as_json)
+
+
 @app.command(name="save-eval")
 def save_eval(
     kind: str = typer.Option(

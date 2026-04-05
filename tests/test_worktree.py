@@ -86,6 +86,7 @@ class TestExtractTaskIdFromBranch:
         ("agent/task-001-feature", "task-001"),
         ("agent/task-42-short", "task-42"),
         ("agent/task-999-long-name-here", "task-999"),
+        ("agent/PROJ-123-improve-git", "PROJ-123"),
         ("main", None),
         ("feature/something", None),
         ("agent/no-task-here", None),

@@ -104,6 +104,14 @@ def test_iter_task_dirs_uses_numeric_sort(tmp_path: Path):
     assert ordered == ["task-2", "task-9", "task-10"]
 
 
+def test_iter_task_dirs_supports_jira_task_keys(tmp_path: Path):
+    tasks_dir = tmp_path / ".harness-flow" / "tasks"
+    for name in ("task-002", "PROJ-9", "task-010"):
+        (tasks_dir / name).mkdir(parents=True)
+    ordered = [path.name for path in iter_task_dirs(tmp_path / ".harness-flow")]
+    assert ordered == ["task-002", "task-010", "PROJ-9"]
+
+
 def test_resolve_task_dir_prefers_explicit_then_session_then_numeric_latest(tmp_path: Path):
     tasks_dir = tmp_path / ".harness-flow" / "tasks"
     for name in ("task-001", "task-002", "task-010"):

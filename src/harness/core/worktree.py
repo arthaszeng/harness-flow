@@ -11,6 +11,8 @@ import logging
 from dataclasses import dataclass
 from pathlib import Path
 
+from harness.core.config import HarnessConfig
+from harness.core.task_identity import TaskIdentityResolver
 from harness.integrations.git_ops import current_branch, run_git
 
 log = logging.getLogger(__name__)
@@ -59,12 +61,21 @@ def detect_worktree(cwd: Path | None = None) -> WorktreeInfo | None:
     return WorktreeInfo(common_dir=common_dir, git_dir=git_dir, branch=branch)
 
 
+def extract_task_key_from_branch(branch: str, *, cwd: Path | None = None) -> str | None:
+    """Extract task key from an ``agent/<task-key>-*`` branch name."""
+    try:
+        cfg = HarnessConfig.load(cwd or Path.cwd())
+        resolver = TaskIdentityResolver.from_config(cfg)
+    except Exception:
+        resolver = TaskIdentityResolver()
+    return resolver.extract_from_branch(branch, branch_prefix="agent")
+
+
 def extract_task_id_from_branch(branch: str) -> str | None:
-    """Extract ``task-NNN`` from an ``agent/task-NNN-*`` branch name.
+    """Backward-compatible alias for task-key extraction.
 
-    Returns ``None`` if the branch does not match the expected pattern.
+    Historically this function only supported ``task-NNN``. It now delegates
+    to the configured task-key resolver and returns ``None`` for non-matching
+    branch names.
     """
-    import re
-
-    m = re.match(r"agent/(task-\d+)", branch)
-    return m.group(1) if m else None
+    return extract_task_key_from_branch(branch)

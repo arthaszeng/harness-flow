@@ -542,7 +542,7 @@ class TestTaskIdValidation:
         import pytest
         from pydantic import ValidationError as PydanticValidationError
         with pytest.raises(PydanticValidationError):
-            WorkflowState(task_id="task-abc")
+            WorkflowState(task_id="task key")
 
     def test_invalid_task_id_traversal(self):
         import pytest

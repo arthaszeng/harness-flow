@@ -115,6 +115,19 @@ with branch, common dir, and git dir. Used by `status` for worktree identity
 display and by worktree setup scripts for automatic `HARNESS_TASK_ID` binding.
 Isolation is task-resolution + UX scoped; no file-level distributed locking.
 
+### `task_identity.py`
+
+Task key resolution for workflow and branch lifecycle. Supports configurable
+strategies (`numeric`, `jira`, `custom`, `hybrid`) so task identifiers are not
+hard-wired to `task-NNN`. Provides validation and branch extraction helpers,
+with backward compatibility for `task-NNN`.
+
+### `branch_lifecycle.py`
+
+Structured git lifecycle orchestration used by workflow entry points:
+preflight checks, trunk sync, task-branch prepare/resume, and feature rebase.
+Returns structured result codes/messages for deterministic agent handling.
+
 ### `handoff.py`
 
 Structured stage handoff contract. Each pipeline stage (plan → build → eval → ship)
@@ -196,7 +209,7 @@ All user-visible harness **behavior** in the IDE is intended to flow from these 
 
 ## Integrations (`src/harness/integrations/`)
 
-- **`git_ops.py`** — git helpers (rebase, merge, cleanup) used where the workflow still touches branches.
+- **`git_ops.py`** — git helpers (rebase, merge, cleanup) plus structured command results (`GitOperationResult`) for deterministic error handling.
 - **`memverse.py`** — Memverse integration anchor. Actual search/add runs via Cursor MCP tools in the IDE; Python only provides the `integrations.memverse` config which is projected into templates as `memverse_enabled` and `memverse_domain` (Layer 0).
 
 ---
