@@ -7,6 +7,7 @@ from pathlib import Path
 from harness.core.post_ship_pending import (
     enqueue_pending_post_ship,
     has_pending_post_ship,
+    is_auto_reconcile_eligible_subcommand,
     reconcile_pending_post_ship,
 )
 from harness.integrations.git_ops import GitOperationResult
@@ -50,6 +51,17 @@ def test_has_pending_post_ship_false_when_queue_empty(tmp_path: Path):
     queue.parent.mkdir(parents=True, exist_ok=True)
     queue.write_text("", encoding="utf-8")
     assert has_pending_post_ship(tmp_path) is False
+
+
+def test_auto_reconcile_eligible_subcommand_matrix():
+    assert is_auto_reconcile_eligible_subcommand("init") is True
+    assert is_auto_reconcile_eligible_subcommand("status") is True
+    assert is_auto_reconcile_eligible_subcommand("gate") is True
+    assert is_auto_reconcile_eligible_subcommand("update") is True
+    assert is_auto_reconcile_eligible_subcommand("save-build-log") is False
+    assert is_auto_reconcile_eligible_subcommand("save-ship-metrics") is False
+    assert is_auto_reconcile_eligible_subcommand("save-feedback-ledger") is False
+    assert is_auto_reconcile_eligible_subcommand("save-intervention-audit") is False
 
 
 def test_reconcile_pending_keeps_open_entries(tmp_path: Path):
