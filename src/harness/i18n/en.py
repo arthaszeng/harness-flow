@@ -145,6 +145,7 @@ MESSAGES: dict[str, str] = {
     "gate.recovery.blocked": "What happened: one or more ship-readiness checks failed. Suggestion: fix failing items (tests, eval artifacts, or workflow state), then run `harness gate` again.",
 
     # ── workflow next recovery (stderr) ──────────────────────────
+    "workflow_next.recovery.generic": "What happened: workflow state could not be read normally. Suggestion: check `.harness-flow/tasks/` and `workflow-state.json`, or re-run `/harness-plan` in Cursor.",
     "workflow_next.recovery.no_tasks_dir": "What happened: no task folder under .harness-flow/tasks. Suggestion: run `harness init` if needed, then `/harness-plan` in Cursor.",
     "workflow_next.recovery.missing_state": "What happened: workflow-state.json is missing for this task. Suggestion: run `/harness-plan` to create or refresh task state.",
     "workflow_next.recovery.corrupt": "What happened: workflow-state.json is not valid JSON or shape. Suggestion: repair the file or re-run `/harness-plan`.",

@@ -26,7 +26,7 @@ from harness.core.workflow_state import (
     gate_pairs,
     load_current_workflow_state,
 )
-from harness.i18n import set_lang, t
+from harness.i18n import apply_project_lang_from_cwd, t
 
 log = logging.getLogger("harness.commands.status")
 
@@ -35,14 +35,8 @@ _DEFAULT_PASS_THRESHOLD = WorkflowConfig().pass_threshold
 
 def _emit_progress_line_only() -> None:
     """Stdout: one HARNESS_PROGRESS line when workflow-state is valid; else silent."""
-    from harness.core.config import HarnessConfig
-
     agents_dir = Path.cwd() / ".harness-flow"
-    try:
-        cfg = HarnessConfig.load(Path.cwd())
-        set_lang(cfg.project.lang)
-    except Exception:
-        set_lang("en")
+    apply_project_lang_from_cwd()
 
     state = SessionState.load(agents_dir)
     _, workflow_state = load_current_workflow_state(

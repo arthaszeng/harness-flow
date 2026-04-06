@@ -145,6 +145,7 @@ MESSAGES: dict[str, str] = {
     "gate.recovery.no_task": "说明：未能解析任务目录。建议：在项目根目录运行，确保存在 .harness-flow/tasks/task-NNN/，或使用 --task 指定。",
     "gate.recovery.blocked": "说明：有一项或多项发布就绪检查未通过。建议：修复测试、评审产物或 workflow 状态后，再次运行 `harness gate`。",
 
+    "workflow_next.recovery.generic": "说明：工作流状态读取异常。建议：检查 `.harness-flow/tasks/` 与 `workflow-state.json`，或在 Cursor 中重新执行 `/harness-plan`。",
     "workflow_next.recovery.no_tasks_dir": "说明：.harness-flow/tasks 下没有任务目录。建议：如需请先 `harness init`，然后在 Cursor 中执行 `/harness-plan`。",
     "workflow_next.recovery.missing_state": "说明：该任务缺少 workflow-state.json。建议：在 Cursor 中运行 `/harness-plan` 以创建或刷新任务状态。",
     "workflow_next.recovery.corrupt": "说明：workflow-state.json 不是合法 JSON 或结构不对。建议：手工修复后重试，或重新执行 `/harness-plan`。",

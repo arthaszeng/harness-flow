@@ -13,7 +13,10 @@ from harness.core.workflow_state import WORKFLOW_STATE_FILENAME, resolve_task_di
 
 def run_workflow_next(*, task: str | None = None) -> None:
     """Print one HARNESS_NEXT line; always exits 0 unless Typer raises."""
+    from harness.i18n import apply_project_lang_from_cwd
+
     cwd = Path.cwd()
+    apply_project_lang_from_cwd(cwd)
     agents_dir = cwd / ".harness-flow"
     task_dir = resolve_task_dir(agents_dir, explicit_task_id=task or None)
     if task_dir is None:
@@ -97,9 +100,13 @@ def _emit(*, task: str, phase: str, skill: str, hint: str) -> None:
 def _recovery_echo(i18n_key: str) -> None:
     from harness.i18n import t
 
-    msg = t(i18n_key)
-    if msg != i18n_key:
-        typer.echo(msg, err=True)
+    primary = t(i18n_key)
+    if primary != i18n_key:
+        typer.echo(primary, err=True)
+        return
+    generic = t("workflow_next.recovery.generic")
+    if generic != "workflow_next.recovery.generic":
+        typer.echo(generic, err=True)
 
 
 def _suggest(phase: TaskState) -> tuple[str, str]:
