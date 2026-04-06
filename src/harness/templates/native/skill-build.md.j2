@@ -5,6 +5,7 @@ description: "Implement code according to a harness plan/contract. Reads the pla
 
 {% include 'sections/_language-directive.md.j2' %}
 {% include 'sections/_git-strategy-matrix.md.j2' %}
+{% include 'sections/_continuity-mandate.md.j2' %}
 
 # Harness Build
 
@@ -224,3 +225,13 @@ CI: all tests pass"
 
 Use specific file paths — never `git add -A` or `git add .` to avoid including
 unrelated changes.
+
+## Step 7: Continue to Ship (same conversation)
+
+After the implementation commit succeeds and CI is green, **immediately** continue
+with **`/harness-ship`** in the **same** conversation. Do **not** end the turn
+waiting for the user to say "ship" or "continue".
+
+`/harness-ship` runs tests, **mandatory 5-role code eval**, `harness save-eval`,
+`harness gate`, push, and PR — it does **not** replace the implementation you
+already committed in Step 6.

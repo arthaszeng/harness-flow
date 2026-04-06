@@ -5,6 +5,7 @@ description: "End-to-end from requirement to PR — default primary entry for mo
 
 {% include 'sections/_language-directive.md.j2' %}
 {% include 'sections/_git-strategy-matrix.md.j2' %}
+{% include 'sections/_continuity-mandate.md.j2' %}
 
 # Harness Plan — From Requirement to PR
 
@@ -25,6 +26,7 @@ that needs planning and execution.
 - Confirmation before writing to disk
 - Implementation decisions (make them during build)
 - AUTO-FIX findings (fix silently)
+- Ending the turn right after plan artifacts — once the review gate passes, you must start **`/harness-build`** in the **same** conversation (do not wait for the user to say "continue build").
 - Build completion checkpoints or "continue?" prompts — once Build starts, you must continue into `/harness-ship` without waiting for user confirmation.
 
 ---

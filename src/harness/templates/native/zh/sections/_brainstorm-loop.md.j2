@@ -58,8 +58,9 @@
 
 ## 执行当前轮
 
-Review gate 已通过。对当前 `Active Plan` 调用 `/harness-ship` 执行本轮的
-build → eval → ship → PR 管线。
+Review gate 已通过。对当前 `Active Plan`，请在**同一对话**内依次执行 **`/harness-build`**
+（实现）与 **`/harness-ship`**（测试、强制评审、门禁、PR）。`/harness-ship` **不能**
+替代 `/harness-build`。
 
 重要边界：
 - 这里的“继续下一轮”指 workflow 协议允许你在同一方向下继续推进

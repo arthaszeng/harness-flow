@@ -70,6 +70,27 @@ def main(
         _log_debug_error(ctx.invoked_subcommand or "unknown")
 
 
+workflow_cli = typer.Typer(help="Workflow hints from local task state (same resolution as gate)")
+
+
+@workflow_cli.command("next")
+def workflow_next_cmd(
+    task: str = typer.Option(
+        "",
+        "--task",
+        "-t",
+        help="Explicit task ID (e.g. task-001). Auto-detects if omitted.",
+    ),
+) -> None:
+    """Print one HARNESS_NEXT line from workflow-state.json for agents/scripts."""
+    from harness.commands.workflow_next import run_workflow_next
+
+    run_workflow_next(task=task or None)
+
+
+app.add_typer(workflow_cli, name="workflow")
+
+
 @app.command()
 def init(
     name: str = typer.Option("", "--name", "-n", help="Project name"),
