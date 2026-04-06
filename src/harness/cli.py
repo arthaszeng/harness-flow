@@ -110,10 +110,16 @@ def gate(
 
 
 @app.command()
-def status() -> None:
+def status(
+    verbose: bool = typer.Option(
+        False,
+        "--verbose",
+        help="Show technical details (phase, gates, artifact paths, agent runs)",
+    ),
+) -> None:
     """Show current progress and status"""
     from harness.commands.status import run_status
-    run_status()
+    run_status(verbose=verbose)
 
 
 @app.command(name="git-preflight")

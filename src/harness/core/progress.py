@@ -17,6 +17,17 @@ from harness.core.workflow_state import (
 )
 
 
+def workflow_phase_user_label(phase: TaskState) -> str:
+    """Map persisted workflow phase to a short, user-facing label (i18n)."""
+    from harness.i18n import t
+
+    key = f"workflow.phase.{phase.value}"
+    label = t(key)
+    if label == key:
+        return t("workflow.phase.fallback")
+    return label
+
+
 # ---------------------------------------------------------------------------
 # Shared summary helpers (used by status.py as well)
 # ---------------------------------------------------------------------------
@@ -47,7 +58,7 @@ def suggest_next_action(
     if workflow_state and workflow_state.blocker.reason:
         return t("progress.blocked", reason=workflow_state.blocker.reason)
     if workflow_state and workflow_state.phase not in {TaskState.IDLE, TaskState.DONE}:
-        phase = workflow_state.phase.value
+        phase = workflow_phase_user_label(workflow_state.phase)
         if workflow_state.active_plan.title:
             return t("progress.phase_with_plan", phase=phase, title=workflow_state.active_plan.title)
         return t("progress.phase_active", phase=phase)

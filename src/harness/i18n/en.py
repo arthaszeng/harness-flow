@@ -103,10 +103,21 @@ MESSAGES: dict[str, str] = {
     "update.version_verify_failed": "Installed version still mismatched after retry (expected {expected}, got {installed})",
     "update.easter_egg": "Upgrade buff acquired +1. Next quest: `harness init --force` in your target project.",
 
+    # ── workflow phase (user-facing labels; not raw TaskState.value) ─
+    "workflow.phase.idle": "Not started",
+    "workflow.phase.planning": "Refining the plan",
+    "workflow.phase.contracted": "Plan ready — implementation",
+    "workflow.phase.building": "Implementing changes",
+    "workflow.phase.evaluating": "Code review",
+    "workflow.phase.shipping": "Shipping (push / PR)",
+    "workflow.phase.done": "Finished",
+    "workflow.phase.blocked": "Blocked",
+    "workflow.phase.fallback": "In progress",
+
     # ── progress / suggest_next_action ───────────────────────────
     "progress.blocked": "Current task is blocked — {reason}",
-    "progress.phase_with_plan": "Task is in {phase} phase — continue `{title}` in Cursor",
-    "progress.phase_active": "Task is in {phase} phase — continue with harness skills in Cursor",
+    "progress.phase_with_plan": "Current step: {phase} — continue `{title}` in Cursor",
+    "progress.phase_active": "Current step: {phase} — continue with harness skills in Cursor",
     "progress.resumable": "Session resumable — continue current task with harness skills in Cursor",
     "progress.in_progress": "Session in progress, waiting for current flow to complete",
     "progress.all_blocked": "All tasks blocked, check blockers and retry",
@@ -114,10 +125,27 @@ MESSAGES: dict[str, str] = {
     "progress.fresh": "Get started using harness skills in Cursor",
 
     # ── gate command ─────────────────────────────────────────────
+    "gate.title": "Ship readiness",
     "gate.no_task": "no task directory found{suffix}",
     "gate.no_task_hint": "run from a project with .harness-flow/tasks/task-NNN/ directories",
-    "gate.config_fallback": "could not load harness config — defaulting to review_gate_mode='eng'",
-    "gate.pass": "GATE: PASS — ready to ship",
-    "gate.blocked": "GATE: BLOCKED — {summary}",
+    "gate.config_fallback": "Could not load config — using default review settings.",
+    "gate.pass": "All checks passed — ready to ship.",
+    "gate.blocked": "Not ready to ship — {summary}",
+    "gate.blocked_hint": "Fix the items marked ✗ above, then run `harness gate` again.",
+    "gate.check.plan_exists": "Plan document",
+    "gate.check.eval_exists": "Code review record",
+    "gate.check.eval_verdict_parseable": "Review verdict",
+    "gate.check.eval_ship_eligible": "Review outcome",
+    "gate.check.build_exists": "Build log",
+    "gate.check.eval_fresh": "Review freshness",
+    "gate.check.workflow_state_gate": "Task status sync",
+    "gate.check_fallback": "Check ({id})",
+
+    # ── status command ───────────────────────────────────────────
+    "status.next_title": "Next step",
+    "status.current_task": "Current task",
+    "status.stats_brief": "{completed} done · {blocked} blocked · avg {avg:.1f}",
+    "status.stats_reconcile_on": "Background sync: on (pending post-ship work)",
+    "status.stats_reconcile_off": "Background sync: off",
 
 }

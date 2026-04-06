@@ -5,14 +5,15 @@ from __future__ import annotations
 import io
 
 from rich.console import Console
+from rich.panel import Panel
 
 from harness.commands.status import (
     _render_current,
     _render_header,
-    _render_next_action,
     _render_recent_result,
     _render_stats,
 )
+from harness.core.progress import suggest_next_action
 from harness.core.state import (
     CompletedTask,
     SessionState,
@@ -31,6 +32,16 @@ def _make_console():
         theme=CYBER_THEME, highlight=False,
     )
     return console, buf
+
+
+def _print_next_panel(console, state, workflow_state=None) -> None:
+    from harness.i18n import t
+
+    console.print(Panel(
+        suggest_next_action(state, workflow_state),
+        title=f"[bold]{t('status.next_title')}[/]",
+        border_style="cyber.border",
+    ))
 
 
 class TestRenderCurrent:
@@ -131,48 +142,6 @@ class TestRenderRecentResult:
         assert "bad" in output
 
 
-class TestRenderNextAction:
-    @classmethod
-    def setup_class(cls):
-        from harness.i18n import set_lang
-        set_lang("zh")
-
-    @classmethod
-    def teardown_class(cls):
-        from harness.i18n import set_lang
-        set_lang("en")
-
-    def test_fresh_state(self):
-        console, buf = _make_console()
-        state = SessionState(mode="idle")
-        _render_next_action(console, state)
-        output = buf.getvalue()
-        assert "Next Action" in output
-        assert "harness" in output
-
-    def test_resumable_shows_ide_hint(self):
-        console, buf = _make_console()
-        state = SessionState(
-            mode="run",
-            current_task=TaskRecord(id="t1", requirement="x"),
-        )
-        _render_next_action(console, state)
-        output = buf.getvalue()
-        assert "Next Action" in output
-        assert "恢复" in output or "resumable" in output.lower()
-        assert "harness run" not in output
-        assert "harness auto" not in output
-
-    def test_workflow_blocker_message(self):
-        console, buf = _make_console()
-        state = SessionState(mode="idle")
-        workflow_state = WorkflowState(task_id="task-001")
-        workflow_state.blocker.reason = "missing evaluation artifact"
-        _render_next_action(console, state, workflow_state=workflow_state)
-        output = buf.getvalue()
-        assert "missing evaluation artifact" in output
-
-
 class TestRunStatusScenarios:
     @classmethod
     def setup_class(cls):
@@ -204,13 +173,13 @@ class TestRunStatusScenarios:
         _render_header(console, state)
         _render_current(console, state)
         _render_recent_result(console, state)
-        _render_next_action(console, state)
-        _render_stats(console, state)
+        _print_next_panel(console, state)
+        _render_stats(console, state, verbose=False)
         output = buf.getvalue()
         assert "HARNESS" in output
         assert "feature A" in output
         assert "4.5" in output
-        assert "Next Action" in output
+        assert "下一步" in output
 
     def test_in_flight_scenario(self):
         console, buf = _make_console()
@@ -228,8 +197,8 @@ class TestRunStatusScenarios:
         _render_header(console, state)
         _render_current(console, state)
         _render_recent_result(console, state)
-        _render_next_action(console, state)
-        _render_stats(console, state)
+        _print_next_panel(console, state)
+        _render_stats(console, state, verbose=False)
         output = buf.getvalue()
         assert "in-flight work" in output
         assert "building" in output
@@ -250,7 +219,7 @@ class TestRunStatusScenarios:
         _render_header(console, state)
         _render_current(console, state)
         _render_recent_result(console, state)
-        _render_next_action(console, state)
-        _render_stats(console, state)
+        _print_next_panel(console, state)
+        _render_stats(console, state, verbose=False)
         output = buf.getvalue()
         assert "broken thing" in output

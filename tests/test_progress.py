@@ -147,6 +147,15 @@ class TestSuggestNextAction:
         action = suggest_next_action(state)
         assert "harness 技能" in action
 
+    def test_workflow_phase_uses_task_language_not_raw_enum(self):
+        """B2: phase line must not expose TaskState.value (e.g. evaluating)."""
+        state = SessionState(mode="idle")
+        workflow_state = WorkflowState(task_id="task-001", phase=TaskState.EVALUATING)
+        workflow_state.active_plan.title = "Roadmap B2"
+        action = suggest_next_action(state, workflow_state)
+        assert "evaluating" not in action.lower()
+        assert "代码评审" in action
+
 
 # ---------------------------------------------------------------------------
 # progress.md generation tests
