@@ -63,8 +63,9 @@ The wizard walks you through setup: project info, trunk branch, CI command, Memv
 
 ### 3. Start building
 
-Open your project in Cursor. Three primary entry points cover all task sizes:
+**Default path (most tasks):** in Cursor, run **`/harness-plan`** with a plain-language requirement (see **Try it now** below). If the ask is a little fuzzy, ask **one** clarification round in the **same** chat, then keep planning—no command switch required for light in-session exploration.
 
+**Advanced entry points** (full capability preserved—use when you intentionally want long-horizon ideation, standing roadmap/backlog loops, or vision-first multi-round framing):
 
 | Skill                 | When to use            | What it does                                                                                 |
 | --------------------- | ---------------------- | -------------------------------------------------------------------------------------------- |
@@ -72,11 +73,9 @@ Open your project in Cursor. Three primary entry points cover all task sizes:
 | `/harness-vision`     | "I have a direction"   | Clarify vision → plan → auto build/eval/ship/retro                                           |
 | `/harness-plan`       | "I have a requirement" | Refine plan + 5-role review → auto build/eval/ship/retro                                     |
 
+For everyday **single-task** delivery, stay on **`/harness-plan`**. The advanced skills reuse the same building blocks (vision capture, multi-role review, review → ship); they add different **human interaction depth** and loop shape—not a different "tier" of quality.
 
-Use `/harness-brainstorm` when you want a long-horizon loop that can keep picking the next active plan from a roadmap/backlog.
-Use `/harness-vision` when the direction is already clear and you want one clarified increment before planning and shipping.
-Use `/harness-plan` when you already have one defined task and want a single-round plan → ship flow.
-The entry points still share core building blocks such as vision capture, multi-role review, and the review → ship pipeline.
+`/harness-brainstorm` is the **long-horizon loop** with roadmap/backlog; use `/harness-vision` to clarify an incremental direction before planning; **`/harness-plan`** is the **single-round plan** → ship path when the task is already scoped.
 
 **Utility skills:**
 
