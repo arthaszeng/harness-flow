@@ -5,11 +5,19 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import TYPE_CHECKING
 from typing import Any
 
-from harness.core.post_ship import PostShipManager
+if TYPE_CHECKING:
+    from harness.core.post_ship import PostShipManager
 
 PENDING_FILENAME = "post-ship-pending.jsonl"
+_AUTO_RECONCILE_ELIGIBLE_SUBCOMMANDS = {
+    "init",
+    "gate",
+    "status",
+    "update",
+}
 
 
 def _now_iso() -> str:
@@ -27,6 +35,16 @@ def has_pending_post_ship(project_root: Path) -> bool:
         return path.exists() and path.stat().st_size > 0
     except OSError:
         return False
+
+
+def is_auto_reconcile_eligible_subcommand(invoked_subcommand: str | None) -> bool:
+    """Return whether this CLI command should trigger auto reconcile checks.
+
+    Non-eligible commands can still recover via explicit `git-post-ship-reconcile`.
+    """
+    if invoked_subcommand is None:
+        return False
+    return invoked_subcommand in _AUTO_RECONCILE_ELIGIBLE_SUBCOMMANDS
 
 
 def _load_pending(path: Path) -> list[dict[str, Any]]:

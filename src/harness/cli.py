@@ -8,6 +8,10 @@ from typing import Optional
 import typer
 
 from harness import __version__
+from harness.core.post_ship_pending import (
+    has_pending_post_ship,
+    is_auto_reconcile_eligible_subcommand,
+)
 
 app = typer.Typer(
     name="harness",
@@ -32,14 +36,12 @@ def main(
 ) -> None:
     """Cursor-native multi-agent development framework."""
     # Best-effort post-ship fallback reconciliation for cross-session resilience.
+    if not is_auto_reconcile_eligible_subcommand(ctx.invoked_subcommand):
+        return
+    if not has_pending_post_ship(Path.cwd()):
+        return
     try:
-        from harness.commands.git_lifecycle import (
-            run_git_post_ship_reconcile_background,
-            should_run_background_reconcile,
-        )
-
-        if not should_run_background_reconcile(Path.cwd(), ctx.invoked_subcommand):
-            return
+        from harness.commands.git_lifecycle import run_git_post_ship_reconcile_background
 
         run_git_post_ship_reconcile_background(max_items=20)
     except Exception:

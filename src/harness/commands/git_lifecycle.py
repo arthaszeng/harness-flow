@@ -23,23 +23,6 @@ from harness.core.post_ship_watcher import PostShipWatcher
 from harness.integrations.git_ops import GitOperationResult
 
 
-_RECONCILE_SKIP_SUBCOMMANDS = {
-    "git-post-ship",
-    "git-post-ship-reconcile",
-    "git-post-ship-watch",
-}
-
-
-def should_run_background_reconcile(project_root: Path, invoked_subcommand: str | None) -> bool:
-    """Return True when auto reconcile should run for this command invocation."""
-    if invoked_subcommand is None:
-        # Keep parser/help/version-only entrypoints lean; reconcile can run on real commands.
-        return False
-    if invoked_subcommand in _RECONCILE_SKIP_SUBCOMMANDS:
-        return False
-    return has_pending_post_ship(project_root)
-
-
 def run_git_preflight(*, as_json: bool = False) -> None:
     manager = BranchLifecycleManager.create(Path.cwd())
     result = manager.preflight_repo_state()
