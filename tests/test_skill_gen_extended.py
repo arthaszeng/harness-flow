@@ -1729,12 +1729,22 @@ def test_en_generated_skills_contain_language_directive(tmp_path: Path):
     cfg = _make_cfg(tmp_path)
     generate_native_artifacts(tmp_path, lang="en", cfg=cfg)
     skills_base = tmp_path / ".cursor" / "skills" / "harness"
-    for name in ("harness-plan", "harness-build", "harness-eval", "harness-ship"):
+    for name in sorted(p.name for p in skills_base.iterdir() if (p / "SKILL.md").exists()):
         content = (skills_base / name / "SKILL.md").read_text(encoding="utf-8")
         assert "Language Requirement" in content, f"EN {name} missing language directive"
         assert "You MUST respond entirely in English" in content, (
             f"EN {name} missing English enforcement"
         )
+        assert "tool-call `description` text" in content, (
+            f"EN {name} missing language consistency rule for tool descriptions"
+        )
+        assert "stage prompts, progress updates, and section headings" in content, (
+            f"EN {name} missing stage/progress consistency rule"
+        )
+        assert "UI-fixed copy outside agent control" in content, (
+            f"EN {name} missing UI-fixed exception rule"
+        )
+        assert "## 语言要求" not in content, f"EN {name} contains zh language heading unexpectedly"
 
 
 def test_zh_generated_skills_contain_language_directive(tmp_path: Path):
@@ -1742,11 +1752,23 @@ def test_zh_generated_skills_contain_language_directive(tmp_path: Path):
     cfg = _make_cfg(tmp_path)
     generate_native_artifacts(tmp_path, lang="zh", cfg=cfg)
     skills_base = tmp_path / ".cursor" / "skills" / "harness"
-    for name in ("harness-plan", "harness-build", "harness-eval", "harness-ship"):
+    for name in sorted(p.name for p in skills_base.iterdir() if (p / "SKILL.md").exists()):
         content = (skills_base / name / "SKILL.md").read_text(encoding="utf-8")
         assert "语言要求" in content, f"ZH {name} missing language directive"
         assert "你必须使用中文回答所有内容" in content, (
             f"ZH {name} missing Chinese enforcement"
+        )
+        assert "工具调用中的 `description` 文案必须使用中文" in content, (
+            f"ZH {name} missing language consistency rule for tool descriptions"
+        )
+        assert "阶段提示、进度更新、总结小节标题必须使用中文" in content, (
+            f"ZH {name} missing stage/progress consistency rule"
+        )
+        assert "UI 固定不可控文案" in content, (
+            f"ZH {name} missing UI-fixed exception rule"
+        )
+        assert "## Language Requirement" not in content, (
+            f"ZH {name} contains en language heading unexpectedly"
         )
 
 
@@ -1759,6 +1781,19 @@ def test_en_generated_agents_contain_language_directive(tmp_path: Path):
                  "harness-qa", "harness-project-manager"):
         content = (agents_dir / f"{name}.md").read_text(encoding="utf-8")
         assert "Language Requirement" in content, f"EN {name} missing language directive"
+        assert "You MUST respond entirely in English" in content, (
+            f"EN {name} missing English enforcement"
+        )
+        assert "tool-call `description` text" in content, (
+            f"EN {name} missing language consistency rule for tool descriptions"
+        )
+        assert "stage prompts, progress updates, and section headings" in content, (
+            f"EN {name} missing stage/progress consistency rule"
+        )
+        assert "UI-fixed copy outside agent control" in content, (
+            f"EN {name} missing UI-fixed exception rule"
+        )
+        assert "## 语言要求" not in content, f"EN {name} contains zh language heading unexpectedly"
 
 
 def test_zh_generated_agents_contain_language_directive(tmp_path: Path):
@@ -1770,6 +1805,18 @@ def test_zh_generated_agents_contain_language_directive(tmp_path: Path):
                  "harness-qa", "harness-project-manager"):
         content = (agents_dir / f"{name}.md").read_text(encoding="utf-8")
         assert "语言要求" in content, f"ZH {name} missing language directive"
+        assert "工具调用中的 `description` 文案必须使用中文" in content, (
+            f"ZH {name} missing language consistency rule for tool descriptions"
+        )
+        assert "阶段提示、进度更新、总结小节标题必须使用中文" in content, (
+            f"ZH {name} missing stage/progress consistency rule"
+        )
+        assert "UI 固定不可控文案" in content, (
+            f"ZH {name} missing UI-fixed exception rule"
+        )
+        assert "## Language Requirement" not in content, (
+            f"ZH {name} contains en language heading unexpectedly"
+        )
 
 
 def test_en_dispatch_sections_contain_response_language(tmp_path: Path):
