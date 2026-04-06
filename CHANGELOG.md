@@ -1,5 +1,15 @@
 # Changelog
 
+## 4.1.50
+
+### Added
+
+- **`harness workflow next`** — prints one machine-readable `HARNESS_NEXT task=… phase=… skill=… hint="…"` line from the latest task’s `workflow-state.json`, using the **same task resolution as `harness gate`** (explicit `--task`, then `HARNESS_TASK_ID`, then latest numeric `task-NNN`).
+
+### Changed
+
+- **Native skill templates (SSOT):** clarify the default pipeline **`/harness-build` → `/harness-ship`**; **`/harness-ship` does not implement feature code** (tests, mandatory 5-role eval, `harness save-eval`, `harness gate`, PR). Added a short **continuity + eval gate** block to plan/build/ship skills to reduce skipped eval and “plan/build then stop” behavior on weaker models. Vision/brainstorm/plan execution text aligned.
+
 ## 4.1.0
 
 ### Breaking Changes

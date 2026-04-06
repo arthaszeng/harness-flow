@@ -75,6 +75,8 @@ harness init
 | `/harness-ship` | 全自动流水线：测试 → 评审 → 修复 → 提交 → push → PR |
 | `/harness-doc-release` | 文档同步：检测代码变更导致的文档过时 |
 
+**管线顺序：** **`/harness-build`** 负责按合约写代码；**`/harness-ship`** 负责测试、**强制代码评审**、`harness gate` 与 PR — **不**替代实现。在仓库根目录可运行 **`harness workflow next`**，根据 `workflow-state.json` 输出一行 `HARNESS_NEXT …` 提示（任务解析与 `harness gate` 一致）。
+
 **现在就试试：**
 
 ```

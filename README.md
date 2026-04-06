@@ -97,6 +97,8 @@ For everyday **single-task** delivery, stay on **`/harness-plan`**. The advanced
 | `/harness-ship`        | Full pipeline: test → review → fix → commit → push → PR                          |
 | `/harness-doc-release` | Documentation sync: detect stale docs after code changes                         |
 
+**Pipeline order:** **`/harness-build`** implements the contract; **`/harness-ship`** runs tests, **mandatory code eval**, `harness gate`, and PR — it **does not** write feature code. For a one-line hint from `workflow-state.json`, run **`harness workflow next`** in the repo root (same task pick as `harness gate`).
+
 
 **Try it now:**
 

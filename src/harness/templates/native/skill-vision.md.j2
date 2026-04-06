@@ -16,7 +16,7 @@ direction** that needs clarification before becoming a plan.
 ## Workflow Boundary
 
 - Stay inside the harness workflow after clarifying the vision; do NOT call Cursor `SwitchMode` to `plan`.
-- Planning should happen through the embedded harness planning flow in this skill (the harness equivalent of `/harness-plan`), then continue to `/harness-ship`.
+- Planning should happen through the embedded harness planning flow in this skill (the harness equivalent of `/harness-plan`), then continue **`/harness-build` → `/harness-ship`** in the **same** conversation (`/harness-ship` does not implement feature code; see embedded plan **Execution** section).
 - "Proceed to planning" here means the next workflow phase, not Cursor's built-in Plan mode.
 
 **Only stop for:**

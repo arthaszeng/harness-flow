@@ -62,8 +62,9 @@ and review for this round.
 
 ## Execute the Current Round
 
-The review gate has passed. Invoke `/harness-ship` for the current `Active Plan`
-to run this round's build → eval → ship → PR pipeline.
+The review gate has passed. For the current `Active Plan`, continue in the **same**
+conversation: **`/harness-build`** (implement) then **`/harness-ship`** (tests,
+mandatory eval, gate, PR). `/harness-ship` does **not** replace `/harness-build`.
 
 Important boundary:
 - "Continue to the next round" means the workflow protocol allows another round

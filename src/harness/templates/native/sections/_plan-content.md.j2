@@ -18,7 +18,7 @@
 
 ### Mandatory: `TASK_DIR/handoff-plan.json` (schema v2)
 
-Before invoking ship, you **MUST** write structured handoff **`handoff-plan.json`**
+Before starting **`/harness-build`**, you **MUST** write structured handoff **`handoff-plan.json`**
 under `TASK_DIR`. It is the machine-readable **context pack** for later stages;
 it complements (does not replace) `handoff_summary`.
 
@@ -48,19 +48,22 @@ If `workflow-state.json` is missing, skip the summary field — **still write**
 
 ## Execution
 
-Review gate passed. Invoke `/harness-ship` to execute the full
-build → eval → ship → PR pipeline.
+Review gate passed. Continue in the **same conversation** with this **two-step** pipeline:
 
-**Continuity guarantee**: the plan stage has already updated `workflow-state.json`
-with `phase: contracted` and a `handoff_summary`. Ship detects these signals and
-enters its **fast path** — skipping pre-flight checks already done during plan
-(branch check, config check, task directory scan), jumping straight to rebase
-and tests. No manual context passing needed.
+1. **`/harness-build`** — implement the contract, run CI, commit implementation.  
+   (`/harness-ship` does **not** write feature code.)
 
-Ship will dispatch the same 5 roles (architect, product-owner, engineer,
-qa, project-manager) in `code-eval` mode for the evaluation phase.
+2. **`/harness-ship`** — rebase, full tests, **mandatory 5-role code eval**, `harness save-eval`, `harness gate`, bisectable commits, push, PR.
+
+**Continuity guarantee**: the plan stage should have updated `workflow-state.json`
+with `phase: contracted` and a `handoff_summary`. After build, ship uses the
+task state **fast path** where applicable — skipping redundant pre-flight from plan.
+
+**Eval is part of ship**, not optional: do not skip 5-role eval or `harness gate` because tests passed.
 
 Hard completion rule:
-- Do not stop after Build, and do not ask "continue?" after internal milestones.
+- Do not stop after plan with only artifacts — start **`/harness-build`** before ending the turn.
+- Do not stop after Build — start **`/harness-ship`** before ending the turn.
+- Do not ask "continue?" between these steps.
 - Continue autonomously through ship until the PR URL is produced, unless one of the explicit stop conditions at the top of this workflow is met.
 - If test/eval/gate steps fail, or any command exits non-zero and cannot be auto-fixed, stop and report blockers instead of forcing progress.
