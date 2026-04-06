@@ -16,29 +16,12 @@
 
 ## 阶段交接 — Plan → Build
 
-在调用 ship 之前，写入 **结构化交接** 让 build 阶段获得紧凑摘要，
-而不必重新阅读完整计划。
+在调用 ship 之前，将**阶段摘要**写入 `workflow-state.json` 的 `handoff_summary` 字段，
+让 build 阶段获得紧凑上下文而不必重新阅读完整计划。
 
-写入 `TASK_DIR/handoff-plan.json`，结构如下：
-```json
-{
-  "schema_version": 1,
-  "source_phase": "plan",
-  "target_phase": "build",
-  "task_id": "task-NNN",
-  "summary": "<2-4 句摘要：要构建什么、关键方案、约束>",
-  "decisions": [{"what": "...", "why": "...", "classification": "mechanical|taste"}],
-  "risks": [{"description": "...", "mitigation": "...", "severity": "low|medium|high"}],
-  "open_items": [{"description": "...", "owner": "builder|user", "priority": "high|medium|low"}],
-  "artifacts_produced": ["plan.md"],
-  "scope_changes": [],
-  "created_at": "<ISO 8601 UTC>"
-}
-```
+摘要内容（≤ 2000 字符）：2-4 句概述要构建什么、关键方案、约束、已做的决策和风险。
 
-然后更新 `workflow-state.json` → `artifacts.handoff` 为 `"handoff-plan.json"`。
-
-如果 `workflow-state.json` 不存在，跳过更新 — handoff 为可选增强。
+如果 `workflow-state.json` 不存在，跳过 — handoff 为可选增强。
 
 ---
 

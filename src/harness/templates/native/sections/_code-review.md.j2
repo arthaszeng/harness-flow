@@ -5,13 +5,23 @@
 Launch **all 5 reviewers in parallel** via the Task tool, each with `mode: code-eval`.
 Send a SINGLE message containing all 5 Task tool calls:
 
-| # | Subagent | Prompt extras |
-|---|----------|---------------|
-| 1 | `harness-architect` | `mode: code-eval`, diff range, architecture docs paths |
-| 2 | `harness-product-owner` | `mode: code-eval`, diff range, `.harness-flow/vision.md` path, plan path, roadmap/backlog/feedback context when available |
-| 3 | `harness-engineer` | `mode: code-eval`, diff range, source directory listing |
-| 4 | `harness-qa` | `mode: code-eval`, diff range, `ci_command: {{ ci_command }}`, test directory listing |
-| 5 | `harness-project-manager` | `mode: code-eval`, diff range, plan path, deliverable checklist, feedback/continue-pause context when available |
+| # | Subagent | Recommended model | Required context | Optional context |
+|---|----------|------------------|-----------------|-----------------|
+| 1 | `harness-architect` | do not specify (inherit parent model) | diff (`{{ trunk_branch }}..HEAD`), architecture docs | dependency list |
+| 2 | `harness-product-owner` | {% if role_models_product_owner %}do not specify (inherit parent model){% else %}`model: "fast"`{% endif %} | plan, diff `--stat` summary, `.harness-flow/vision.md` | roadmap/backlog/feedback; upgrade to key diff snippets when stat vs plan mismatch |
+| 3 | `harness-engineer` | do not specify (inherit parent model) | diff (`{{ trunk_branch }}..HEAD`), source directory listing | — |
+| 4 | `harness-qa` | {% if role_models_qa %}do not specify (inherit parent model){% else %}`model: "fast"`{% endif %} | diff (`{{ trunk_branch }}..HEAD`), test directory listing, `ci_command: {{ ci_command }}` | — |
+| 5 | `harness-project-manager` | {% if role_models_project_manager %}do not specify (inherit parent model){% else %}`model: "fast"`{% endif %} | plan, diff `--stat` + commit log, deliverable checklist | feedback/continue-pause context |
+
+**Model control**: The Task tool `model` parameter only accepts `"fast"` or omission (inherit
+parent model). When `[native.role_models]` is configured for a role, the generated agent
+definition includes a `model:` field as an additional IDE-level signal; in this case, omit
+the Task `model` parameter to let the agent definition take effect. When unconfigured,
+pass `model: "fast"` for cost-efficient dispatch.
+
+**Context minimization**: When building each subagent's Task prompt, **include only the
+"When reviewing code (mode: code-eval)" paragraph** from the agent template as role instructions.
+Do NOT embed "When reviewing plans" paragraphs — those are for plan-review mode only.
 
 Each prompt must include:
 - `response_language: {{ artifact_lang }}`
@@ -20,7 +30,7 @@ Each prompt must include:
 {% if memverse_enabled == "true" %}
 - `memverse_domain: {{ memverse_domain }}`
 {% endif %}
-- Role-specific context listed above
+- The "Required context" listed above for that role
 - When the workflow includes long-horizon direction governance:
   - give PO `roadmap_backlog_path` and `feedback_ledger_path` (or an equivalent summary)
   - give PM `feedback_ledger_path` and `continue_pause_summary` (or an equivalent summary)

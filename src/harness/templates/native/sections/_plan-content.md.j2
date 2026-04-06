@@ -16,29 +16,14 @@
 
 ## Stage Handoff — Plan → Build
 
-Before invoking ship, write a **structured handoff** so the build stage
-gets a compact summary instead of re-reading the entire plan.
+Before invoking ship, write a **stage summary** to the `handoff_summary` field
+of `workflow-state.json`, so the build stage gets compact context without
+re-reading the entire plan.
 
-Write `TASK_DIR/handoff-plan.json` with this structure:
-```json
-{
-  "schema_version": 1,
-  "source_phase": "plan",
-  "target_phase": "build",
-  "task_id": "task-NNN",
-  "summary": "<2-4 sentence summary of the plan: what will be built, key approach, constraints>",
-  "decisions": [{"what": "...", "why": "...", "classification": "mechanical|taste"}],
-  "risks": [{"description": "...", "mitigation": "...", "severity": "low|medium|high"}],
-  "open_items": [{"description": "...", "owner": "builder|user", "priority": "high|medium|low"}],
-  "artifacts_produced": ["plan.md"],
-  "scope_changes": [],
-  "created_at": "<ISO 8601 UTC>"
-}
-```
+Summary content (≤ 2000 chars): 2-4 sentences covering what will be built,
+key approach, constraints, decisions made, and risks.
 
-Then update `workflow-state.json` → `artifacts.handoff` to `"handoff-plan.json"`.
-
-If `workflow-state.json` does not exist, skip the update — handoff is optional.
+If `workflow-state.json` does not exist, skip — handoff is optional.
 
 ---
 

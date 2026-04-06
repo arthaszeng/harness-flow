@@ -1343,43 +1343,41 @@ def test_ship_en_and_zh_reference_harness_gate(tmp_path: Path):
 
 
 def test_en_templates_reference_handoff(tmp_path: Path):
-    """EN plan/build/eval/ship templates reference handoff JSON files."""
+    """EN plan/build/eval/ship templates reference handoff_summary field."""
     cfg = _make_cfg(tmp_path)
     generate_native_artifacts(tmp_path, lang="en", cfg=cfg)
     skills_base = tmp_path / ".cursor" / "skills" / "harness"
 
     plan_content = (skills_base / "harness-plan" / "SKILL.md").read_text(encoding="utf-8")
-    assert "handoff-plan.json" in plan_content
+    assert "handoff_summary" in plan_content
 
     build_content = (skills_base / "harness-build" / "SKILL.md").read_text(encoding="utf-8")
-    assert "handoff-plan.json" in build_content
-    assert "handoff-build.json" in build_content
+    assert "handoff_summary" in build_content
 
     eval_content = (skills_base / "harness-eval" / "SKILL.md").read_text(encoding="utf-8")
-    assert "handoff-build.json" in eval_content
+    assert "handoff_summary" in eval_content
 
     ship_content = (skills_base / "harness-ship" / "SKILL.md").read_text(encoding="utf-8")
-    assert "handoff-ship.json" in ship_content
+    assert "handoff_summary" in ship_content
 
 
 def test_zh_templates_reference_handoff(tmp_path: Path):
-    """ZH plan/build/eval/ship templates reference handoff JSON files."""
+    """ZH plan/build/eval/ship templates reference handoff_summary field."""
     cfg = _make_cfg(tmp_path)
     generate_native_artifacts(tmp_path, lang="zh", cfg=cfg)
     skills_base = tmp_path / ".cursor" / "skills" / "harness"
 
     plan_content = (skills_base / "harness-plan" / "SKILL.md").read_text(encoding="utf-8")
-    assert "handoff-plan.json" in plan_content
+    assert "handoff_summary" in plan_content
 
     build_content = (skills_base / "harness-build" / "SKILL.md").read_text(encoding="utf-8")
-    assert "handoff-plan.json" in build_content
-    assert "handoff-build.json" in build_content
+    assert "handoff_summary" in build_content
 
     eval_content = (skills_base / "harness-eval" / "SKILL.md").read_text(encoding="utf-8")
-    assert "handoff-build.json" in eval_content
+    assert "handoff_summary" in eval_content
 
     ship_content = (skills_base / "harness-ship" / "SKILL.md").read_text(encoding="utf-8")
-    assert "handoff-ship.json" in ship_content
+    assert "handoff_summary" in ship_content
 
 
 # --- B4: Layered context assembly ---
@@ -1407,9 +1405,10 @@ def test_layered_context_rules_lack_role_keys(tmp_path: Path):
     ctx = _build_layered_context(cfg, "rule", "harness-workflow", lang="en")
     assert "trunk_branch" in ctx
     assert "ci_command" in ctx
-    for key in ("planner_principles", "builder_principles",
-                "role_models_architect", "role_models_qa"):
+    for key in ("planner_principles", "builder_principles"):
         assert key not in ctx, f"rule without layer 1 should not have: {key}"
+    # role_models_* are in L0 now (needed by dispatch tables), so rules DO have them
+    assert "role_models_architect" in ctx
 
 
 def test_layered_context_skills_have_all_layers(tmp_path: Path):
