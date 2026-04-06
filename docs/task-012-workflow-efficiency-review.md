@@ -97,3 +97,12 @@
 - 不以速度牺牲门禁质量；
 - 不把“静态评审结论”当作“运行时已优化”的替代；
 - 任何提效策略必须保持可回滚与可审计。
+
+## 附录：Plan/Ship 模板对照锚点
+
+- `src/harness/templates/native/skill-plan.md.j2`
+  - 观察点：计划评审与 gate 的自动通过逻辑、Plan→Build 交接要求
+  - 对应建议：把“效率是否达标”的判定口径结构化，减少跨轮次口径漂移
+- `src/harness/templates/native/zh/skill-ship.md.j2`
+  - 观察点：强制评审、覆盖率审计、Eval Gate、Push+PR 与 post-ship watcher
+  - 对应建议：在保持硬门禁前提下引入风险分层，降低低风险变更的固定流程成本
