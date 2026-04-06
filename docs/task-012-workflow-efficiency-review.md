@@ -103,4 +103,3 @@
 - `src/harness/templates/native/zh/skill-ship.md.j2`
   - 观察点：强制评审、覆盖率审计、Eval Gate、Push+PR 与 post-ship watcher
   - 对应建议：在保持硬门禁前提下引入风险分层，降低低风险变更的固定流程成本
-
