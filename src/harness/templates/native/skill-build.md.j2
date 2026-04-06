@@ -39,11 +39,14 @@ which means DO IT. Implement everything and output the build result.
    read it first — it provides a compact summary of the plan (decisions, risks, open items).
    Use this as your primary context; only read the full `plan.md` for details not covered.
    (Backward compat: if `handoff-plan.json` exists but `handoff_summary` is empty, read that instead.)
-3. Read `.harness-flow/tasks/task-NNN/plan.md` — extract the deliverables checklist
+3. **Structured plan handoff:** If `TASK_DIR/handoff-plan.json` exists, read it **before** broad repo search.
+   Use `decisions`, `risks`, `open_items`, and `context_footprint` (`explored_paths`, `primary_read_files`)
+   to avoid re-discovering what plan already captured.
+4. Read `.harness-flow/tasks/task-NNN/plan.md` — extract the deliverables checklist
    from the Contract section
-4. If this is a subsequent round (feedback exists from evaluation), also read
+5. If this is a subsequent round (feedback exists from evaluation), also read
    `.harness-flow/tasks/task-NNN/code-eval-rN.md` for the fix suggestions
-5. If `.harness-flow/tasks/task-NNN/workflow-state.json` exists, treat it as the canonical
+6. If `.harness-flow/tasks/task-NNN/workflow-state.json` exists, treat it as the canonical
    source for phase / gate / blocker / artifact refs. Update it when you write
    new build artifacts; do not treat session summaries as a parallel gate source.
 
@@ -53,9 +56,11 @@ which means DO IT. Implement everything and output the build result.
 
 Before writing any code:
 
-1. Scan the project for existing patterns, utilities, and conventions
-2. Check if any deliverable can be solved by reusing existing code
-3. Note the project's testing patterns (framework, directory structure, naming)
+1. **Reuse the plan footprint first:** Re-open paths listed in `handoff-plan.json` → `context_footprint`
+   (`explored_paths`, `primary_read_files`) when present — only expand to wider search when gaps remain.
+2. Scan the project for existing patterns, utilities, and conventions
+3. Check if any deliverable can be solved by reusing existing code
+4. Note the project's testing patterns (framework, directory structure, naming)
 
 This prevents reinventing what already exists and ensures consistency.
 
@@ -189,6 +194,21 @@ Write a build outcome summary to the `handoff_summary` field of `workflow-state.
 what was built, CI result, key decisions, deviations from plan, open items.
 
 If `workflow-state.json` does not exist, skip.
+
+## Step 5.6: Write `handoff-build.json` (schema v2) — mandatory
+
+Write **`TASK_DIR/handoff-build.json`** before commit. Same schema family as plan handoff:
+
+- `schema_version`: **2**
+- `source_phase`: **build**
+- `target_phase`: **eval**
+- `task_id`: matching `task-NNN`
+- `summary`: build / CI outcome in prose
+- `decisions`, `risks`, `open_items`, `artifacts_produced`, `scope_changes`: from this build
+- `context_footprint`:
+  - `explored_paths`: dirs/files you searched beyond the plan footprint (union is OK)
+  - `primary_read_files`: files read for implementation understanding
+  - `primary_touched_files`: files actually modified or created for deliverables
 
 ## Step 6: Commit
 

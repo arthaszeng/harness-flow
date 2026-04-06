@@ -31,18 +31,21 @@ pipeline. Run straight through and output the evaluation result at the end.
    read it first — it provides a compact summary of the build (what was built, CI result,
    decisions, risks, open items). Use this as your primary context for understanding what changed.
    (Backward compat: if `handoff-build.json` exists but `handoff_summary` is empty, read that instead.)
-3. Read `.harness-flow/tasks/task-NNN/plan.md` (the contract)
-4. Read `.harness-flow/tasks/task-NNN/build-rN.md` (the latest build log)
-5. Run `git diff {{ trunk_branch }}..HEAD --stat` to understand the scope
+3. **Structured handoffs:** Read `TASK_DIR/handoff-plan.json` and `TASK_DIR/handoff-build.json` when present
+   (schema v2). Merge `context_footprint` and narrative fields **before** inferring scope from scratch —
+   they list paths and decisions already vetted upstream.
+4. Read `.harness-flow/tasks/task-NNN/plan.md` (the contract)
+5. Read `.harness-flow/tasks/task-NNN/build-rN.md` (the latest build log)
+6. Run `git diff {{ trunk_branch }}..HEAD --stat` to understand the scope
 {% if memverse_enabled == "true" %}
-6. **Prior Learnings**: Search Memverse for learnings relevant to the changed files/modules.
+7. **Prior Learnings**: Search Memverse for learnings relevant to the changed files/modules.
    If Memverse MCP is available, call `search_memory` with key topics from the diff.
    Use dual windows:
    - project recent: domain `{{ project_name or memverse_domain }}`, limit 20
    - role learning: domain `{{ project_name or memverse_domain }}-<role>-learning`, limit 15
    Display any relevant prior learnings (especially pitfalls) before starting the review.
 {% endif %}
-{% if memverse_enabled == "true" %}7.{% else %}6.{% endif %} If `.harness-flow/tasks/task-NNN/workflow-state.json` exists, treat it as the canonical
+{% if memverse_enabled == "true" %}8.{% else %}7.{% endif %} If `.harness-flow/tasks/task-NNN/workflow-state.json` exists, treat it as the canonical
    task state file. Evaluation may append or update gate/blocker snapshots there,
    but registry/events must remain audit-only and must not become workflow gate sources.
 
@@ -56,6 +59,7 @@ unless git diff is empty.
 | `task-NNN/` directory | Use branch name as audit ID; write eval artifacts to `.harness-flow/evals/` fallback | No task-level tracking |
 | `plan.md` | Warn: "No plan — evaluating raw diff" | Skip contract completeness; score Completeness as N/A |
 | `build-rN.md` | Warn: "No build log — skipping builder-claims verification" | Rely on git diff + CI only |
+| `handoff-plan.json` / `handoff-build.json` | Skip silently | Less prior-context reuse; do not fail |
 | `git diff` (empty) | **FATAL** — nothing to review. Stop and report error. | Cannot proceed |
 {% if memverse_enabled == "true" %}
 | Memverse MCP | Skip silently | No prior-learnings lookup |

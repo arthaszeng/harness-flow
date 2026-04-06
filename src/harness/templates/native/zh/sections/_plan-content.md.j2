@@ -16,12 +16,30 @@
 
 ## 阶段交接 — Plan → Build
 
-在调用 ship 之前，将**阶段摘要**写入 `workflow-state.json` 的 `handoff_summary` 字段，
-让 build 阶段获得紧凑上下文而不必重新阅读完整计划。
+### 强制：`TASK_DIR/handoff-plan.json`（schema v2）
 
-摘要内容（≤ 2000 字符）：2-4 句概述要构建什么、关键方案、约束、已做的决策和风险。
+在调用 ship 之前，**必须**在 `TASK_DIR` 下写入结构化交接文件 **`handoff-plan.json`**。
+这是供后续阶段机读的**上下文包**；**不能**替代 `handoff_summary`，而是与之并存。
 
-如果 `workflow-state.json` 不存在，跳过 — handoff 为可选增强。
+必填字段（名称须一致）：
+
+- `schema_version`：**2**
+- `source_phase`：**plan**
+- `target_phase`：**build**
+- `task_id`：与任务目录名一致（`task-NNN`）
+- `summary`：与计划结果一致的短文
+- `decisions`、`risks`、`open_items`、`artifacts_produced`、`scope_changes`：来自合约/评审的数组（无则 `[]`）
+- `context_footprint`：
+  - `explored_paths`：规划时已查看的仓库相对路径（约 ≤40 条）
+  - `primary_read_files`：为理解而阅读的关键文件（约 ≤40）
+  - `primary_touched_files`：计划阶段一般为 `[]`（尚未实现代码）
+
+### `workflow-state.json` — `handoff_summary`（ship 快速路径仍依赖）
+
+同时写入 **`handoff_summary`**（≤ 2000 字符）：2-4 句——将构建什么、方案、约束、决策与风险。
+
+若不存在 `workflow-state.json`，可跳过摘要字段——**只要存在 `TASK_DIR`，仍须写**
+`handoff-plan.json`。
 
 ---
 

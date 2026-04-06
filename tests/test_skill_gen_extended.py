@@ -1382,6 +1382,43 @@ def test_zh_templates_reference_handoff(tmp_path: Path):
     assert "handoff_summary" in ship_content
 
 
+class TestRoadmapA3StructuredHandoffTemplates:
+    """Phase A3: structured handoff JSON + context_footprint in generated skills."""
+
+    @pytest.mark.parametrize("lang", ["en", "zh"])
+    def test_plan_mandates_handoff_plan_v2(self, tmp_path: Path, lang: str):
+        cfg = _make_cfg(tmp_path)
+        generate_native_artifacts(tmp_path, lang=lang, cfg=cfg)
+        plan = (tmp_path / ".cursor" / "skills" / "harness" / "harness-plan" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        assert "handoff-plan.json" in plan
+        assert "context_footprint" in plan
+
+    @pytest.mark.parametrize("lang", ["en", "zh"])
+    def test_build_writes_handoff_build_and_reads_plan_footprint(self, tmp_path: Path, lang: str):
+        cfg = _make_cfg(tmp_path)
+        generate_native_artifacts(tmp_path, lang=lang, cfg=cfg)
+        build = (tmp_path / ".cursor" / "skills" / "harness" / "harness-build" / "SKILL.md").read_text(
+            encoding="utf-8"
+        )
+        assert "handoff-plan.json" in build
+        assert "handoff-build.json" in build
+        assert "context_footprint" in build
+
+    @pytest.mark.parametrize("lang", ["en", "zh"])
+    def test_eval_and_ship_reference_structured_handoffs(self, tmp_path: Path, lang: str):
+        cfg = _make_cfg(tmp_path)
+        generate_native_artifacts(tmp_path, lang=lang, cfg=cfg)
+        base = tmp_path / ".cursor" / "skills" / "harness"
+        ev = (base / "harness-eval" / "SKILL.md").read_text(encoding="utf-8")
+        ship = (base / "harness-ship" / "SKILL.md").read_text(encoding="utf-8")
+        assert "handoff-plan.json" in ev
+        assert "handoff-build.json" in ev
+        assert "handoff-plan.json" in ship
+        assert "handoff-build.json" in ship
+
+
 # --- B4: Layered context assembly ---
 
 
