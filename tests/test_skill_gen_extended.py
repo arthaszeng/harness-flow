@@ -201,6 +201,33 @@ def _make_cfg(tmp_path: Path) -> HarnessConfig:
     return HarnessConfig.load(tmp_path)
 
 
+def test_generated_plan_and_advanced_skills_default_entry_phrases(tmp_path: Path):
+    """B1: plan skill declares default primary entry; brainstorm/vision YAML nudge to /harness-plan."""
+    cfg = _make_cfg(tmp_path)
+    h = tmp_path / ".cursor" / "skills" / "harness"
+
+    generate_native_artifacts(tmp_path, cfg=cfg, lang="en")
+    plan_en = (h / "harness-plan" / "SKILL.md").read_text(encoding="utf-8")
+    low = plan_en.lower()
+    assert "default" in low
+    assert "primary entry" in low
+    assert "/harness-plan" in plan_en
+    for name in ("harness-brainstorm", "harness-vision"):
+        head = (h / name / "SKILL.md").read_text(encoding="utf-8").split("---", 2)[1]
+        assert "prefer" in head.lower()
+        assert "/harness-plan" in head
+
+    generate_native_artifacts(tmp_path, cfg=cfg, lang="zh", force=True)
+    plan_zh = (h / "harness-plan" / "SKILL.md").read_text(encoding="utf-8")
+    assert "默认" in plan_zh
+    assert "主入口" in plan_zh
+    assert "/harness-plan" in plan_zh
+    for name in ("harness-brainstorm", "harness-vision"):
+        head = (h / name / "SKILL.md").read_text(encoding="utf-8").split("---", 2)[1]
+        assert "优先" in head
+        assert "/harness-plan" in head
+
+
 def test_generate_deploys_resource_files(tmp_path: Path):
     agents_dir = tmp_path / ".harness-flow"
     agents_dir.mkdir()
