@@ -116,6 +116,7 @@ class WorkflowState(BaseModel):
     artifacts: ArtifactRefs = Field(default_factory=ArtifactRefs)
     gates: GateRefs = Field(default_factory=GateRefs)
     blocker: WorkflowBlocker = Field(default_factory=WorkflowBlocker)
+    handoff_summary: str = Field(default="", max_length=2000)
     updated_at: str = Field(default_factory=_now_iso, max_length=64)
 
     def save(self, task_dir: Path) -> None:
@@ -241,6 +242,7 @@ def sync_task_state(
     gate_updates: dict[str, dict[str, str]] | None = None,
     phase: TaskState | None = None,
     blocker: dict[str, str] | None = None,
+    handoff_summary: str | None = None,
 ) -> WorkflowState:
     """Load-merge-save task workflow state through a single entrypoint."""
     state_path = task_dir / WORKFLOW_STATE_FILENAME
@@ -280,6 +282,9 @@ def sync_task_state(
             "kind": blocker.get("kind", state.blocker.kind),
             "reason": blocker.get("reason", state.blocker.reason),
         })
+
+    if handoff_summary is not None:
+        state.handoff_summary = handoff_summary[:2000]
 
     state.save(task_dir)
     return state
