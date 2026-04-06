@@ -5,21 +5,28 @@
 通过 Task 工具**并行启动所有 5 个审查者**，每个使用 `mode: plan-review`。
 发送一条包含所有 5 个 Task 工具调用的消息：
 
-| # | 子代理 | Prompt 附加内容 |
-|---|--------|----------------|
-| 1 | `harness-architect` | `mode: plan-review`、计划路径、`ARCHITECTURE.md` 路径（如存在） |
-| 2 | `harness-product-owner` | `mode: plan-review`、计划路径、`.harness-flow/vision.md` 路径、roadmap/backlog 摘要或路径（如存在） |
-| 3 | `harness-engineer` | `mode: plan-review`、计划路径、源代码目录列表 |
-| 4 | `harness-qa` | `mode: plan-review`、计划路径、测试目录列表、`ci_command: {{ ci_command }}` |
-| 5 | `harness-project-manager` | `mode: plan-review`、计划路径、交付物数量、文件影响数量、roadmap/backlog/stop-rule 摘要（如存在） |
+| # | 子代理 | 推荐模型 | 必需 Context | 可选 Context |
+|---|--------|---------|-------------|-------------|
+| 1 | `harness-architect` | {% if role_models_architect %}不指定（继承父代理模型）{% else %}`model: "fast"`{% endif %} | plan、架构文档（`ARCHITECTURE.md`/ADR） | 源码目录概览 |
+| 2 | `harness-product-owner` | {% if role_models_product_owner %}不指定（继承父代理模型）{% else %}`model: "fast"`{% endif %} | plan、`.harness-flow/vision.md` | roadmap/backlog 摘要 |
+| 3 | `harness-engineer` | {% if role_models_engineer %}不指定（继承父代理模型）{% else %}`model: "fast"`{% endif %} | plan、源代码目录结构概览 | — |
+| 4 | `harness-qa` | {% if role_models_qa %}不指定（继承父代理模型）{% else %}`model: "fast"`{% endif %} | plan、测试目录列表、`ci_command: {{ ci_command }}` | — |
+| 5 | `harness-project-manager` | {% if role_models_project_manager %}不指定（继承父代理模型）{% else %}`model: "fast"`{% endif %} | plan、交付物数量、文件影响数量 | roadmap/backlog/stop-rule 摘要 |
+
+**模型控制**：Task 工具 `model` 参数仅接受 `"fast"` 或省略（继承父代理模型）。
+当 `[native.role_models]` 为某角色配置了模型时，生成的 agent 定义会包含 `model:` 字段
+作为 IDE 级别的信号；此时省略 Task `model` 参数以让 agent 定义生效。
+未配置时，传递 `model: "fast"` 以实现低成本派遣。
+
+**Context 最小化**：构建每个子代理的 Task prompt 时，**仅包含 agent 模板中 "评审计划时（mode: plan-review）" 段落**
+作为角色指令。不要嵌入 "评审代码时" 段落——那是 code-eval 模式专用的。
 
 每个 prompt 必须包含：
 - `response_language: {{ artifact_lang }}`
 {% if memverse_enabled == "true" %}
 - `memverse_domain: {{ memverse_domain }}`
 {% endif %}
-- 计划文件内容（读取并嵌入，或提供路径）
-- 上述角色特定的上下文
+- 上表中该角色的"必需 Context"
 - 当工作流包含长期方向治理时：
   - 对 PO 额外提供 `roadmap_backlog_path` 或等价摘要
   - 对 PM 额外提供 `roadmap_backlog_path`、`stop_conditions` 或等价摘要

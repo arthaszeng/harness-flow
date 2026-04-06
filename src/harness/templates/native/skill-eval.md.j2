@@ -25,9 +25,10 @@ pipeline. Run straight through and output the evaluation result at the end.
 ## Step 0: Context Gathering
 
 1. Detect the current task: find the most recent `task-NNN` directory under `.harness-flow/tasks/`
-2. **Check for handoff:** If `TASK_DIR/handoff-build.json` exists, read it first —
-   it provides a compact summary of the build (what was built, CI result, decisions,
-   risks, open items). Use this as your primary context for understanding what changed.
+2. **Check stage summary:** If `TASK_DIR/workflow-state.json` has a non-empty `handoff_summary` field,
+   read it first — it provides a compact summary of the build (what was built, CI result,
+   decisions, risks, open items). Use this as your primary context for understanding what changed.
+   (Backward compat: if `handoff-build.json` exists but `handoff_summary` is empty, read that instead.)
 3. Read `.harness-flow/tasks/task-NNN/plan.md` (the contract)
 4. Read `.harness-flow/tasks/task-NNN/build-rN.md` (the latest build log)
 5. Run `git diff {{ trunk_branch }}..HEAD --stat` to understand the scope

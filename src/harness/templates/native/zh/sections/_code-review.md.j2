@@ -5,13 +5,21 @@
 通过 Task 工具**并行启动所有 5 个审查者**，每个使用 `mode: code-eval`。
 发送一条包含所有 5 个 Task 工具调用的消息：
 
-| # | 子代理 | Prompt 附加内容 |
-|---|--------|----------------|
-| 1 | `harness-architect` | `mode: code-eval`、diff 范围、架构文档路径 |
-| 2 | `harness-product-owner` | `mode: code-eval`、diff 范围、`.harness-flow/vision.md` 路径、计划路径、roadmap/backlog/feedback 上下文（如存在） |
-| 3 | `harness-engineer` | `mode: code-eval`、diff 范围、源代码目录列表 |
-| 4 | `harness-qa` | `mode: code-eval`、diff 范围、`ci_command: {{ ci_command }}`、测试目录列表 |
-| 5 | `harness-project-manager` | `mode: code-eval`、diff 范围、计划路径、交付物清单、feedback/continue-pause 上下文（如存在） |
+| # | 子代理 | 推荐模型 | 必需 context | 可选 context |
+|---|--------|---------|-------------|-------------|
+| 1 | `harness-architect` | 不指定（继承父代理模型） | diff（`{{ trunk_branch }}..HEAD`）、架构文档 | 依赖清单 |
+| 2 | `harness-product-owner` | {% if role_models_product_owner %}不指定（继承父代理模型）{% else %}`model: "fast"`{% endif %} | plan、diff `--stat` 摘要、`.harness-flow/vision.md` | roadmap/backlog/feedback；当 stat 与 plan 明显不匹配时升格读取关键 diff 片段 |
+| 3 | `harness-engineer` | 不指定（继承父代理模型） | diff（`{{ trunk_branch }}..HEAD`）、源代码目录列表 | — |
+| 4 | `harness-qa` | {% if role_models_qa %}不指定（继承父代理模型）{% else %}`model: "fast"`{% endif %} | diff（`{{ trunk_branch }}..HEAD`）、测试目录列表、`ci_command: {{ ci_command }}` | — |
+| 5 | `harness-project-manager` | {% if role_models_project_manager %}不指定（继承父代理模型）{% else %}`model: "fast"`{% endif %} | plan、diff `--stat` + commit log、交付物清单 | feedback/continue-pause 上下文 |
+
+**模型控制**：Task 工具 `model` 参数仅接受 `"fast"` 或省略（继承父代理模型）。
+当 `[native.role_models]` 为某角色配置了模型时，生成的 agent 定义会包含 `model:` 字段
+作为 IDE 级别的信号；此时省略 Task `model` 参数以让 agent 定义生效。
+未配置时，传递 `model: "fast"` 以实现低成本派遣。
+
+**Context 最小化**：构建每个子代理的 Task prompt 时，**仅包含 agent 模板中
+"评审代码时（mode: code-eval）" 段落**作为角色指令。不要嵌入 "评审计划时" 段落——那是 plan-review 模式专用的。
 
 每个 prompt 必须包含：
 - `response_language: {{ artifact_lang }}`
@@ -20,7 +28,7 @@
 {% if memverse_enabled == "true" %}
 - `memverse_domain: {{ memverse_domain }}`
 {% endif %}
-- 上述角色特定的上下文
+- 上表中该角色的"必需 context"
 - 当工作流包含长期方向治理时：
   - 对 PO 额外提供 `roadmap_backlog_path` 与 `feedback_ledger_path`（或等价摘要）
   - 对 PM 额外提供 `feedback_ledger_path` 与 `continue_pause_summary`（或等价摘要）

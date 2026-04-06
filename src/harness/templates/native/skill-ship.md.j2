@@ -51,9 +51,10 @@ Run straight through and output the PR URL at the end.
    mkdir -p .harness-flow/tasks/task-NNN
    ```
 
-   If a handoff file exists (e.g. `TASK_DIR/handoff-build.json` or
-   `TASK_DIR/handoff-eval.json`), read the most recent one first for a compact
-   summary of prior stage results. Then read `TASK_DIR/plan.md` for full context.
+   If `TASK_DIR/workflow-state.json` has a non-empty `handoff_summary` field,
+   read it first for a compact summary of prior stage results.
+   (Backward compat: if `handoff-*.json` exists but `handoff_summary` is empty, read that.)
+   Then read `TASK_DIR/plan.md` for full context.
    If `TASK_DIR/workflow-state.json` exists, treat it as the canonical task-level
    source for phase / gate / blocker / artifact refs. Update it instead of inventing
    a parallel gate record elsewhere.
@@ -132,6 +133,17 @@ If all failures were pre-existing, continue to Step 3.5.
 ## Step 3.4: Test Coverage Audit
 
 Analyze the diff to ensure changed code paths have adequate test coverage.
+
+### Quick Path (small change optimization)
+
+Count changed code files (only `.py`/`.ts`/`.js`/`.tsx`/`.jsx`/`.mjs` etc.):
+```bash
+git diff {{ trunk_branch }}..HEAD --name-only | grep -E '\.(py|ts|js|tsx|jsx|mjs)$' | wc -l
+```
+
+- **< 5 code files**: Use lightweight check — count GAPs and tested paths per file only,
+  output `COVERAGE SUMMARY: N files, M tested paths, K gaps`. Skip ASCII coverage charts and detailed tracing.
+- **≥ 5 code files**: Use full analysis flow below.
 
 ### 1. Detect Test Framework
 Scan for: `pytest.ini`, `pyproject.toml [tool.pytest]`, `jest.config.*`, `vitest.config.*`,
@@ -378,8 +390,10 @@ Claiming work is complete without verification is dishonesty, not efficiency.
 
 **Before pushing, verify:**
 
-1. If ANY code changed after Step 3's test run (review fixes don't count),
-   re-run `{{ ci_command }}`. Paste fresh output — not a summary, the actual output.
+1. Check if any code files changed since the last full `{{ ci_command }}` run
+   (`.py`/`.ts`/`.js` etc.; `.md`/`.json`/`.toml` and other non-code files don't count).
+   - **Code changed**: re-run `{{ ci_command }}`. Paste fresh output.
+   - **No code changed** (only docs/config changes, or review fixes already passed tests in Step 5): skip redundant test run.
 2. If tests fail: STOP. Fix and return to Step 3.
 3. Verify git status is clean (no stray untracked files).
 
@@ -469,9 +483,14 @@ Immediately after PR creation/update, auto-start post-ship watcher (no manual po
 
 ---
 
-## Step 8.5: Doc-Release (auto-invoke)
+## Step 8.5: Doc-Release (conditional)
 
-After the PR is created/updated, run the `/harness-doc-release` workflow:
+**Precondition**: Check whether the diff contains `.md` file changes:
+```bash
+git diff {{ trunk_branch }}..HEAD --name-only | grep '\.md$'
+```
+- **No `.md` files changed**: Silently skip the entire doc-release step.
+- **`.md` files changed**: Run the `/harness-doc-release` workflow:
 
 1. Compare the diff against all `.md` files in the project
 2. Auto-fix factual inaccuracies (file paths, version numbers, function names)
@@ -522,24 +541,10 @@ artifact ref, ship metrics ref, and final phase/blocker outcome before finishing
 
 ## Ship Handoff
 
-Write `TASK_DIR/handoff-ship.json` summarizing the ship outcome:
-```json
-{
-  "schema_version": 1,
-  "source_phase": "ship",
-  "target_phase": "plan",
-  "task_id": "task-NNN",
-  "summary": "<PR URL, commit count, review scores, key findings addressed>",
-  "decisions": [],
-  "risks": [],
-  "open_items": [{"description": "...", "owner": "user|next-task", "priority": "..."}],
-  "artifacts_produced": ["ship-metrics.json", "code-eval-rN.md"],
-  "scope_changes": [],
-  "created_at": "<ISO 8601 UTC>"
-}
-```
+Write a ship outcome summary to the `handoff_summary` field of `workflow-state.json` (≤ 2000 chars):
+PR URL, commit count, review scores, key findings addressed, remaining open items.
 
-Update `workflow-state.json` → `artifacts.handoff` to `"handoff-ship.json"`.
+If `workflow-state.json` does not exist, skip.
 
 ---
 
@@ -550,7 +555,7 @@ All state is persisted in `.harness-flow/tasks/task-NNN/`:
 - `build-rN.md` — build logs per round
 - `plan-eval-rN.md` — plan evaluations per round
 - `code-eval-rN.md` — code evaluations per round
-- `handoff-*.json` — structured stage handoffs
+- `handoff-*.json` — structured stage handoffs (legacy; new flow uses `workflow-state.json` `handoff_summary` field)
 
 If interrupted, resume by checking which artifacts exist and which round number is latest.
 
