@@ -5,9 +5,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import warnings
+
 from harness.core.handoff import (
     HANDOFF_SCHEMA_VERSION,
     PHASE_ORDER,
+    ContextFootprint,
     Decision,
     OpenItem,
     Risk,
@@ -56,6 +59,8 @@ class TestSchemaRoundTrip:
         assert len(loaded.open_items) == 1
         assert loaded.artifacts_produced == ["plan.md"]
         assert loaded.scope_changes == ["added D7"]
+        assert loaded.schema_version == HANDOFF_SCHEMA_VERSION
+        assert loaded.context_footprint.explored_paths == []
 
     def test_created_at_auto_populated(self, tmp_path: Path):
         task_dir = tmp_path / "task-001"
@@ -115,10 +120,32 @@ class TestLoadHandoff:
         data["schema_version"] = 999
         path.write_text(json.dumps(data), encoding="utf-8")
 
-        loaded = load_handoff(task_dir, "plan")
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            loaded = load_handoff(task_dir, "plan")
         assert loaded is not None
         assert loaded.source_phase == "plan"
         assert loaded.target_phase == "build"
+        assert any("Schema version mismatch" in str(x.message) for x in w)
+
+    def test_v1_handoff_loads_without_schema_warning(self, tmp_path: Path):
+        task_dir = tmp_path / "task-001"
+        task_dir.mkdir()
+        data = {
+            "schema_version": 1,
+            "source_phase": "plan",
+            "target_phase": "build",
+            "task_id": "task-001",
+            "summary": "legacy v1",
+        }
+        (task_dir / "handoff-plan.json").write_text(json.dumps(data), encoding="utf-8")
+        with warnings.catch_warnings(record=True) as w:
+            warnings.simplefilter("always")
+            loaded = load_handoff(task_dir, "plan")
+        assert loaded is not None
+        assert loaded.summary == "legacy v1"
+        assert loaded.context_footprint.explored_paths == []
+        assert not any("Schema version mismatch" in str(x.message) for x in w)
 
     def test_unknown_extra_fields_ignored(self, tmp_path: Path):
         task_dir = tmp_path / "task-001"
@@ -208,6 +235,29 @@ class TestLoadLatestHandoff:
         for phase in PHASE_ORDER:
             (task_dir / f"handoff-{phase}.json").write_text("{bad", encoding="utf-8")
         assert load_latest_handoff(task_dir) is None
+
+
+class TestContextFootprint:
+    def test_footprint_round_trip(self, tmp_path: Path):
+        task_dir = tmp_path / "task-001"
+        fp = ContextFootprint(
+            explored_paths=["src/a.py", "tests/b.py"],
+            primary_read_files=["README.md"],
+            primary_touched_files=[],
+        )
+        handoff = _make_handoff(context_footprint=fp)
+        save_handoff(task_dir, handoff)
+        loaded = load_handoff(task_dir, "plan")
+        assert loaded is not None
+        assert loaded.context_footprint.explored_paths == ["src/a.py", "tests/b.py"]
+        assert loaded.context_footprint.primary_read_files == ["README.md"]
+
+    def test_footprint_truncates_oversized_input(self):
+        many = [f"path-{i}" for i in range(50)]
+        long_s = "x" * 300
+        fp = ContextFootprint(explored_paths=[*many, long_s])
+        assert len(fp.explored_paths) == 40
+        assert all(len(p) <= 240 for p in fp.explored_paths)
 
 
 class TestPhaseOrder:

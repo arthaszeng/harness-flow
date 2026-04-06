@@ -80,6 +80,8 @@ stage already completed in this session, most pre-flight work is redundant.
    If `TASK_DIR/workflow-state.json` has a non-empty `handoff_summary` field,
    read it first for a compact summary of prior stage results.
    (Backward compat: if `handoff-*.json` exists but `handoff_summary` is empty, read that.)
+   **Also read** `TASK_DIR/handoff-plan.json` and `TASK_DIR/handoff-build.json` when present (schema v2)
+   for structured `context_footprint` + decisions/risks — reuse that footprint before re-deriving scope.
    Then read `TASK_DIR/plan.md` for full context.
    If `TASK_DIR/workflow-state.json` exists, treat it as the canonical task-level
    source for phase / gate / blocker / artifact refs. Update it instead of inventing
