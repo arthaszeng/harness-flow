@@ -6,14 +6,34 @@
 >
 > Install: `pip install harness-flow` · Import: `import harness` · CLI: `harness`
 
-[![Python](https://img.shields.io/badge/python-%3E%3D3.9-blue)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[Python](https://www.python.org/)
+[License: MIT](LICENSE)
 
 AI coding tools excel at single-shot tasks. Continuous development needs more: goal tracking, quality gates, adversarial review, and audit trails. Harness organizes these into a contract-driven engineering loop that runs **inside your Cursor IDE** — no separate process, no complex setup.
 
 ---
 
 ## Quick Start
+
+### 0. 10-minute happy path
+
+If you want one shortest route from zero to a shippable task:
+
+```bash
+pip install harness-flow
+harness --version
+cd /path/to/your/project
+harness init --non-interactive
+harness git-preflight --json
+```
+
+Then open Cursor in the project and run:
+
+```text
+/harness-plan add input validation to the user registration endpoint
+```
+
+When it finishes, you should have: a task directory, evaluation artifacts, and a branch state ready for ship/PR (subject to your remote/auth setup).
 
 ### 1. Install
 
@@ -22,8 +42,7 @@ pip install harness-flow
 harness --version
 ```
 
-<details>
-<summary>Install from source (contributors)</summary>
+Install from source (contributors)
 
 ```bash
 git clone https://github.com/arthaszeng/harness-flow.git
@@ -31,7 +50,7 @@ cd harness-flow
 pip install -e ".[dev]"
 ```
 
-</details>
+
 
 ### 2. Initialize your project
 
@@ -46,11 +65,13 @@ The wizard walks you through setup: project info, trunk branch, CI command, Memv
 
 Open your project in Cursor. Three primary entry points cover all task sizes:
 
-| Skill | When to use | What it does |
-|-------|-------------|--------------|
-| `/harness-brainstorm` | "I have an idea" | Divergent exploration → structured vision → roadmap/backlog → iterative build/eval/ship loop |
-| `/harness-vision` | "I have a direction" | Clarify vision → plan → auto build/eval/ship/retro |
-| `/harness-plan` | "I have a requirement" | Refine plan + 5-role review → auto build/eval/ship/retro |
+
+| Skill                 | When to use            | What it does                                                                                 |
+| --------------------- | ---------------------- | -------------------------------------------------------------------------------------------- |
+| `/harness-brainstorm` | "I have an idea"       | Divergent exploration → structured vision → roadmap/backlog → iterative build/eval/ship loop |
+| `/harness-vision`     | "I have a direction"   | Clarify vision → plan → auto build/eval/ship/retro                                           |
+| `/harness-plan`       | "I have a requirement" | Refine plan + 5-role review → auto build/eval/ship/retro                                     |
+
 
 Use `/harness-brainstorm` when you want a long-horizon loop that can keep picking the next active plan from a roadmap/backlog.
 Use `/harness-vision` when the direction is already clear and you want one clarified increment before planning and shipping.
@@ -59,20 +80,24 @@ The entry points still share core building blocks such as vision capture, multi-
 
 **Utility skills:**
 
-| Skill | What it does |
-|-------|-------------|
-| `/harness-investigate` | Systematic bug investigation: reproduce → hypothesize → verify → minimal fix |
-| `/harness-learn` | Memverse knowledge management: store, retrieve, update project learnings |
-| `/harness-retro` | Engineering retrospective: commit analytics, hotspot detection, trend tracking |
+
+| Skill                  | What it does                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------ |
+| `/harness-investigate` | Systematic bug investigation: reproduce → hypothesize → verify → minimal fix   |
+| `/harness-learn`       | Memverse knowledge management: store, retrieve, update project learnings       |
+| `/harness-retro`       | Engineering retrospective: commit analytics, hotspot detection, trend tracking |
+
 
 **Pipeline skills** (for granular control):
 
-| Skill | What it does |
-|-------|-------------|
-| `/harness-build` | Implement the contract, run CI, triage failures, write a structured build log |
-| `/harness-eval` | 5-role code review (architect + product-owner + engineer + qa + project-manager) |
-| `/harness-ship` | Full pipeline: test → review → fix → commit → push → PR |
-| `/harness-doc-release` | Documentation sync: detect stale docs after code changes |
+
+| Skill                  | What it does                                                                     |
+| ---------------------- | -------------------------------------------------------------------------------- |
+| `/harness-build`       | Implement the contract, run CI, triage failures, write a structured build log    |
+| `/harness-eval`        | 5-role code review (architect + product-owner + engineer + qa + project-manager) |
+| `/harness-ship`        | Full pipeline: test → review → fix → commit → push → PR                          |
+| `/harness-doc-release` | Documentation sync: detect stale docs after code changes                         |
+
 
 **Try it now:**
 
@@ -101,13 +126,15 @@ You type /harness-ship "add feature X"
 
 The same 5 specialized roles review both **plans** and **code**, dispatched in parallel:
 
-| Role | Plan Review | Code Review |
-|------|------------|-------------|
-| **Architect** | Feasibility, module impact, dependencies | Conformance, layering, coupling, security |
-| **Product Owner** | Vision alignment, user value, acceptance criteria | Requirement coverage, behavioral correctness |
-| **Engineer** | Implementation feasibility, code reuse, tech debt | Code quality, DRY, patterns, performance |
-| **QA** | Test strategy, boundary values, regression risk | Test coverage, edge cases, CI health |
-| **Project Manager** | Task decomposition, parallelism, scope | Scope drift, plan completion, delivery risk |
+
+| Role                | Plan Review                                       | Code Review                                  |
+| ------------------- | ------------------------------------------------- | -------------------------------------------- |
+| **Architect**       | Feasibility, module impact, dependencies          | Conformance, layering, coupling, security    |
+| **Product Owner**   | Vision alignment, user value, acceptance criteria | Requirement coverage, behavioral correctness |
+| **Engineer**        | Implementation feasibility, code reuse, tech debt | Code quality, DRY, patterns, performance     |
+| **QA**              | Test strategy, boundary values, regression risk   | Test coverage, edge cases, CI health         |
+| **Project Manager** | Task decomposition, parallelism, scope            | Scope drift, plan completion, delivery risk  |
+
 
 Findings from 2+ roles are flagged as **high confidence**. Each role can use a different model via `[native.role_models]` in `.harness-flow/config.toml`. Invalid or locally unavailable model pins are dropped during artifact generation so agents fall back to the IDE default model instead of hard-failing on a bad config.
 
@@ -120,12 +147,14 @@ Review findings are classified before presenting:
 
 ### Graceful degradation
 
-| Roles responding | Behavior |
-|-----------------|----------|
-| 5/5 | Full synthesis with cross-validation |
-| 3-4/5 | Proceed with available reviews, note missing perspectives |
-| 1-2/5 | Log warning, fall through to single-agent review |
-| 0/5 | Fall back to single generalPurpose subagent |
+
+| Roles responding | Behavior                                                  |
+| ---------------- | --------------------------------------------------------- |
+| 5/5              | Full synthesis with cross-validation                      |
+| 3-4/5            | Proceed with available reviews, note missing perspectives |
+| 1-2/5            | Log warning, fall through to single-agent review          |
+| 0/5              | Fall back to single generalPurpose subagent               |
+
 
 ---
 
@@ -133,12 +162,14 @@ Review findings are classified before presenting:
 
 `harness init` generates everything Cursor needs:
 
-| Category | Artifacts |
-|----------|-----------|
-| **Skills** (10) | brainstorm, vision, plan, build, eval, ship, investigate, learn, doc-release, retro |
-| **Agents** (5) | architect, product-owner, engineer, qa, project-manager |
-| **Rules** (4) | trust-boundary, workflow, fix-first, safety-guardrails |
-| **Parallel Agents** | `.cursor/worktrees.json` — isolated git worktrees for concurrent tasks |
+
+| Category            | Artifacts                                                                           |
+| ------------------- | ----------------------------------------------------------------------------------- |
+| **Skills** (10)     | brainstorm, vision, plan, build, eval, ship, investigate, learn, doc-release, retro |
+| **Agents** (5)      | architect, product-owner, engineer, qa, project-manager                             |
+| **Rules** (4)       | trust-boundary, workflow, fix-first, safety-guardrails                              |
+| **Parallel Agents** | `.cursor/worktrees.json` — isolated git worktrees for concurrent tasks              |
+
 
 To regenerate after config changes:
 
@@ -152,30 +183,37 @@ harness init --force
 
 Project settings live in `.harness-flow/config.toml`:
 
-| Key | Default | Description |
-|-----|---------|-------------|
-| `workflow.max_iterations` | 3 | Max review iterations per task |
-| `workflow.pass_threshold` | 7.0 | Evaluator pass threshold (1-10) |
-| `workflow.auto_merge` | true | Auto-merge branch after pass |
-| `workflow.branch_prefix` | "agent" | Task branch prefix |
-| `native.evaluator_model` | "inherit" | Preferred default model for the 5 review roles; invalid or unavailable values fall back to IDE default |
-| `native.review_gate` | "eng" | Review gate strictness (`eng` = hard gate, `advisory` = log only) |
-| `native.plan_review_gate` | "auto" | Plan review gate (`human` / `ai` / `auto`) |
-| `native.gate_full_review_min` | 5 | Escalation score threshold for full human review |
-| `native.gate_summary_confirm_min` | 3 | Escalation score threshold for summary confirmation |
-| `native.retro_window_days` | 14 | Default retro analysis window (days) |
-| `native.role_models.*` | `{}` | Per-role model overrides; takes precedence over `native.evaluator_model`, but invalid or unavailable values also fall back to IDE default |
+
+| Key                               | Default   | Description                                                                                                                               |
+| --------------------------------- | --------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `workflow.max_iterations`         | 3         | Max review iterations per task                                                                                                            |
+| `workflow.pass_threshold`         | 7.0       | Evaluator pass threshold (1-10)                                                                                                           |
+| `workflow.auto_merge`             | true      | Auto-merge branch after pass                                                                                                              |
+| `workflow.branch_prefix`          | "agent"   | Task branch prefix                                                                                                                        |
+| `native.evaluator_model`          | "inherit" | Preferred default model for the 5 review roles; invalid or unavailable values fall back to IDE default                                    |
+| `native.review_gate`              | "eng"     | Review gate strictness (`eng` = hard gate, `advisory` = log only)                                                                         |
+| `native.plan_review_gate`         | "auto"    | Plan review gate (`human` / `ai` / `auto`)                                                                                                |
+| `native.gate_full_review_min`     | 5         | Escalation score threshold for full human review                                                                                          |
+| `native.gate_summary_confirm_min` | 3         | Escalation score threshold for summary confirmation                                                                                       |
+| `native.retro_window_days`        | 14        | Default retro analysis window (days)                                                                                                      |
+| `native.role_models.*`            | `{}`      | Per-role model overrides; takes precedence over `native.evaluator_model`, but invalid or unavailable values also fall back to IDE default |
+
 
 ---
 
 ## CLI reference
 
-| Command | Description |
-|---------|-------------|
-| `harness init [--name] [--ci] [-y] [--force]` | Initialize project (interactive wizard); `--force` regenerates artifacts |
-| `harness status` | Show current task progress |
-| `harness update [--check] [--force]` | Self-update + config migration check (no project artifact writes) |
-| `harness --version` | Show version |
+
+| Command                                                                     | Description                                                              |
+| --------------------------------------------------------------------------- | ------------------------------------------------------------------------ |
+| `harness init [--name] [--ci] [-y] [--force]`                               | Initialize project (interactive wizard); `--force` regenerates artifacts |
+| `harness git-preflight [--json]`                                            | Structured preflight checks (clean tree, branch/worktree context)        |
+| `harness git-post-ship-reconcile [--max-items] [--json]`                    | Manually reconcile persisted post-ship pending queue                     |
+| `harness save-intervention-audit --task --event-type --command [--summary]` | Append one manual-intervention audit event                               |
+| `harness status`                                                            | Show current task progress                                               |
+| `harness update [--check] [--force]`                                        | Self-update + config migration check (no project artifact writes)        |
+| `harness --version`                                                         | Show version                                                             |
+
 
 ---
 
@@ -192,6 +230,7 @@ All task state lives under `.harness-flow/`:
 │       ├── plan.md        # Plan with spec and contract
 │       ├── plan-eval-r1.md
 │       ├── code-eval-r2.md
+│       ├── intervention-audit.jsonl
 │       ├── build-r1.md
 │       └── ...
 └── archive/               # Archived sessions
@@ -250,7 +289,7 @@ ruff format src/ tests/
 
 ## Historical documentation
 
-Architecture notes from earlier versions (orchestrator mode, state machine, driver compatibility) are preserved in [`docs/historical.md`](docs/historical.md).
+Architecture notes from earlier versions (orchestrator mode, state machine, driver compatibility) are preserved in [docs/historical.md](docs/historical.md).
 
 ---
 
