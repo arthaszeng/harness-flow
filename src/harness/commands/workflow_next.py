@@ -13,7 +13,10 @@ from harness.core.workflow_state import WORKFLOW_STATE_FILENAME, resolve_task_di
 
 def run_workflow_next(*, task: str | None = None) -> None:
     """Print one HARNESS_NEXT line; always exits 0 unless Typer raises."""
+    from harness.i18n import apply_project_lang_from_cwd
+
     cwd = Path.cwd()
+    apply_project_lang_from_cwd(cwd)
     agents_dir = cwd / ".harness-flow"
     task_dir = resolve_task_dir(agents_dir, explicit_task_id=task or None)
     if task_dir is None:
@@ -23,6 +26,7 @@ def run_workflow_next(*, task: str | None = None) -> None:
             skill="/harness-plan",
             hint="No task directory under .harness-flow/tasks",
         )
+        _recovery_echo("workflow_next.recovery.no_tasks_dir")
         return
 
     tid = task_dir.name
@@ -34,6 +38,7 @@ def run_workflow_next(*, task: str | None = None) -> None:
             skill="/harness-plan",
             hint="Missing workflow-state.json; run /harness-plan or create task state",
         )
+        _recovery_echo("workflow_next.recovery.missing_state")
         return
 
     try:
@@ -45,6 +50,7 @@ def run_workflow_next(*, task: str | None = None) -> None:
             skill="/harness-plan",
             hint="Invalid workflow-state.json; fix JSON or re-run plan",
         )
+        _recovery_echo("workflow_next.recovery.corrupt")
         return
 
     if not isinstance(raw, dict):
@@ -54,6 +60,7 @@ def run_workflow_next(*, task: str | None = None) -> None:
             skill="/harness-plan",
             hint="workflow-state.json must be a JSON object",
         )
+        _recovery_echo("workflow_next.recovery.corrupt")
         return
 
     phase_val = raw.get("phase")
@@ -64,6 +71,7 @@ def run_workflow_next(*, task: str | None = None) -> None:
             skill="/harness-plan",
             hint="workflow-state phase missing or not a string",
         )
+        _recovery_echo("workflow_next.recovery.unknown_phase")
         return
 
     try:
@@ -75,6 +83,7 @@ def run_workflow_next(*, task: str | None = None) -> None:
             skill="/harness-plan",
             hint=f"Unknown phase value: {phase_val!r}",
         )
+        _recovery_echo("workflow_next.recovery.unknown_phase")
         return
 
     skill, hint = _suggest(phase)
@@ -86,6 +95,18 @@ def _emit(*, task: str, phase: str, skill: str, hint: str) -> None:
     typer.echo(
         f'HARNESS_NEXT task={task} phase={phase} skill={skill} hint="{safe_hint}"',
     )
+
+
+def _recovery_echo(i18n_key: str) -> None:
+    from harness.i18n import t
+
+    primary = t(i18n_key)
+    if primary != i18n_key:
+        typer.echo(primary, err=True)
+        return
+    generic = t("workflow_next.recovery.generic")
+    if generic != "workflow_next.recovery.generic":
+        typer.echo(generic, err=True)
 
 
 def _suggest(phase: TaskState) -> tuple[str, str]:

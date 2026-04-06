@@ -13,9 +13,22 @@ Usage::
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 _current_lang: str = "en"
+
+
+def apply_project_lang_from_cwd(cwd: Path | None = None) -> None:
+    """Load ``HarnessConfig`` from *cwd* and set UI language; fall back to English."""
+    root = cwd if cwd is not None else Path.cwd()
+    try:
+        from harness.core.config import HarnessConfig
+
+        cfg = HarnessConfig.load(root)
+        set_lang(cfg.project.lang)
+    except Exception:
+        set_lang("en")
 
 
 def set_lang(lang: str) -> None:

@@ -37,6 +37,14 @@ def run_git_preflight(*, as_json: bool = False) -> None:
     else:
         typer.echo(f"[{result.code}] {result.diagnostic}")
     if not result.ok:
+        from harness.i18n import apply_project_lang_from_cwd, t
+
+        apply_project_lang_from_cwd(Path.cwd())
+        key = f"git_preflight.recovery.{result.code}"
+        msg = t(key)
+        if msg == key:
+            msg = t("git_preflight.recovery.generic")
+        typer.echo(msg, err=True)
         raise typer.Exit(code=1)
 
 
