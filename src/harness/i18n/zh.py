@@ -104,10 +104,21 @@ MESSAGES: dict[str, str] = {
     "update.version_verify_failed": "重试后版本仍不匹配（期望 {expected}，实际 {installed}）",
     "update.easter_egg": "升级增益 +1，下一关：在目标项目里执行 `harness init --force`。",
 
+    # ── workflow phase（用户可见短标签，非 TaskState 裸值）────────────────
+    "workflow.phase.idle": "未开始",
+    "workflow.phase.planning": "正在完善计划",
+    "workflow.phase.contracted": "计划已定稿，可开始实现",
+    "workflow.phase.building": "正在实现改动",
+    "workflow.phase.evaluating": "正在代码评审",
+    "workflow.phase.shipping": "正在交付（推送/PR）",
+    "workflow.phase.done": "已完成",
+    "workflow.phase.blocked": "已阻塞",
+    "workflow.phase.fallback": "进行中",
+
     # ── progress / suggest_next_action ───────────────────────────
     "progress.blocked": "当前任务被阻塞 — {reason}",
-    "progress.phase_with_plan": "当前任务处于 {phase} 阶段 — 在 Cursor 中继续 `{title}`",
-    "progress.phase_active": "当前任务处于 {phase} 阶段 — 在 Cursor 中通过 harness 技能继续",
+    "progress.phase_with_plan": "当前进度：{phase} — 在 Cursor 中继续 `{title}`",
+    "progress.phase_active": "当前进度：{phase} — 在 Cursor 中通过 harness 技能继续",
     "progress.resumable": "会话可恢复 — 在 Cursor 中通过 harness 技能继续当前任务",
     "progress.in_progress": "会话进行中，等待当前流程完成",
     "progress.all_blocked": "所有任务已阻塞，检查阻塞原因后重新发起",
@@ -115,10 +126,27 @@ MESSAGES: dict[str, str] = {
     "progress.fresh": "使用 Cursor 中的 harness 技能开始",
 
     # ── gate command ─────────────────────────────────────────────
+    "gate.title": "发布就绪检查",
     "gate.no_task": "未找到任务目录{suffix}",
     "gate.no_task_hint": "请在包含 .harness-flow/tasks/task-NNN/ 目录的项目中运行",
-    "gate.config_fallback": "无法加载 harness 配置 — 回退到 review_gate_mode='eng'",
-    "gate.pass": "门禁通过：可以交付",
-    "gate.blocked": "门禁阻塞 — {summary}",
+    "gate.config_fallback": "无法加载配置文件 — 已使用默认评审设置。",
+    "gate.pass": "检查已通过，可以交付。",
+    "gate.blocked": "尚不能交付 — {summary}",
+    "gate.blocked_hint": "请处理上方标为 ✗ 的项，然后再次运行 `harness gate`。",
+    "gate.check.plan_exists": "计划文档",
+    "gate.check.eval_exists": "代码评审记录",
+    "gate.check.eval_verdict_parseable": "评审结论可读性",
+    "gate.check.eval_ship_eligible": "评审结果是否可交付",
+    "gate.check.build_exists": "构建日志",
+    "gate.check.eval_fresh": "评审是否仍有效",
+    "gate.check.workflow_state_gate": "任务状态同步",
+    "gate.check_fallback": "检查项（{id}）",
+
+    # ── status command ───────────────────────────────────────────
+    "status.next_title": "下一步",
+    "status.current_task": "当前任务",
+    "status.stats_brief": "已完成 {completed} · 阻塞 {blocked} · 平均分 {avg:.1f}",
+    "status.stats_reconcile_on": "后台同步：开启（有待处理的交付后工作）",
+    "status.stats_reconcile_off": "后台同步：关闭",
 
 }

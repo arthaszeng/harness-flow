@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import Optional
 
@@ -11,6 +12,8 @@ from pydantic import ValidationError
 from harness.core.gates import CheckStatus, GateVerdict, check_ship_readiness, write_gate_snapshot
 from harness.core.ui import get_ui
 from harness.core.workflow_state import resolve_task_dir
+
+log = logging.getLogger("harness.commands.gate")
 
 
 def run_gate(*, task: Optional[str] = None) -> None:
@@ -54,8 +57,22 @@ def run_gate(*, task: Optional[str] = None) -> None:
         raise typer.Exit(code=1)
 
 
+def _gate_check_label(check_name: str) -> str:
+    """Map machine check id to user-facing label (i18n)."""
+    from harness.i18n import t
+
+    key = f"gate.check.{check_name}"
+    label = t(key)
+    if label == key:
+        log.debug("missing i18n for gate check label: %s", check_name)
+        return t("gate.check_fallback", id=check_name)
+    return label
+
+
 def _render_verdict(console, task_dir: Path, verdict: GateVerdict) -> None:
     """Render the gate verdict using Rich."""
+    from harness.i18n import t
+
     task_id = task_dir.name
 
     status_icon = {
@@ -65,18 +82,19 @@ def _render_verdict(console, task_dir: Path, verdict: GateVerdict) -> None:
         CheckStatus.SKIPPED: "[cyber.dim]–[/]",
     }
 
-    console.print(f"\n[cyber.magenta]Ship Readiness — {task_id}[/]\n")
+    console.print(f"\n[cyber.magenta]{t('gate.title')} — {task_id}[/]\n")
 
     for check in verdict.checks:
         icon = status_icon.get(check.status, "?")
+        label = _gate_check_label(check.name)
         reason_str = f"  {check.reason}" if check.reason else ""
-        console.print(f"  {icon} {check.name}{reason_str}")
+        console.print(f"  {icon} {label}{reason_str}")
 
     console.print()
-    from harness.i18n import t
 
     if verdict.passed:
         console.print(f"[cyber.ok]{t('gate.pass')}[/]")
     else:
         console.print(f"[cyber.red]{t('gate.blocked', summary=verdict.summary)}[/]")
+        console.print(f"[cyber.dim]{t('gate.blocked_hint')}[/]")
     console.print()

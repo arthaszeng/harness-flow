@@ -87,7 +87,9 @@ class TestGateCommand:
             result = runner.invoke(app, ["gate", "--task", "task-001"])
         clean = _ANSI_RE.sub("", result.output)
         assert result.exit_code == 0
-        assert "PASS" in clean
+        assert "ready to ship" in clean.lower()
+        assert "plan document" in clean.lower()
+        assert "plan_exists" not in clean
 
     def test_gate_blocked_missing_eval(self, tmp_path: Path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -100,7 +102,9 @@ class TestGateCommand:
             result = runner.invoke(app, ["gate", "--task", "task-001"])
         assert result.exit_code == 1
         clean = _ANSI_RE.sub("", result.output)
-        assert "BLOCKED" in clean
+        assert "not ready" in clean.lower()
+        assert "code review record" in clean.lower()
+        assert "eval_exists" not in clean
 
     def test_gate_no_task_dir(self, tmp_path: Path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -168,10 +172,18 @@ class TestStatusCommand:
         result = runner.invoke(app, ["status"])
         clean = _ANSI_RE.sub("", result.output)
         assert result.exit_code == 0
-        assert "task-001" in clean
-        assert "evaluating" in clean
+        assert "evaluating" not in clean.lower()
+        assert "workflow-state.json" not in clean
         assert "Canonical Workflow State Artifact" in clean
         assert "awaiting ship readiness" in clean
+        assert "blocked" in clean.lower()
+
+        rv = runner.invoke(app, ["status", "--verbose"])
+        cv = _ANSI_RE.sub("", rv.output)
+        assert rv.exit_code == 0
+        assert "task-001" in cv
+        assert "workflow-state.json" in cv
+        assert "evaluating" in cv.lower()
 
     def test_status_renders_auto_reconcile_skip_by_default(self, tmp_path: Path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -180,7 +192,8 @@ class TestStatusCommand:
         result = runner.invoke(app, ["status"])
         clean = _ANSI_RE.sub("", result.output)
         assert result.exit_code == 0
-        assert "Auto reconcile: skip" in clean
+        assert "Background sync" in clean
+        assert "off" in clean.lower()
 
     def test_status_renders_auto_reconcile_hit_when_pending_exists(self, tmp_path: Path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -196,7 +209,9 @@ class TestStatusCommand:
         result = runner.invoke(app, ["status"])
         clean = _ANSI_RE.sub("", result.output)
         assert result.exit_code == 0
-        assert "Auto reconcile: hit" in clean
+        assert "Background sync" in clean
+        assert "on" in clean.lower()
+        assert "pending" in clean.lower()
 
     def test_status_without_pending_does_not_import_git_lifecycle(self, tmp_path: Path, monkeypatch):
         monkeypatch.chdir(tmp_path)

@@ -24,6 +24,7 @@ from harness.core.workflow_state import (
     gate_pairs,
     load_current_workflow_state,
 )
+from harness.i18n import t
 
 log = logging.getLogger("harness.commands.status")
 
@@ -40,8 +41,12 @@ def _load_pass_threshold() -> float:
         return _DEFAULT_PASS_THRESHOLD
 
 
-def run_status() -> None:
-    """Load state.json and render a Rich panel."""
+def run_status(*, verbose: bool = False) -> None:
+    """Load state.json and render a Rich panel.
+
+    Default view leads with task-language "next step"; technical rows (phase,
+    gates, artifact paths, agent registry) require ``verbose=True``.
+    """
     from harness import __version__
 
     ui = get_ui()
@@ -69,12 +74,39 @@ def run_status() -> None:
         suffix = f" → {task_hint}" if task_hint else ""
         console.print(f"  [dim]\\[Worktree: {label}{suffix}][/dim]")
 
-    _render_header(console, state)
-    _render_current(console, state, workflow_state=workflow_state)
-    _render_agents(console, state, agents_dir, workflow_state=workflow_state)
+    action = suggest_next_action(state, workflow_state)
+    console.print(Panel(
+        action,
+        title=f"[bold]{t('status.next_title')}[/]",
+        border_style="cyber.border",
+    ))
+
+    _render_task_headline(console, state, workflow_state=workflow_state)
+
+    if verbose:
+        _render_header(console, state)
+        _render_current(console, state, workflow_state=workflow_state)
+        _render_agents(console, state, agents_dir, workflow_state=workflow_state)
+
     _render_recent_result(console, state, pass_threshold=pass_threshold)
-    _render_next_action(console, state, workflow_state=workflow_state)
-    _render_stats(console, state)
+
+    _render_stats(console, state, verbose=verbose)
+
+
+def _render_task_headline(
+    console,
+    state: SessionState,
+    *,
+    workflow_state: WorkflowState | None = None,
+) -> None:
+    if not state.current_task and workflow_state is None:
+        return
+    task_label = "…"
+    if state.current_task:
+        task_label = state.current_task.requirement
+    elif workflow_state:
+        task_label = workflow_state.active_plan.title or workflow_state.task_id
+    console.print(f"\n[cyber.magenta]{t('status.current_task')}:[/] {task_label}")
 
 
 def _render_header(console, state: SessionState) -> None:
@@ -122,13 +154,13 @@ def _render_current(
             )
             console.print(f"  Gates:     [cyber.dim]{rendered}[/]")
         console.print(
-            f"  State:     [cyber.dim].harness-flow/tasks/{workflow_state.task_id}/workflow-state.json[/]"
+            f"  State:     [cyber.dim].harness-flow/tasks/{workflow_state.task_id}/workflow-state.json[/]",
         )
         return
-    t = state.current_task
-    console.print(f"  Phase:     {t.state.value}")
-    console.print(f"  Iteration: {t.iteration}")
-    console.print(f"  Branch:    [cyber.dim]{t.branch}[/]")
+    trec = state.current_task
+    console.print(f"  Phase:     {trec.state.value}")
+    console.print(f"  Iteration: {trec.iteration}")
+    console.print(f"  Branch:    [cyber.dim]{trec.branch}[/]")
 
 
 def _render_recent_result(
@@ -150,25 +182,15 @@ def _render_recent_result(
         console.print(
             f"  ✓ {recent_done.requirement} — "
             f"[{score_style}]{recent_done.score:.1f}[/{score_style}] "
-            f"({recent_done.verdict}, {recent_done.iterations} iterations)"
+            f"({recent_done.verdict}, {recent_done.iterations} iterations)",
         )
 
     if recent_block:
         console.print(
             f"  ✗ {recent_block.requirement} — "
             f"[cyber.red]{recent_block.score:.1f}[/cyber.red] "
-            f"({recent_block.verdict})"
+            f"({recent_block.verdict})",
         )
-
-
-def _render_next_action(
-    console,
-    state: SessionState,
-    *,
-    workflow_state: WorkflowState | None = None,
-) -> None:
-    action = suggest_next_action(state, workflow_state)
-    console.print(f"\n[cyber.magenta]Next Action:[/] {action}")
 
 
 def _render_agents(
@@ -239,11 +261,22 @@ def _render_agents(
     console.print(table)
 
 
-def _render_stats(console, state: SessionState) -> None:
+def _render_stats(console, state: SessionState, *, verbose: bool) -> None:
     s = state.stats
-    reconcile_mode = "hit" if has_pending_post_ship(Path.cwd()) else "skip"
-    console.print(
-        f"\n[cyber.dim]Stats: {s.completed} done, {s.blocked} blocked | "
-        f"Avg: {s.avg_score:.1f} | Iters: {s.total_iterations} | "
-        f"Auto reconcile: {reconcile_mode}[/]",
+    if verbose:
+        reconcile_mode = "hit" if has_pending_post_ship(Path.cwd()) else "skip"
+        console.print(
+            f"\n[cyber.dim]Stats: {s.completed} done, {s.blocked} blocked | "
+            f"Avg: {s.avg_score:.1f} | Iters: {s.total_iterations} | "
+            f"Auto reconcile: {reconcile_mode}[/]",
+        )
+        return
+    line = t(
+        "status.stats_brief",
+        completed=s.completed,
+        blocked=s.blocked,
+        avg=s.avg_score,
     )
+    pending = has_pending_post_ship(Path.cwd())
+    rec = t("status.stats_reconcile_on") if pending else t("status.stats_reconcile_off")
+    console.print(f"\n[cyber.dim]{line} | {rec}[/]")

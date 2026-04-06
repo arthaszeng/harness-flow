@@ -4,12 +4,15 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
 from harness.core.progress import (
     get_recent_blocked,
     get_recent_completed,
     is_resumable,
     suggest_next_action,
     update_progress,
+    workflow_phase_user_label,
 )
 from harness.core.state import (
     CompletedTask,
@@ -146,6 +149,23 @@ class TestSuggestNextAction:
         state = SessionState()
         action = suggest_next_action(state)
         assert "harness 技能" in action
+
+    def test_workflow_phase_uses_task_language_not_raw_enum(self):
+        """B2: phase line must not expose TaskState.value (e.g. evaluating)."""
+        state = SessionState(mode="idle")
+        workflow_state = WorkflowState(task_id="task-001", phase=TaskState.EVALUATING)
+        workflow_state.active_plan.title = "Roadmap B2"
+        action = suggest_next_action(state, workflow_state)
+        assert "evaluating" not in action.lower()
+        assert "代码评审" in action
+
+    @pytest.mark.parametrize("phase", list(TaskState))
+    def test_workflow_phase_user_label_en_not_raw_enum_string(self, phase):
+        from harness.i18n import set_lang
+
+        set_lang("en")
+        label = workflow_phase_user_label(phase)
+        assert label != phase.value
 
 
 # ---------------------------------------------------------------------------
