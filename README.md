@@ -98,7 +98,7 @@ flowchart LR
   Build --> CodeReview["5-role\ncode review"]
   CodeReview --> Ship["Ship → PR"]
 
-  PlanReview -.->|"Architect · Product Owner · Engineer · QA · PM"| CodeReview
+  PlanReview -.-|"Architect · PO · Engineer · QA · PM"| CodeReview
 
   style Req fill:#fff,stroke:#222,stroke-width:2px,color:#000
   style Plan fill:#fff,stroke:#222,stroke-width:2px,color:#000
@@ -108,11 +108,11 @@ flowchart LR
   style Ship fill:#fff,stroke:#222,stroke-width:2px,color:#000
 ```
 
-Both **plan review** and **code review** dispatch the same 5 parallel reviewers. Findings from 2+ roles are flagged as high confidence.
+Both **plan review** and **code review** dispatch the same 5 parallel reviewers. Findings from 2+ roles on the same issue are flagged `[HIGH CONFIDENCE]`.
 
 **Fix-First** classifies every review finding before presenting it:
-- **AUTO-FIX** — high certainty, small blast radius → fixed immediately
-- **ASK** — security, behavior change, low confidence → presented to you
+- **AUTO-FIX** — high certainty + small blast radius + reversible → fixed immediately, tests re-run
+- **ASK** — security, behavior change, architecture, low confidence → batched and presented for your decision
 
 <details>
 <summary><strong>5-role review details</strong> (graceful degradation — continues with available perspectives if some fail)</summary>
@@ -137,7 +137,7 @@ Each role can use a different model via `[native.role_models]` in config. Invali
 
 Every task starts with a **spec + contract** — deliverables, acceptance criteria, and risk analysis — reviewed by 5 roles before any code is written.
 
-The contract lives in `.harness-flow/tasks/task-NNN/plan.md` and serves as the single source of truth throughout the task lifecycle. Build logs, review rounds, and ship metrics all reference back to it.
+The contract lives in `.harness-flow/tasks/task-NNN/plan.md` and serves as the single source of truth for the task's scope and acceptance criteria. Runtime state (phase, gate status, artifact refs) is tracked in `workflow-state.json` alongside it.
 
 ---
 
@@ -145,7 +145,7 @@ The contract lives in `.harness-flow/tasks/task-NNN/plan.md` and serves as the s
 
 **5 AI reviewers** challenge your work from different angles, **in parallel** — twice: once for the plan, once for the code.
 
-Findings from 2+ roles on the same issue are flagged `[HIGH CONFIDENCE]`. Cross-role findings that fall outside a reviewer's domain are filtered to keep signal clean. If some reviewers fail, the pipeline continues with available perspectives (graceful degradation).
+Findings from 2+ roles on the same issue are flagged `[HIGH CONFIDENCE]`. Cross-role findings outside a reviewer's domain are filtered — except `CRITICAL` ones, which are preserved as `[CROSS-ROLE]`. If some reviewers fail, the pipeline continues with available perspectives (graceful degradation).
 
 ---
 
@@ -169,13 +169,14 @@ Plans, reviews, build logs, gate results — all persisted per task. Every decis
 ├── config.toml              # project settings (CI command, trunk branch, language)
 ├── vision.md                # product direction (optional)
 └── tasks/task-NNN/
-    ├── plan.md              # spec + contract
-    ├── handoff-plan.json    # structured context passed to build phase
+    ├── plan.md              # spec + contract (scope SSOT)
+    ├── handoff-*.json       # structured context per phase (plan, build, eval, ship)
     ├── build-rN.md          # build log per round
     ├── plan-eval-rN.md      # plan review per round
     ├── code-eval-rN.md      # code review per round
     ├── ship-metrics.json    # delivery metrics (scores, test count, coverage)
-    └── workflow-state.json  # canonical task phase / gate / blocker tracking
+    ├── workflow-state.json  # canonical task phase / gate / blocker tracking
+    └── ...                  # feedback ledger, intervention audit, etc. (optional)
 ```
 
 ---

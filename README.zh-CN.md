@@ -98,7 +98,7 @@ flowchart LR
   Build --> CodeReview["5 角色\n代码评审"]
   CodeReview --> Ship["发布 → PR"]
 
-  PlanReview -.->|"架构师 · 产品负责人 · 工程师 · QA · 项目经理"| CodeReview
+  PlanReview -.-|"架构师 · 产品负责人 · 工程师 · QA · 项目经理"| CodeReview
 
   style Req fill:#fff,stroke:#222,stroke-width:2px,color:#000
   style Plan fill:#fff,stroke:#222,stroke-width:2px,color:#000
@@ -108,11 +108,11 @@ flowchart LR
   style Ship fill:#fff,stroke:#222,stroke-width:2px,color:#000
 ```
 
-**计划评审**和**代码评审**都会派遣同样的 5 个并行评审者。被 2+ 角色发现的问题标注为高置信度。
+**计划评审**和**代码评审**都会派遣同样的 5 个并行评审者。被 2+ 角色发现的同一问题标注为 `[HIGH CONFIDENCE]`。
 
 **Fix-First** 在呈现前分类每个评审发现：
-- **AUTO-FIX** — 高确定性、影响面小 → 立即修复
-- **ASK** — 安全发现、行为变更、低置信度 → 交由你决策
+- **AUTO-FIX** — 高确定性 + 影响面小 + 可逆 → 立即修复，重新运行测试
+- **ASK** — 安全发现、行为变更、架构变更、低置信度 → 批量呈现，交由你决策
 
 <details>
 <summary><strong>5 角色评审详情</strong>（优雅降级 — 部分评审者失败时使用可用结果继续）</summary>
@@ -137,7 +137,7 @@ flowchart LR
 
 每个任务都从 **spec + 合约** 开始 — 包含交付物、验收标准和风险分析 — 经 5 角色审查后才编写代码。
 
-合约保存在 `.harness-flow/tasks/task-NNN/plan.md`，作为整个任务生命周期的唯一事实来源。构建日志、评审轮次和交付指标都回溯到它。
+合约保存在 `.harness-flow/tasks/task-NNN/plan.md`，作为任务范围和验收标准的唯一事实来源。运行态状态（阶段、门禁状态、产物引用）由同目录下的 `workflow-state.json` 追踪。
 
 ---
 
@@ -145,7 +145,7 @@ flowchart LR
 
 **5 个 AI 评审者**从不同角度**并行**挑战你的工作 — 两次：一次审查计划，一次审查代码。
 
-2+ 个角色标记同一问题时，标记为 `[HIGH CONFIDENCE]`。超出评审者职责范围的跨角色发现会被过滤，保持信号清晰。如果部分评审者失败，管线使用可用结果继续（优雅降级）。
+2+ 个角色标记同一问题时，标记为 `[HIGH CONFIDENCE]`。超出评审者职责范围的跨角色发现会被过滤 — 但 `CRITICAL` 级别的会保留为 `[CROSS-ROLE]`。如果部分评审者失败，管线使用可用结果继续（优雅降级）。
 
 ---
 
@@ -169,13 +169,14 @@ flowchart LR
 ├── config.toml              # 项目配置（CI 命令、主干分支、语言）
 ├── vision.md                # 产品方向（可选）
 └── tasks/task-NNN/
-    ├── plan.md              # spec + 合约
-    ├── handoff-plan.json    # 传递给 build 阶段的结构化上下文
+    ├── plan.md              # spec + 合约（范围 SSOT）
+    ├── handoff-*.json       # 各阶段结构化上下文（plan、build、eval、ship）
     ├── build-rN.md          # 每轮构建日志
     ├── plan-eval-rN.md      # 每轮计划评审
     ├── code-eval-rN.md      # 每轮代码评审
     ├── ship-metrics.json    # 交付指标（评分、测试数、覆盖率）
-    └── workflow-state.json  # 任务阶段 / 门禁 / 阻塞追踪
+    ├── workflow-state.json  # 任务阶段 / 门禁 / 阻塞追踪
+    └── ...                  # feedback ledger、intervention audit 等（可选）
 ```
 
 ---
