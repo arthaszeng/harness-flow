@@ -1,36 +1,75 @@
 ## 更新愿景
 
-把 `vision.md` 当成产品方向文档，而不是实现方案。
+把 `vision.md` 当成**活文档**，而不是只追加的日志。
 - 用 PM、创始人或业务负责人也能理解的业务/用户语言来写。
 - 不要写库名、框架名、文件路径、接口名、表结构名，或一步步的实现方案；除非那真的是硬约束。
 - 如果技术细节确实重要，请把它表述为结果层面的约束；具体实现选择应写进 `plan.md`，而不是 `vision.md`。
 
-1. 读取 `.harness-flow/vision.md`（如不存在则创建）
-2. 将前一阶段的结论综合为**结构化愿景增量**
-3. 愿景增量至少要明确：
-   - `Problem / User`：正在解决什么问题，为谁解决
-   - `North Star`：长期方向或核心承诺
-   - `Success Signals`：哪些信号说明这个方向正在变好
-   - `Non-Goals / Constraints`：当前明确不做什么，有哪些约束
-   - `Chosen Direction`：本轮为什么选这个方向，强调产品策略而不是实现步骤
-4. 追加增量段落：
+### 文件结构约定
+
+`vision.md` 有**三个区域**（每次写入时都要维护这个结构）：
+
+```
+# Project Vision — {project_name}
+（当前愿景摘要 — 始终是最新的合并方向）
+## Problem / User
+## North Star
+## Success Signals
+## Non-Goals / Constraints
+## Chosen Direction
+
+## Recent Deltas
+（最多 5 个增量条目，最新的在最前）
+### [日期] — [标题]
+...
+
+## Archive
+（已被取代的旧条目，折叠保存）
+<details><summary>[日期] — [标题]</summary>
+...
+</details>
+```
+
+### Step A：评估
+
+1. 读取 `.harness-flow/vision.md`（如不存在则用三区域骨架创建）
+2. 检查 `## Recent Deltas` 中的每个条目：
+   - 这个 delta **仍然有效**吗（没有被更新的条目矛盾或取代）？
+   - 这个 delta 的核心方向是否已被**吸收**进顶部摘要？
+3. 计算 `## Recent Deltas` 中的条目数量。
+
+### Step B：更新
+
+将前一阶段的结论综合为**结构化愿景增量**，至少包含：
+- `Problem / User`：正在解决什么问题，为谁解决
+- `North Star`：长期方向或核心承诺
+- `Success Signals`：哪些信号说明这个方向正在变好
+- `Non-Goals / Constraints`：当前明确不做什么，有哪些约束
+- `Chosen Direction`：本轮为什么选这个方向，强调产品策略而不是实现步骤
+
+然后选择**一种**操作：
+
+- **合并进摘要**：如果新 delta **细化或替代**了顶部摘要的某个方面，直接更新摘要并把 delta 加入 `## Recent Deltas`。
+- **仅追加**：如果新 delta **扩展**了愿景到新领域且不与摘要矛盾，只把它加入 `## Recent Deltas`，不修改摘要。
+
+**保守默认行为**：不确定某个 delta 是否取代了已有内容时，**一律追加——不合并、不归档**。宁可保留冗余条目，也不丢失有效方向。
+
+### Step C：归档
+
+Step B 完成后，如果 `## Recent Deltas` 包含**超过 5 个条目**：
+
+1. 识别**最旧的条目**中那些内容已被完全吸收进顶部摘要或被更新条目取代的。
+2. 将它们移到 `## Archive`，每个用 `<details>` 块包裹：
    ```markdown
-   ## [日期] — [简要标题]
+   <details><summary>[日期] — [标题]</summary>
 
-   ### Problem / User
-   [1-2 句话]
+   （原始 delta 内容，不做修改）
 
-   ### North Star
-   [1-2 句话]
-
-   ### Success Signals
-   - [signal 1]
-   - [signal 2]
-
-   ### Non-Goals / Constraints
-   - [constraint or non-goal]
-
-   ### Chosen Direction
-   [2-3 句话用用户/业务语言总结本轮方向与原因]
+   </details>
    ```
-5. 写回 `.harness-flow/vision.md`
+3. 绝不删除内容——归档保留完整的审计轨迹。
+4. 如果无法确定某个条目已被取代，**保留在 Recent Deltas 中**。
+
+### 写回
+
+将更新后的文件写回 `.harness-flow/vision.md`。

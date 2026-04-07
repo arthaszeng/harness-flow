@@ -844,14 +844,20 @@ def test_vision_includes_ship_invocation(tmp_path: Path):
 
 
 def test_vision_includes_vision_core(tmp_path: Path):
-    """vision includes _vision-core content."""
+    """vision includes _vision-core content with lifecycle management."""
     cfg = _make_cfg(tmp_path)
     generate_native_artifacts(tmp_path, cfg=cfg)
     vs = (tmp_path / ".cursor" / "skills" / "harness" / "harness-vision" / "SKILL.md")
     content = vs.read_text(encoding="utf-8")
     assert "Update Vision" in content
-    assert "product and direction artifact" in content
+    assert "living document" in content
     assert "implementation choices belong in `plan.md`" in content
+    assert "Step A" in content
+    assert "Step B" in content
+    assert "Step C" in content
+    assert "## Recent Deltas" in content
+    assert "## Archive" in content
+    assert "<details>" in content
 
 
 def test_vision_stays_in_harness_workflow(tmp_path: Path):
@@ -1117,6 +1123,13 @@ def test_zh_vision_and_governance_agents_contain_loop_concepts(tmp_path: Path):
     assert "不要调用 Cursor 的 `SwitchMode` 切到 `plan`" in content_vs
     assert "Cursor 内置的 Plan 模式" in content_vs
     assert "业务/用户语言" in content_vs
+    assert "活文档" in content_vs
+    assert "Step A" in content_vs
+    assert "Step B" in content_vs
+    assert "Step C" in content_vs
+    assert "## Recent Deltas" in content_vs
+    assert "## Archive" in content_vs
+    assert "<details>" in content_vs
 
     po = tmp_path / ".cursor" / "agents" / "harness-product-owner.md"
     content_po = po.read_text(encoding="utf-8")

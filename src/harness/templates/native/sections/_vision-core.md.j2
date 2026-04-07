@@ -1,36 +1,75 @@
 ## Update Vision
 
-Treat `vision.md` as a product and direction artifact, not an implementation plan.
+Treat `vision.md` as a **living document**, not an append-only log.
 - Write in business and user language that a PM, founder, or operator could understand.
 - Do NOT include libraries, frameworks, file paths, endpoint names, schema/table names, or step-by-step build choices unless they are true hard constraints.
 - If technical detail matters, record the constraint in outcome terms; implementation choices belong in `plan.md`, not `vision.md`.
 
-1. Read `.harness-flow/vision.md` (create if missing)
-2. Synthesize the conclusion from the preceding phase into a **structured vision delta**
-3. The vision delta must capture at least:
-   - `Problem / User`: what problem is being solved, and for whom
-   - `North Star`: the long-horizon direction or core promise
-   - `Success Signals`: observable signals that the direction is improving
-   - `Non-Goals / Constraints`: what is explicitly out of scope or constrained
-   - `Chosen Direction`: why this direction was selected now, expressed as product strategy rather than implementation steps
-4. Append an incremental section:
+### File Structure Convention
+
+`vision.md` has **three zones** (maintain this structure on every write):
+
+```
+# Project Vision — {project_name}
+(Current Vision Summary — always the latest consolidated direction)
+## Problem / User
+## North Star
+## Success Signals
+## Non-Goals / Constraints
+## Chosen Direction
+
+## Recent Deltas
+(Up to 5 incremental entries, newest first)
+### [Date] — [Title]
+...
+
+## Archive
+(Folded old entries that have been superseded)
+<details><summary>[Date] — [Title]</summary>
+...
+</details>
+```
+
+### Step A: Evaluate
+
+1. Read `.harness-flow/vision.md` (create with the three-zone skeleton if missing)
+2. Review each entry in `## Recent Deltas`:
+   - Is this delta **still current** (not contradicted or superseded by a newer entry)?
+   - Has the core direction in this delta been **absorbed** into the top-level summary?
+3. Count the number of entries in `## Recent Deltas`.
+
+### Step B: Update
+
+Synthesize the conclusion from the preceding phase into a **structured vision delta** that captures at least:
+- `Problem / User`: what problem is being solved, and for whom
+- `North Star`: the long-horizon direction or core promise
+- `Success Signals`: observable signals that the direction is improving
+- `Non-Goals / Constraints`: what is explicitly out of scope or constrained
+- `Chosen Direction`: why this direction was selected now, as product strategy
+
+Then choose **one** of these actions:
+
+- **Merge into summary**: If the new delta **refines or replaces** an aspect of the current top-level summary, update the summary directly and add the delta to `## Recent Deltas`.
+- **Append only**: If the new delta **extends** the vision into a new area without contradicting the summary, add it to `## Recent Deltas` without modifying the summary.
+
+**Conservative default**: When uncertain whether a delta supersedes existing content, **always append — never merge or archive**. It is better to keep a redundant entry than to lose a valid direction.
+
+### Step C: Archive
+
+After Step B, if `## Recent Deltas` contains **more than 5 entries**:
+
+1. Identify the **oldest entries** whose content has been fully absorbed into the top-level summary or superseded by newer deltas.
+2. Move them to `## Archive`, wrapping each in a `<details>` block:
    ```markdown
-   ## [Date] — [Brief Title]
+   <details><summary>[Date] — [Title]</summary>
 
-   ### Problem / User
-   [1-2 sentences]
+   (original delta content, unchanged)
 
-   ### North Star
-   [1-2 sentences]
-
-   ### Success Signals
-   - [signal 1]
-   - [signal 2]
-
-   ### Non-Goals / Constraints
-   - [constraint or non-goal]
-
-   ### Chosen Direction
-   [2-3 sentence summary of the direction chosen and why, in user/business terms]
+   </details>
    ```
-5. Write back to `.harness-flow/vision.md`
+3. Never delete content — archiving preserves the full audit trail.
+4. If you cannot confidently determine that an entry is superseded, **leave it in Recent Deltas**.
+
+### Write back
+
+Write the updated file back to `.harness-flow/vision.md`.
