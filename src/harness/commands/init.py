@@ -384,7 +384,6 @@ def run_init(
     console.print()
     console.print(f"  [cyber.cyan]{t('init.guide_ready')}[/]")
     console.print("  [cyber.dim]─────────────────────────────────────────────────────[/]")
-    console.print(f"  [cyber.magenta]/harness-brainstorm[/]  [cyber.dim]{t('init.guide_brainstorm')}[/]")
     console.print(f"  [cyber.magenta]/harness-vision[/]      [cyber.dim]{t('init.guide_vision')}[/]")
     console.print(
         f"  [bold magenta]/harness-plan[/]        [cyber.dim]{t('init.guide_plan')}[/]"

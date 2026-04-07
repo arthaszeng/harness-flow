@@ -1,28 +1,31 @@
 ---
 name: harness-vision
-description: "Most single-task work: prefer `/harness-plan` first. Vision-driven pipeline: clarify an incremental vision, generate a plan with multi-role review, then auto-execute build/eval/ship/retro. Use when saying vision, I want to build this direction, this is what I need, or harness vision. (harness)"
+description: "Most single-task work: prefer `/harness-plan` first. Vision-driven pipeline: explore vague ideas or clarify a clear direction, then plan with multi-role review and auto-execute build/eval/ship. Use when saying vision, brainstorm, I have an idea, help me think, explore this, I want to build this direction, this is what I need, or harness vision. (harness)"
 ---
 
 {% include 'sections/_language-directive.md.j2' %}
 
-# Harness Vision — From Direction to PR
+# Harness Vision — From Idea to PR
 
-You are running the `/harness-vision` workflow. The user has a **clear incremental
-direction** that needs clarification before becoming a plan.
+You are running the `/harness-vision` workflow. The user has a direction —
+ranging from a **vague idea** to a **clear incremental vision** — that needs
+exploration or clarification before becoming a plan.
 
-**Human interaction phases:** Vision Clarification + Plan Review Gate
-**Autonomous phases:** Build → Eval → Ship → Auto-Retro
+**Human interaction phases:** Exploration or Clarification + Plan Review Gate
+**Autonomous phases:** Roadmap / Backlog / Active Plan Loop → Build → Eval → Ship → Feedback
 
 ## Workflow Boundary
 
-- Stay inside the harness workflow after clarifying the vision; do NOT call Cursor `SwitchMode` to `plan`.
+- Stay inside the harness workflow after vision capture; do NOT call Cursor `SwitchMode` to `plan`.
 - Planning should happen through the embedded harness planning flow in this skill (the harness equivalent of `/harness-plan`), then continue **`/harness-build` → `/harness-ship`** in the **same** conversation (`/harness-ship` does not implement feature code; see embedded plan **Execution** section).
 - "Proceed to planning" here means the next workflow phase, not Cursor's built-in Plan mode.
 
 **Only stop for:**
+- Divergent exploration (engaging the user to uncover the real need)
 - Vision clarification (if the direction has ambiguity)
 - Review gate escalation (when plan_review_gate requires it)
 - ASK-classified review findings during eval
+- The user explicitly says stop
 
 **Never stop for:**
 - Implementation decisions (make them during build)
@@ -36,15 +39,58 @@ direction** that needs clarification before becoming a plan.
 
 ---
 
-## Phase 0: Vision Clarification
+## Phase 0: Understand and Explore
 
-### Step 1: Understand the Direction
+Assess the user's input to determine the appropriate depth of exploration.
 
-1. Read the user's vision input carefully
+### Step 1: Gauge Clarity
+
+1. Read the user's input carefully
 2. Read `.harness-flow/vision.md` (if it exists) to understand existing context
 3. Read `.harness-flow/config.toml` for project config
 
-### Step 2: Clarify (if needed)
+**If the input is vague** (e.g. "I have an idea", "help me think about X",
+"let's explore", problem statement without a solution direction):
+→ Continue to **Step 2A: Divergent Exploration**
+
+**If the input is a clear direction** (e.g. specific feature request, explicit
+technical direction, "I want to do X"):
+→ Skip to **Step 2B: Quick Clarification**
+
+### Step 2A: Divergent Exploration
+
+This path helps the user uncover the real need through structured dialogue.
+
+Ask the user **2–3 questions** to understand the problem space (do NOT ask all at once):
+
+Round 1:
+- What problem are you trying to solve? For whom?
+- What does the current situation look like? What's the pain?
+
+Round 2 (after user responds):
+- What would success look like? What constraints exist?
+- Have you tried anything already? What worked or didn't?
+
+Then generate **2–3 approach options**:
+
+```
+APPROACH OPTIONS
+═══════════════════════════════════════════════════
+  #  Approach                  Pros                      Cons              Complexity
+  1  [name]                    [short]                   [short]           Low/Med/High
+  2  [name]                    [short]                   [short]           Low/Med/High
+  3  [name]                    [short]                   [short]           Low/Med/High
+═══════════════════════════════════════════════════
+Which approach resonates? Or combine/remix ideas?
+```
+
+Let the user pick, combine, or propose alternatives. This is a conversation, not a quiz.
+
+After the user chooses a direction, proceed to Update Vision below.
+
+**Review gate note:** when this exploration path is taken, apply `interaction_depth = high` when evaluating the review gate scoring table.
+
+### Step 2B: Quick Clarification
 
 If the vision has **ambiguous aspects**, ask **1–2 clarifying questions** in a single
 message. Do NOT multi-round question the user — keep it tight.
@@ -56,9 +102,11 @@ Examples of when to clarify:
 
 If the vision is clear enough to plan from, skip clarification and proceed.
 
+**Review gate note:** when this quick path is taken, apply `interaction_depth = medium` when evaluating the review gate scoring table.
+
 ---
 
-{# Recursive composition: vision = Phase 0 + vision-content (which includes plan-content) #}
+{# Vision = Phase 0 + vision-content (vision-core → vision-loop with plan lifecycle) #}
 {% with interaction_depth="medium" %}
 {% include 'sections/_vision-content.md.j2' %}
 {% endwith %}

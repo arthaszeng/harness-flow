@@ -201,7 +201,7 @@ def _make_cfg(tmp_path: Path) -> HarnessConfig:
 
 
 def test_generated_plan_and_advanced_skills_default_entry_phrases(tmp_path: Path):
-    """B1: plan skill declares default primary entry; brainstorm/vision YAML nudge to /harness-plan."""
+    """B1: plan skill declares default primary entry; vision YAML nudge to /harness-plan."""
     cfg = _make_cfg(tmp_path)
     h = tmp_path / ".cursor" / "skills" / "harness"
 
@@ -211,20 +211,18 @@ def test_generated_plan_and_advanced_skills_default_entry_phrases(tmp_path: Path
     assert "default" in low
     assert "primary entry" in low
     assert "/harness-plan" in plan_en
-    for name in ("harness-brainstorm", "harness-vision"):
-        head = (h / name / "SKILL.md").read_text(encoding="utf-8").split("---", 2)[1]
-        assert "prefer" in head.lower()
-        assert "/harness-plan" in head
+    head = (h / "harness-vision" / "SKILL.md").read_text(encoding="utf-8").split("---", 2)[1]
+    assert "prefer" in head.lower()
+    assert "/harness-plan" in head
 
     generate_native_artifacts(tmp_path, cfg=cfg, lang="zh", force=True)
     plan_zh = (h / "harness-plan" / "SKILL.md").read_text(encoding="utf-8")
     assert "默认" in plan_zh
     assert "主入口" in plan_zh
     assert "/harness-plan" in plan_zh
-    for name in ("harness-brainstorm", "harness-vision"):
-        head = (h / name / "SKILL.md").read_text(encoding="utf-8").split("---", 2)[1]
-        assert "优先" in head
-        assert "/harness-plan" in head
+    head = (h / "harness-vision" / "SKILL.md").read_text(encoding="utf-8").split("---", 2)[1]
+    assert "优先" in head
+    assert "/harness-plan" in head
 
 
 def test_generate_deploys_resource_files(tmp_path: Path):
@@ -236,8 +234,8 @@ def test_generate_deploys_resource_files(tmp_path: Path):
     )
     cfg = HarnessConfig.load(tmp_path)
     count = generate_native_artifacts(tmp_path, cfg=cfg)
-    # 10 skills + 5 agents + 4 rules + 5 resources = 24
-    assert count >= 24
+    # 9 skills + 5 agents + 4 rules + 5 resources = 23
+    assert count >= 23
 
     eval_dir = tmp_path / ".cursor" / "skills" / "harness" / "harness-eval"
     assert (eval_dir / "review-checklist.md").exists()
@@ -570,43 +568,35 @@ def test_templates_have_no_undefined_variables(tmp_path: Path):
 # --- v3.0: Three entry points + review gate ---
 
 
-def test_brainstorm_has_divergent_phase(tmp_path: Path):
-    """brainstorm template includes Socratic exploration and approach options."""
+def test_vision_has_exploration_and_clarification(tmp_path: Path):
+    """vision template includes both Socratic exploration and quick clarification paths."""
     cfg = _make_cfg(tmp_path)
     generate_native_artifacts(tmp_path, cfg=cfg)
-    bs = (tmp_path / ".cursor" / "skills" / "harness" / "harness-brainstorm" / "SKILL.md")
-    content = bs.read_text(encoding="utf-8")
+    vs = (tmp_path / ".cursor" / "skills" / "harness" / "harness-vision" / "SKILL.md")
+    content = vs.read_text(encoding="utf-8")
     assert "Divergent Exploration" in content
+    assert "Quick Clarification" in content
     assert "APPROACH OPTIONS" in content
-    assert "From Idea to Iteration Loop" in content
+    assert "From Idea to PR" in content
     assert "Continuous Loop Controller" in content
 
 
-def test_brainstorm_updates_vision(tmp_path: Path):
-    """brainstorm template includes vision.md update step via _vision-core."""
+def test_vision_updates_vision(tmp_path: Path):
+    """vision template includes vision.md update step via _vision-core."""
     cfg = _make_cfg(tmp_path)
     generate_native_artifacts(tmp_path, cfg=cfg)
-    bs = (tmp_path / ".cursor" / "skills" / "harness" / "harness-brainstorm" / "SKILL.md")
-    content = bs.read_text(encoding="utf-8")
+    vs = (tmp_path / ".cursor" / "skills" / "harness" / "harness-vision" / "SKILL.md")
+    content = vs.read_text(encoding="utf-8")
     assert "vision.md" in content
     assert "Update Vision" in content
     assert "Success Signals" in content
 
 
-def test_vision_has_clarification_phase(tmp_path: Path):
-    cfg = _make_cfg(tmp_path)
-    generate_native_artifacts(tmp_path, cfg=cfg)
-    vs = (tmp_path / ".cursor" / "skills" / "harness" / "harness-vision" / "SKILL.md")
-    content = vs.read_text(encoding="utf-8")
-    assert "Vision Clarification" in content
-    assert "From Direction to PR" in content
-
-
-def test_all_three_entry_points_include_review_gate(tmp_path: Path):
+def test_all_entry_points_include_review_gate(tmp_path: Path):
     cfg = _make_cfg(tmp_path)
     generate_native_artifacts(tmp_path, cfg=cfg)
     skills_base = tmp_path / ".cursor" / "skills" / "harness"
-    for name in ("harness-brainstorm", "harness-vision", "harness-plan"):
+    for name in ("harness-vision", "harness-plan"):
         content = (skills_base / name / "SKILL.md").read_text(encoding="utf-8")
         assert "Review Gate" in content, f"Missing Review Gate in {name}"
 
@@ -627,11 +617,10 @@ def test_review_gate_auto_has_interaction_depth(tmp_path: Path):
     generate_native_artifacts(tmp_path, cfg=cfg)
     skills_base = tmp_path / ".cursor" / "skills" / "harness"
 
-    bs = (skills_base / "harness-brainstorm" / "SKILL.md").read_text(encoding="utf-8")
-    assert "interaction depth: high" in bs
-
     vs = (skills_base / "harness-vision" / "SKILL.md").read_text(encoding="utf-8")
     assert "interaction depth: medium" in vs
+    assert "interaction_depth = high" in vs
+    assert "interaction_depth = medium" in vs
 
     pl = (skills_base / "harness-plan" / "SKILL.md").read_text(encoding="utf-8")
     assert "interaction depth: low" in pl
@@ -704,13 +693,13 @@ def test_ship_uses_minimal_interaction_wording(tmp_path: Path):
     assert "non-interactive" not in content
 
 
-def test_total_skill_count_is_ten(tmp_path: Path):
-    """10 skills are generated."""
+def test_total_skill_count_is_nine(tmp_path: Path):
+    """9 skills are generated (brainstorm merged into vision)."""
     cfg = _make_cfg(tmp_path)
     generate_native_artifacts(tmp_path, cfg=cfg)
     skills_dir = tmp_path / ".cursor" / "skills" / "harness"
     skill_dirs = [d for d in skills_dir.iterdir() if d.is_dir() and (d / "SKILL.md").exists()]
-    assert len(skill_dirs) == 10
+    assert len(skill_dirs) == 9
 
 
 # --- v3.1: Unified 5-role system + recursive composition ---
@@ -802,21 +791,12 @@ def test_agent_omits_model_frontmatter_when_using_default(tmp_path: Path):
 # --- Recursive composition ---
 
 
-def test_brainstorm_includes_vision_core(tmp_path: Path):
-    """brainstorm recursively includes _vision-core content."""
+def test_vision_includes_loop_controller(tmp_path: Path):
+    """vision includes the loop controller (absorbed from brainstorm)."""
     cfg = _make_cfg(tmp_path)
     generate_native_artifacts(tmp_path, cfg=cfg)
-    bs = (tmp_path / ".cursor" / "skills" / "harness" / "harness-brainstorm" / "SKILL.md")
-    content = bs.read_text(encoding="utf-8")
-    assert "Update Vision" in content
-
-
-def test_brainstorm_includes_plan_core(tmp_path: Path):
-    """brainstorm still includes active-plan generation within the loop controller."""
-    cfg = _make_cfg(tmp_path)
-    generate_native_artifacts(tmp_path, cfg=cfg)
-    bs = (tmp_path / ".cursor" / "skills" / "harness" / "harness-brainstorm" / "SKILL.md")
-    content = bs.read_text(encoding="utf-8")
+    vs = (tmp_path / ".cursor" / "skills" / "harness" / "harness-vision" / "SKILL.md")
+    content = vs.read_text(encoding="utf-8")
     assert "Plan Generation" in content
     assert "Plan Backlog" in content
     assert "Active Plan" in content
@@ -825,28 +805,28 @@ def test_brainstorm_includes_plan_core(tmp_path: Path):
     assert "unattended background scheduler" in content
 
 
-def test_brainstorm_includes_plan_review(tmp_path: Path):
-    """brainstorm recursively includes the 5-role plan review."""
+def test_vision_includes_plan_review(tmp_path: Path):
+    """vision recursively includes the 5-role plan review."""
     cfg = _make_cfg(tmp_path)
     generate_native_artifacts(tmp_path, cfg=cfg)
-    bs = (tmp_path / ".cursor" / "skills" / "harness" / "harness-brainstorm" / "SKILL.md")
-    content = bs.read_text(encoding="utf-8")
+    vs = (tmp_path / ".cursor" / "skills" / "harness" / "harness-vision" / "SKILL.md")
+    content = vs.read_text(encoding="utf-8")
     assert "Plan Review" in content
     assert "5-Role Parallel Dispatch" in content
     assert "harness-architect" in content
     assert "harness-qa" in content
 
 
-def test_brainstorm_and_ship_include_long_horizon_review_context_hints(tmp_path: Path):
+def test_vision_and_ship_include_long_horizon_review_context_hints(tmp_path: Path):
     """Generated skills expose stable long-horizon review context hints."""
     cfg = _make_cfg(tmp_path)
     generate_native_artifacts(tmp_path, cfg=cfg)
 
-    brainstorm = (tmp_path / ".cursor" / "skills" / "harness" / "harness-brainstorm" / "SKILL.md")
-    brainstorm_content = brainstorm.read_text(encoding="utf-8")
-    assert "roadmap_backlog_path" in brainstorm_content
-    assert "single-round" in brainstorm_content
-    assert "do NOT force loop assumptions" in brainstorm_content
+    vision = (tmp_path / ".cursor" / "skills" / "harness" / "harness-vision" / "SKILL.md")
+    vision_content = vision.read_text(encoding="utf-8")
+    assert "roadmap_backlog_path" in vision_content
+    assert "single-round" in vision_content
+    assert "do NOT force loop assumptions" in vision_content
 
     ship = (tmp_path / ".cursor" / "skills" / "harness" / "harness-ship" / "SKILL.md")
     ship_content = ship.read_text(encoding="utf-8")
@@ -854,12 +834,12 @@ def test_brainstorm_and_ship_include_long_horizon_review_context_hints(tmp_path:
     assert "continue_pause_summary" in ship_content
 
 
-def test_brainstorm_includes_ship_invocation(tmp_path: Path):
-    """brainstorm includes the ship invocation inside the loop controller."""
+def test_vision_includes_ship_invocation(tmp_path: Path):
+    """vision includes the ship invocation inside the loop controller."""
     cfg = _make_cfg(tmp_path)
     generate_native_artifacts(tmp_path, cfg=cfg)
-    bs = (tmp_path / ".cursor" / "skills" / "harness" / "harness-brainstorm" / "SKILL.md")
-    content = bs.read_text(encoding="utf-8")
+    vs = (tmp_path / ".cursor" / "skills" / "harness" / "harness-vision" / "SKILL.md")
+    content = vs.read_text(encoding="utf-8")
     assert "/harness-ship" in content
 
 
@@ -874,15 +854,11 @@ def test_vision_includes_vision_core(tmp_path: Path):
     assert "implementation choices belong in `plan.md`" in content
 
 
-def test_brainstorm_and_vision_stay_in_harness_workflow(tmp_path: Path):
-    """brainstorm/vision should not switch to Cursor Plan mode."""
+def test_vision_stays_in_harness_workflow(tmp_path: Path):
+    """vision should not switch to Cursor Plan mode."""
     cfg = _make_cfg(tmp_path)
     generate_native_artifacts(tmp_path, cfg=cfg)
     skills_base = tmp_path / ".cursor" / "skills" / "harness"
-
-    brainstorm = (skills_base / "harness-brainstorm" / "SKILL.md").read_text(encoding="utf-8")
-    assert "do NOT call Cursor `SwitchMode` to `plan`" in brainstorm
-    assert "Cursor's built-in Plan mode" in brainstorm
 
     vision = (skills_base / "harness-vision" / "SKILL.md").read_text(encoding="utf-8")
     assert "do NOT call Cursor `SwitchMode` to `plan`" in vision
@@ -1126,25 +1102,21 @@ def test_zh_generated_artifacts_contain_chinese(tmp_path: Path):
     assert "信任边界" in content_rule, "zh trust-boundary rule should be in Chinese"
 
 
-def test_zh_brainstorm_and_governance_agents_contain_loop_concepts(tmp_path: Path):
-    """zh generation includes brainstorm loop anchors and governance language."""
+def test_zh_vision_and_governance_agents_contain_loop_concepts(tmp_path: Path):
+    """zh generation includes vision loop anchors and governance language."""
     cfg = _make_cfg(tmp_path)
     generate_native_artifacts(tmp_path, lang="zh", cfg=cfg)
 
-    brainstorm = tmp_path / ".cursor" / "skills" / "harness" / "harness-brainstorm" / "SKILL.md"
-    content_bs = brainstorm.read_text(encoding="utf-8")
-    assert "持续迭代控制器" in content_bs
-    assert "Plan Backlog" in content_bs
-    assert "Feedback Ledger" in content_bs
-    assert "停止条件" in content_bs
-    assert "不要调用 Cursor 的 `SwitchMode` 切到 `plan`" in content_bs
-    assert "业务/用户语言" in content_bs
-
     vision = tmp_path / ".cursor" / "skills" / "harness" / "harness-vision" / "SKILL.md"
     content_vs = vision.read_text(encoding="utf-8")
+    assert "持续迭代控制器" in content_vs
+    assert "Plan Backlog" in content_vs
+    assert "Feedback Ledger" in content_vs
+    assert "停止条件" in content_vs
     assert "工作流边界" in content_vs
     assert "不要调用 Cursor 的 `SwitchMode` 切到 `plan`" in content_vs
     assert "Cursor 内置的 Plan 模式" in content_vs
+    assert "业务/用户语言" in content_vs
 
     po = tmp_path / ".cursor" / "agents" / "harness-product-owner.md"
     content_po = po.read_text(encoding="utf-8")
@@ -1235,30 +1207,31 @@ def test_i18n_catalogs_key_parity():
     assert not missing_in_en, f"Keys in zh.py but missing in en.py: {sorted(missing_in_en)}"
 
 
-def test_brainstorm_i18n_hints_describe_loop():
-    """init/native hints describe brainstorm as a loop, not a single plan."""
+def test_vision_i18n_hints_describe_exploration():
+    """init/native hints describe vision as an explore-or-clarify entry with brainstorm loop support."""
     from harness.i18n.en import MESSAGES as EN
     from harness.i18n.zh import MESSAGES as ZH
 
-    assert "roadmap/backlog" in EN["native.hint_brainstorm"]
-    assert "active plan" in EN["init.guide_brainstorm"]
-    assert "roadmap/backlog" in ZH["native.hint_brainstorm"]
-    assert "active plan" in ZH["init.guide_brainstorm"]
+    assert "brainstorm" in EN["native.hint_vision"].lower()
+    assert "explore" in EN["init.guide_vision"].lower()
+    assert not any("brainstorm" in k for k in EN), "no brainstorm-specific keys should exist in EN"
+    assert "探索" in ZH["init.guide_vision"]
+    assert not any("brainstorm" in k for k in ZH), "no brainstorm-specific keys should exist in ZH"
 
 
 def test_readmes_explain_entry_point_boundaries():
-    """README docs distinguish brainstorm, vision, and single-round plan usage."""
+    """README docs describe vision and single-round plan usage (brainstorm merged into vision)."""
     repo_root = Path(__file__).resolve().parents[1]
     readme_en = (repo_root / "README.md").read_text(encoding="utf-8")
     readme_zh = (repo_root / "README.zh-CN.md").read_text(encoding="utf-8")
 
-    assert "long-horizon loop" in readme_en
     assert "/harness-vision" in readme_en
     assert "single-round plan" in readme_en
+    assert "/harness-brainstorm" not in readme_en
 
-    assert "长期方向" in readme_zh
     assert "/harness-vision" in readme_zh
     assert "单轮 plan" in readme_zh
+    assert "/harness-brainstorm" not in readme_zh
 
 
 def test_zh_ship_skill_contains_chinese(tmp_path: Path):

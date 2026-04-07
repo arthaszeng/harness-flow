@@ -212,12 +212,11 @@ flowchart LR
 <details>
 <summary><strong>进阶入口</strong></summary>
 
-需要**长期方向**与 roadmap 循环时用 `/harness-brainstorm`（long-horizon loop）；方向较清楚、先澄清增量 vision 再规划时用 `/harness-vision`；单轮 plan → ship 时用 **`/harness-plan`**（single-round plan）。
+`/harness-vision` 涵盖从模糊想法到清晰方向的全部场景——自动判断需要探索还是澄清；单轮 plan → ship 时用 **`/harness-plan`**（single-round plan）。
 
 | 技能 | 何时用 | 功能 |
 |------|--------|------|
-| `/harness-brainstorm` | "我有个想法" | 发散探索 → 结构化 vision → roadmap/backlog → 迭代式构建/评审/发布循环 |
-| `/harness-vision` | "我有个方向" | 澄清 vision → 计划 → 自动构建/评审/发布/回顾 |
+| `/harness-vision` | "我有个想法"或"我有个方向" | 探索或澄清 → 结构化 vision → roadmap/backlog → 迭代式构建/评审/发布循环 |
 | `/harness-plan` | "我有个需求" | 细化计划 + 5 角色审查 → 自动构建/评审/发布/回顾 |
 
 </details>

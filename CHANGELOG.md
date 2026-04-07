@@ -8,7 +8,8 @@
 
 ### Changed
 
-- **Native skill templates (SSOT):** clarify the default pipeline **`/harness-build` → `/harness-ship`**; **`/harness-ship` does not implement feature code** (tests, mandatory 5-role eval, `harness save-eval`, `harness gate`, PR). Added a short **continuity + eval gate** block to plan/build/ship skills to reduce skipped eval and “plan/build then stop” behavior on weaker models. Vision/brainstorm/plan execution text aligned.
+- **Native skill templates (SSOT):** clarify the default pipeline **`/harness-build` → `/harness-ship`**; **`/harness-ship` does not implement feature code** (tests, mandatory 5-role eval, `harness save-eval`, `harness gate`, PR). Added a short **continuity + eval gate** block to plan/build/ship skills to reduce skipped eval and “plan/build then stop” behavior on weaker models. Vision/plan execution text aligned.
+- **Merged `/harness-brainstorm` into `/harness-vision`** — Vision now auto-detects whether to explore (Socratic questioning + approach options) or clarify (quick 1–2 questions). The loop controller (Roadmap/Backlog/ActivePlan/FeedbackLedger/StopConditions) is now part of Vision. Brainstorm entry point removed.
 
 ## 4.1.0
 
@@ -30,7 +31,7 @@
 ### Migration
 
 - **Old configs are safe**: `HarnessConfig` now uses `extra="ignore"`, so `.agents/config.toml` files with `[drivers]` or removed `[workflow]` fields will load without errors.
-- **Use Cursor skills instead of CLI**: `/harness-plan`, `/harness-vision`, `/harness-brainstorm` replace the removed CLI commands.
+- **Use Cursor skills instead of CLI**: `/harness-plan`, `/harness-vision` replace the removed CLI commands.
 - **Run `harness install --force`** after upgrading to regenerate native artifacts.
 
 ### What's kept
