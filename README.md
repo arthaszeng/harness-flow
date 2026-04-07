@@ -21,18 +21,23 @@ AI agents can write code — but they **can't ship products**. They lack navigat
 ## Where Harness Flow Fits
 
 ```
-    Manual          AI Assistant       Agent Mode        Harness Flow
-    Coding                                              
-                                                          \O/
-                                          \O              _|_    ★
-         O             O/                  |    ?!        / \
-        /|\           /|                  /|\   !!     __|   |__
-        / \          / \                  / \          |  CAR  |
-   ___________   ___________         ___________    ═══════════════
-   vim + gcc     Copilot            Cursor Agent     L5 Autopilot
-                                    Claude Code
-   You write     You drive,         AI writes,       AI ships.
-   every line.   AI assists.        but crashes.     You relax.
+   MANUAL CODING         AI ASSISTANT           AGENT MODE              HARNESS FLOW
+
+        __                    ____                  .----.                  _________
+      _/o \_                _/ __ \_               / .--. \               _/  _____ \_
+     /  |  \               /  /  \  \             / /    \ \             /  _/  _  \  \
+    /  / \  \             /  / /\ \  \            | | () | |            /  /  _|_  \  \
+   /__/   \__\           /__/ /  \ \__\           | |____| |           /__/  / | \  \__\
+      / \                   _/____\_                \______/               _  /  |  \  _
+   __/___\__               /  ____  \                 /||\               _/ |/___|___\| \_
+  /_________\             /__/    \__\               _/  \_             /___/   / \   \___\
+      L0                     L1                       L3                     L5
+   vim + gcc               Copilot          Cursor Agent / Claude Code      Autonomous Ship
+
+   write every line        you drive         AI writes, but drifts          AI ships products
+   by hand                 AI assists        (no nav/rules/record)          human stays copilot
+
+   ───────────────────────────────────────────────────────────────────────────────────────────
 ```
 
 ### The Three Pillars of L5
