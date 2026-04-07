@@ -1,36 +1,94 @@
 ## Update Vision
 
-Treat `vision.md` as a product and direction artifact, not an implementation plan.
+Treat `vision.md` as a **living document**, not an append-only log.
 - Write in business and user language that a PM, founder, or operator could understand.
 - Do NOT include libraries, frameworks, file paths, endpoint names, schema/table names, or step-by-step build choices unless they are true hard constraints.
 - If technical detail matters, record the constraint in outcome terms; implementation choices belong in `plan.md`, not `vision.md`.
 
-1. Read `.harness-flow/vision.md` (create if missing)
-2. Synthesize the conclusion from the preceding phase into a **structured vision delta**
-3. The vision delta must capture at least:
-   - `Problem / User`: what problem is being solved, and for whom
-   - `North Star`: the long-horizon direction or core promise
-   - `Success Signals`: observable signals that the direction is improving
-   - `Non-Goals / Constraints`: what is explicitly out of scope or constrained
-   - `Chosen Direction`: why this direction was selected now, expressed as product strategy rather than implementation steps
-4. Append an incremental section:
+### Hard Limit (non-negotiable)
+
+**`vision.md` must NEVER exceed 150 lines.** Count the lines after every write.
+If the file exceeds 150 lines, you MUST perform a **full consolidation** before writing it back
+(see Step D below). There are no exceptions — this limit exists to prevent context bloat.
+
+### File Structure Convention
+
+`vision.md` has **three zones** (maintain this structure on every write):
+
+```
+# Project Vision — {project_name}
+(Current Vision Summary — always the latest consolidated direction)
+## Problem / User
+## North Star
+## Success Signals
+## Non-Goals / Constraints
+## Chosen Direction
+
+## Recent Deltas
+(Up to 3 incremental entries, newest first)
+### [Date] — [Title]
+...
+
+## Archive
+(One-line tombstones only — full text lives in git history)
+- [Date] — [Title] — absorbed into summary / superseded by [newer delta title]
+```
+
+### Step A: Evaluate
+
+1. Read `.harness-flow/vision.md` (create with the three-zone skeleton if missing)
+2. **Count the total lines.** If already ≥ 120 lines, mark `consolidation_needed = true`.
+3. Review each entry in `## Recent Deltas`:
+   - Is this delta **still current** (not contradicted or superseded by a newer entry)?
+   - Has the core direction in this delta been **absorbed** into the top-level summary?
+4. Count the number of entries in `## Recent Deltas`.
+
+### Step B: Update
+
+Synthesize the conclusion from the preceding phase into a **structured vision delta** that captures at least:
+- `Problem / User`: what problem is being solved, and for whom
+- `North Star`: the long-horizon direction or core promise
+- `Success Signals`: observable signals that the direction is improving
+- `Non-Goals / Constraints`: what is explicitly out of scope or constrained
+- `Chosen Direction`: why this direction was selected now, as product strategy
+
+Then choose **one** of these actions:
+
+- **Merge into summary**: If the new delta **refines or replaces** an aspect of the current top-level summary, update the summary directly and add the delta to `## Recent Deltas`.
+- **Append only**: If the new delta **extends** the vision into a new area without contradicting the summary, add it to `## Recent Deltas` without modifying the summary.
+
+**Conservative default**: When uncertain whether a delta supersedes existing content, **always append — never merge or archive**. It is better to keep a redundant entry than to lose a valid direction.
+
+### Step C: Archive
+
+After Step B, if `## Recent Deltas` contains **more than 3 entries**:
+
+1. Identify the **oldest entries** whose content has been fully absorbed into the top-level summary or superseded by newer deltas.
+2. Move them to `## Archive` as **one-line tombstones** (not full text):
    ```markdown
-   ## [Date] — [Brief Title]
-
-   ### Problem / User
-   [1-2 sentences]
-
-   ### North Star
-   [1-2 sentences]
-
-   ### Success Signals
-   - [signal 1]
-   - [signal 2]
-
-   ### Non-Goals / Constraints
-   - [constraint or non-goal]
-
-   ### Chosen Direction
-   [2-3 sentence summary of the direction chosen and why, in user/business terms]
+   - [Date] — [Title] — absorbed into summary / superseded by [newer delta title]
    ```
-5. Write back to `.harness-flow/vision.md`
+3. The full original text is preserved in **git history** — do not copy it into the file.
+4. If you cannot confidently determine that an entry is superseded, **leave it in Recent Deltas** — but this does not exempt you from the 150-line hard limit (Step D will force consolidation).
+
+### Step D: Consolidation (mandatory when file > 150 lines)
+
+This step is **mandatory** when `consolidation_needed = true` (set in Step A)
+or when the file exceeds 150 lines after Steps B + C.
+
+**Goal: reduce the file to ≤ 100 lines (at least 50% reduction from the trigger point).**
+
+1. **Rewrite the top-level summary** — merge all still-valid directions from Recent Deltas
+   into the summary sections (Problem/User, North Star, Success Signals, Non-Goals, Chosen Direction).
+   Make the summary **complete and self-contained** so a reader needs nothing else.
+2. **Clear Recent Deltas** — all entries have been absorbed into the summary.
+   Only keep deltas from the current session that have not yet been merged.
+3. **Trim Archive** — keep only the one-line tombstones. Remove any full-text archive entries;
+   their content is preserved in git history.
+4. **Verify the line count** — the final file MUST be ≤ 100 lines.
+   If still over 100 lines, tighten the summary further (combine redundant signals, remove
+   non-goals that are obvious, shorten prose).
+
+### Write back
+
+Write the updated file back to `.harness-flow/vision.md`.

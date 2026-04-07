@@ -1,36 +1,93 @@
 ## 更新愿景
 
-把 `vision.md` 当成产品方向文档，而不是实现方案。
+把 `vision.md` 当成**活文档**，而不是只追加的日志。
 - 用 PM、创始人或业务负责人也能理解的业务/用户语言来写。
 - 不要写库名、框架名、文件路径、接口名、表结构名，或一步步的实现方案；除非那真的是硬约束。
 - 如果技术细节确实重要，请把它表述为结果层面的约束；具体实现选择应写进 `plan.md`，而不是 `vision.md`。
 
-1. 读取 `.harness-flow/vision.md`（如不存在则创建）
-2. 将前一阶段的结论综合为**结构化愿景增量**
-3. 愿景增量至少要明确：
-   - `Problem / User`：正在解决什么问题，为谁解决
-   - `North Star`：长期方向或核心承诺
-   - `Success Signals`：哪些信号说明这个方向正在变好
-   - `Non-Goals / Constraints`：当前明确不做什么，有哪些约束
-   - `Chosen Direction`：本轮为什么选这个方向，强调产品策略而不是实现步骤
-4. 追加增量段落：
+### 硬性上限（不可违反）
+
+**`vision.md` 绝不能超过 150 行。** 每次写入后必须数行数。
+如果文件超过 150 行，你**必须**执行**全量合并**再写回（见下方 Step D）。
+没有例外——这个上限是为了防止上下文膨胀。
+
+### 文件结构约定
+
+`vision.md` 有**三个区域**（每次写入时都要维护这个结构）：
+
+```
+# Project Vision — {project_name}
+（当前愿景摘要 — 始终是最新的合并方向）
+## Problem / User
+## North Star
+## Success Signals
+## Non-Goals / Constraints
+## Chosen Direction
+
+## Recent Deltas
+（最多 3 个增量条目，最新的在最前）
+### [日期] — [标题]
+...
+
+## Archive
+（仅保留一行墓碑记录——完整文本存在 git 历史中）
+- [日期] — [标题] — 已合并进摘要 / 被 [更新的 delta 标题] 取代
+```
+
+### Step A：评估
+
+1. 读取 `.harness-flow/vision.md`（如不存在则用三区域骨架创建）
+2. **数总行数。** 如果已经 ≥ 120 行，标记 `consolidation_needed = true`。
+3. 检查 `## Recent Deltas` 中的每个条目：
+   - 这个 delta **仍然有效**吗（没有被更新的条目矛盾或取代）？
+   - 这个 delta 的核心方向是否已被**吸收**进顶部摘要？
+4. 计算 `## Recent Deltas` 中的条目数量。
+
+### Step B：更新
+
+将前一阶段的结论综合为**结构化愿景增量**，至少包含：
+- `Problem / User`：正在解决什么问题，为谁解决
+- `North Star`：长期方向或核心承诺
+- `Success Signals`：哪些信号说明这个方向正在变好
+- `Non-Goals / Constraints`：当前明确不做什么，有哪些约束
+- `Chosen Direction`：本轮为什么选这个方向，强调产品策略而不是实现步骤
+
+然后选择**一种**操作：
+
+- **合并进摘要**：如果新 delta **细化或替代**了顶部摘要的某个方面，直接更新摘要并把 delta 加入 `## Recent Deltas`。
+- **仅追加**：如果新 delta **扩展**了愿景到新领域且不与摘要矛盾，只把它加入 `## Recent Deltas`，不修改摘要。
+
+**保守默认行为**：不确定某个 delta 是否取代了已有内容时，**一律追加——不合并、不归档**。宁可保留冗余条目，也不丢失有效方向。
+
+### Step C：归档
+
+Step B 完成后，如果 `## Recent Deltas` 包含**超过 3 个条目**：
+
+1. 识别**最旧的条目**中那些内容已被完全吸收进顶部摘要或被更新条目取代的。
+2. 将它们移到 `## Archive`，只保留**一行墓碑记录**（不复制全文）：
    ```markdown
-   ## [日期] — [简要标题]
-
-   ### Problem / User
-   [1-2 句话]
-
-   ### North Star
-   [1-2 句话]
-
-   ### Success Signals
-   - [signal 1]
-   - [signal 2]
-
-   ### Non-Goals / Constraints
-   - [constraint or non-goal]
-
-   ### Chosen Direction
-   [2-3 句话用用户/业务语言总结本轮方向与原因]
+   - [日期] — [标题] — 已合并进摘要 / 被 [更新的 delta 标题] 取代
    ```
-5. 写回 `.harness-flow/vision.md`
+3. 完整原文保存在 **git 历史**中——不要把它复制进文件。
+4. 如果无法确定某个条目已被取代，**保留在 Recent Deltas 中**——但这不能豁免 150 行硬性上限（Step D 会强制合并）。
+
+### Step D：全量合并（文件超过 150 行时强制执行）
+
+当 Step A 中 `consolidation_needed = true`，或 Steps B + C 完成后文件超过 150 行时，
+本步骤**必须执行**。
+
+**目标：将文件压缩到 ≤ 100 行（从触发点至少减少 50%）。**
+
+1. **重写顶部摘要**——把 Recent Deltas 中所有仍然有效的方向合并进摘要各节
+   （Problem/User、North Star、Success Signals、Non-Goals、Chosen Direction）。
+   确保摘要**完整且自包含**，读者无需阅读其他内容即可理解当前方向。
+2. **清空 Recent Deltas**——所有条目已被吸收进摘要。
+   仅保留当前会话中尚未合并的 delta。
+3. **精简 Archive**——只保留一行墓碑记录。移除所有完整文本的归档条目；
+   其内容保存在 git 历史中。
+4. **验证行数**——最终文件**必须** ≤ 100 行。
+   如果仍超过 100 行，进一步精简摘要（合并冗余信号、移除显而易见的 non-goals、缩短行文）。
+
+### 写回
+
+将更新后的文件写回 `.harness-flow/vision.md`。
