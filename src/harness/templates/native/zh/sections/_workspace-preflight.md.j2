@@ -54,7 +54,7 @@ CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
   ```bash
   git fetch origin {{ trunk_branch }} && git rebase origin/{{ trunk_branch }}
   ```
-  如果 rebase 冲突：尝试自动解决简单冲突；如果复杂，运行 `git rebase --abort` 并中止。
+  如果 rebase 冲突：尝试自动解决机械性冲突（如版本文件排序）；如果复杂，运行 `git rebase --abort` 并中止。
   **跳过步骤 4–5。** 继续下一阶段。
 - 如果 `$CURRENT_BRANCH` 是 `HEAD`（detached）：**中止** — "当前处于 detached HEAD 状态，请先 `git checkout {{ trunk_branch }}`。"
 - 否则：继续步骤 4。
