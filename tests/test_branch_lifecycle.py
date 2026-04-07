@@ -108,7 +108,7 @@ def test_sync_feature_with_trunk_auto_resolves_lock_files(tmp_path: Path, monkey
             return GitOperationResult(ok=True, code="OK", stdout="poetry.lock\n")
         if args == ["checkout", "--ours", "poetry.lock"]:
             return GitOperationResult(ok=True, code="OK")
-        if args == ["add", "poetry.lock"]:
+        if args == ["add", "-f", "poetry.lock"]:
             return GitOperationResult(ok=True, code="OK")
         if args == ["rebase", "--continue"]:
             return GitOperationResult(ok=True, code="OK", message="continue ok")
@@ -134,7 +134,7 @@ def test_sync_feature_with_trunk_auto_resolves_cursor_files(tmp_path: Path, monk
             return GitOperationResult(ok=True, code="OK", stdout=".cursor/rules/foo.mdc\n")
         if args[:2] == ["checkout", "--ours"]:
             return GitOperationResult(ok=True, code="OK")
-        if args[0] == "add":
+        if args[:2] == ["add", "-f"]:
             return GitOperationResult(ok=True, code="OK")
         if args == ["rebase", "--continue"]:
             return GitOperationResult(ok=True, code="OK")
@@ -144,6 +144,35 @@ def test_sync_feature_with_trunk_auto_resolves_cursor_files(tmp_path: Path, monk
     result = manager.sync_feature_with_trunk()
     assert result.ok is True
     assert result.code == "REBASE_AUTO_RESOLVED"
+
+
+def test_sync_auto_resolve_uses_force_add_for_gitignored_files(tmp_path: Path, monkeypatch):
+    """git add -f is used so gitignored-but-tracked files (e.g. .cursor/) can be staged."""
+    manager = _manager(tmp_path)
+    add_calls: list[list[str]] = []
+
+    def _mock_git(args, *_a, **_kw):
+        if args[0] == "fetch":
+            return GitOperationResult(ok=True, code="OK")
+        if args == ["rebase", "origin/main"]:
+            return GitOperationResult(ok=False, code="REBASE_CONFLICT", message="conflict")
+        if args == ["diff", "--name-only", "--diff-filter=U"]:
+            return GitOperationResult(ok=True, code="OK", stdout=".cursor/rules/foo.mdc\n")
+        if args[:2] == ["checkout", "--ours"]:
+            return GitOperationResult(ok=True, code="OK")
+        if args[:2] == ["add", "-f"]:
+            add_calls.append(list(args))
+            return GitOperationResult(ok=True, code="OK")
+        if args == ["rebase", "--continue"]:
+            return GitOperationResult(ok=True, code="OK")
+        return GitOperationResult(ok=True, code="OK")
+
+    monkeypatch.setattr("harness.core.branch_lifecycle.run_git_result", _mock_git)
+    result = manager.sync_feature_with_trunk()
+    assert result.ok is True
+    assert result.code == "REBASE_AUTO_RESOLVED"
+    assert len(add_calls) == 1
+    assert add_calls[0] == ["add", "-f", ".cursor/rules/foo.mdc"]
 
 
 def test_sync_feature_with_trunk_mixed_conflict_aborts(tmp_path: Path, monkeypatch):
@@ -182,7 +211,7 @@ def test_sync_feature_with_trunk_multi_commit_auto_resolve(tmp_path: Path, monke
             return GitOperationResult(ok=True, code="OK", stdout="poetry.lock\n")
         if args[:2] == ["checkout", "--ours"]:
             return GitOperationResult(ok=True, code="OK")
-        if args[0] == "add":
+        if args[:2] == ["add", "-f"]:
             return GitOperationResult(ok=True, code="OK")
         if args == ["rebase", "--continue"]:
             continue_count["n"] += 1
@@ -232,7 +261,7 @@ def test_sync_feature_with_trunk_continue_fails_non_conflict(tmp_path: Path, mon
             return GitOperationResult(ok=True, code="OK", stdout="poetry.lock\n")
         if args[:2] == ["checkout", "--ours"]:
             return GitOperationResult(ok=True, code="OK")
-        if args[0] == "add":
+        if args[:2] == ["add", "-f"]:
             return GitOperationResult(ok=True, code="OK")
         if args == ["rebase", "--continue"]:
             return GitOperationResult(ok=False, code="REBASE_CONTINUE_FAILED", message="hook failed")
