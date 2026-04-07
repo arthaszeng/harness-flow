@@ -38,9 +38,9 @@ GITDIR=$(git rev-parse --git-dir 2>/dev/null)
 ```
 
 If `$COMMON` ≠ `$GITDIR`, you are in a **Cursor parallel-agent worktree**.
-The worktree was created with `.cursor/` and `.harness-flow/` already copied
-(via `worktrees.json`). **Skip steps 3–5** — the worktree is already on the
-correct feature branch. Proceed to the next phase.
+Ensure `.cursor/` and `.harness-flow/` exist in the worktree (copy from the
+main working tree if missing). **Skip steps 3–5** — the worktree is already
+on the correct feature branch. Proceed to the next phase.
 
 ### 3. Branch Check
 
