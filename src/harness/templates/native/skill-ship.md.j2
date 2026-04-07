@@ -299,7 +299,14 @@ After the evaluation synthesis is complete, capture non-obvious insights as lear
    - long-lived
    - cross-project / cross-language reusable
    - strongly role-relevant
-3. For each qualifying `[LEARNING]` item, the **parent orchestrator** (you) calls `add_memories`
+3. **Dedup guard** (prevents double-write when eval ran before ship in the same session):
+   For each qualifying `[LEARNING]` item, before writing, call:
+   ```
+   search_memory(query=<learning key or short text>, domains="{{ project_name or memverse_domain }}-<role>-learning", limit=5)
+   ```
+   If a result with substantially the same insight already exists → **skip** (log as `skipped-dedup`).
+   Only write if no near-duplicate is found.
+4. For each non-duplicate `[LEARNING]` item, the **parent orchestrator** (you) calls `add_memories`
    with structured metadata (JSON string). Sub-agents do NOT call `add_memories` themselves.
    ```
    add_memories(
@@ -311,7 +318,7 @@ After the evaluation synthesis is complete, capture non-obvious insights as lear
    **Note**: metadata is write-only — `search_memory` cannot filter by metadata fields.
    For precise metadata filtering, use `list_memories` + client-side parsing.
    Treat writes as non-blocking fire-and-forget: do not block gate on write outcome.
-4. Log counters: `LEARNING_ADD scheduled|skipped|failed-open`.
+5. Log counters: `LEARNING_ADD scheduled|skipped-dedup|skipped|failed-open`.
 
 If Memverse MCP is not available: skip silently.
 {% else %}

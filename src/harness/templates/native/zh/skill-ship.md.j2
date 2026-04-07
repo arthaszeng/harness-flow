@@ -297,7 +297,14 @@ CRITICAL 发现被标记但交付继续。
    - 可长期有效
    - 可跨项目 / 跨语言复用
    - 与对应角色高度相关
-3. 对每个合格的 `[LEARNING]` 条目，由**父协调器**（你）调用 `add_memories`
+3. **去重守卫**（防止同一会话中 eval 已捕获后 ship 重复写入）：
+   对每个合格的 `[LEARNING]` 条目，写入前先调用：
+   ```
+   search_memory(query=<learning key 或简短文本>, domains="{{ project_name or memverse_domain }}-<role>-learning", limit=5)
+   ```
+   如果已存在实质相同的见解 → **跳过**（记录为 `skipped-dedup`）。
+   仅在无近似重复时写入。
+4. 对每个非重复的 `[LEARNING]` 条目，由**父协调器**（你）调用 `add_memories`
    并附带结构化 metadata（JSON 字符串）。子代理不得自行调用 `add_memories`。
    ```
    add_memories(
@@ -309,7 +316,7 @@ CRITICAL 发现被标记但交付继续。
    **注意**：metadata 只写不可搜索 — `search_memory` 不能按 metadata 字段过滤。
    需要精确 metadata 过滤时，使用 `list_memories` + 调用方内存解析。
    写入采用 non-blocking fire-and-forget，不以写入结果阻塞 gate。
-4. 记录计数：`LEARNING_ADD scheduled|skipped|failed-open`。
+5. 记录计数：`LEARNING_ADD scheduled|skipped-dedup|skipped|failed-open`。
 
 如果 Memverse MCP 不可用：静默跳过。
 {% else %}

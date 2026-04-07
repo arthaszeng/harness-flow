@@ -184,12 +184,14 @@ At the end of `/harness-eval` and `/harness-ship` workflows:
 
 1. Review all findings from the evaluation
 2. For any non-obvious finding (confidence >= 7) that reveals a pattern or pitfall:
+   - **Dedup guard**: before writing, `search_memory` with the learning key in the target
+     role-learning domain; skip if a near-duplicate already exists (log as `skipped-dedup`)
    - The **parent orchestrator** auto-captures as a learning via Memverse `add_memories` with metadata
    - Sub-agents do NOT call `add_memories` — they output `[LEARNING]` items in their Output Contract
    - Type: pattern (if good practice) or pitfall (if common mistake)
    - Source: "observed"
    - Confidence: same as the finding's confidence
-3. Log: "Captured N new learnings from this review"
+3. Log: "Captured N new learnings, M skipped-dedup from this review"
 
 ---
 

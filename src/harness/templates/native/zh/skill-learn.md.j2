@@ -184,12 +184,14 @@ PRIOR LEARNINGS (relevant to this diff):
 
 1. 审查评估中的所有发现
 2. 对任何非显而易见的发现（置信度 >= 7）且揭示了模式或陷阱的：
+   - **去重守卫**：写入前在目标角色学习域中 `search_memory` 该 learning key；
+     若已存在近似重复 → 跳过（记录为 `skipped-dedup`）
    - 由**父协调器**通过 Memverse `add_memories` 自动捕获为学习成果（附带 metadata）
    - 子代理不得自行调用 `add_memories` — 它们在输出契约中输出 `[LEARNING]` 条目
    - Type：pattern（如果是好的实践）或 pitfall（如果是常见错误）
    - Source："observed"
    - Confidence：与发现的置信度相同
-3. 记录："从本次评审中捕获了 N 个新的学习成果"
+3. 记录："从本次评审中捕获了 N 个新的学习成果，M 个 skipped-dedup"
 
 ---
 
