@@ -90,7 +90,11 @@ stage already completed in this session, most pre-flight work is redundant.
 
 {% if memverse_enabled == "true" %}
 6. **Prior Learnings**: If Memverse MCP is available, search for learnings relevant to the
-   changed files/modules. Display any prior pitfalls or patterns that apply to this diff.
+   changed files/modules. Use multi-domain OR query (aligned with eval Step 0.7):
+   ```
+   search_memory(query=<key topics from diff>, domains="{{ project_name or memverse_domain }},{{ project_name or memverse_domain }}-<role>-learning", limit=20)
+   ```
+   Display any prior pitfalls or patterns that apply to this diff.
 
 {% endif %}
 {% if memverse_enabled == "true" %}7.{% else %}6.{% endif %} **Eval Readiness Reminder**: This workflow WILL run a mandatory eval at Step 3.8.
@@ -278,6 +282,38 @@ All CRITICAL findings must be resolved before proceeding.
 
 **Review Gate (advisory):** Evaluation is advisory — ITERATE verdict is logged but does not block.
 CRITICAL findings are flagged but shipping continues.
+{% endif %}
+
+---
+
+## Step 3.9: Capture Learnings
+
+{% if memverse_enabled == "true" %}
+After the evaluation synthesis is complete, capture non-obvious insights as learnings
+(aligned with eval Step 2 — same logic, same metadata schema):
+
+1. Review all findings with confidence >= 7
+2. Parse merged findings for `[LEARNING]` items from each role's output.
+   Keep only entries that are:
+   - long-lived
+   - cross-project / cross-language reusable
+   - strongly role-relevant
+3. For each qualifying `[LEARNING]` item, the **parent orchestrator** (you) calls `add_memories`
+   with structured metadata (JSON string). Sub-agents do NOT call `add_memories` themselves.
+   ```
+   add_memories(
+     text="<learning insight text>",
+     domain="{{ project_name or memverse_domain }}-<role>-learning",
+     metadata="{\"type\": \"<pattern|pitfall|preference|architecture|tool>\", \"key\": \"<kebab-case-id>\", \"confidence\": <1-10>, \"source\": \"observed\", \"role\": \"<role>\", \"task\": \"<task-id>\", \"files\": [\"<file1>\", \"<file2>\"]}"
+   )
+   ```
+   **Note**: metadata is write-only — `search_memory` cannot filter by metadata fields.
+   Treat writes as non-blocking fire-and-forget: do not block gate on write outcome.
+4. Log counters: `LEARNING_ADD scheduled|skipped|failed-open`.
+
+If Memverse MCP is not available: skip silently.
+{% else %}
+Skip — Memverse not enabled.
 {% endif %}
 
 ---
