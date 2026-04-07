@@ -1,13 +1,18 @@
 [中文](README.zh-CN.md)
 
+<div align="center">
+
 # harness-flow
 
-> **Agent writes code. Harness Flow ships products.**
-> — L5 autonomous delivery for the vibe coding era. You're the copilot now.
+### Agent writes code. Harness Flow ships products.
+
+**L5 autonomous delivery for the vibe coding era — you're the copilot now.**
 
 [![Python](https://img.shields.io/badge/python-%3E%3D3.9-blue)](https://www.python.org/)
 [![PyPI](https://img.shields.io/pypi/v/harness-flow)](https://pypi.org/project/harness-flow/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+
+</div>
 
 ## The Problem
 
@@ -15,18 +20,36 @@ AI agents can write code — but they **can't ship products**. They lack navigat
 
 ## Where Harness Flow Fits
 
-| Era | Analogy | Human Role | Examples |
-|-----|---------|-----------|----------|
-| Manual coding | Walking | Write every line | vim + gcc |
-| AI assistants | Human driving | Hands on wheel, AI autocompletes | GitHub Copilot |
-| Agent mode | L3 self-driving | AI writes but no navigation, no rules, no record | Cursor Agent, Claude Code |
-| **Harness Flow** | **L5 self-driving** | **Human as copilot — AI ships autonomously** | **harness-flow** |
+```
+                                        ┌─────────────────────────────────────────┐
+                                        │  ★  HARNESS FLOW — L5 Self-Driving      │
+                                        │  Human as copilot, AI ships products     │
+                                   ┌────┴─────────────────────────────────────────┘
+                                   │  L3  Agent Mode  (Cursor Agent, Claude Code)
+                                   │  AI writes, but no navigation / rules / record
+                              ┌────┘
+                              │  L1  AI Assistants  (GitHub Copilot)
+                              │  Hands on wheel, AI autocompletes
+                         ┌────┘
+                         │  L0  Manual Coding  (vim + gcc)
+                         │  Write every line yourself
+  ───────────────────────┘
+```
 
 ### The Three Pillars of L5
 
-- **Navigation** — vision → plan → roadmap: the AI knows *where* to go
-- **Traffic Rules** — 5-role parallel review + quality gates + trust boundaries: the AI obeys the rules
-- **Dashcam** — full audit trail + cross-session learnings + retrospectives: every decision is recorded
+```
+  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+  │  🧭 Navigate  │    │  🚦 Rules     │    │  📹 Dashcam   │
+  │              │    │              │    │              │
+  │ vision       │    │ 5-role       │    │ audit trail  │
+  │  → plan      │    │  review      │    │  + learnings │
+  │  → roadmap   │    │  + gates     │    │  + retro     │
+  │              │    │  + trust     │    │              │
+  │ AI knows     │    │ AI obeys     │    │ every call   │
+  │ WHERE to go  │    │ the RULES    │    │ is RECORDED  │
+  └──────────────┘    └──────────────┘    └──────────────┘
+```
 
 ---
 
