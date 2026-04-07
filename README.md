@@ -91,41 +91,21 @@ That's it — plan, build, 5-role review, and PR in one command.
 ## How it works
 
 ```mermaid
-flowchart TB
-  subgraph pipeline [" "]
-    direction LR
-    Req["Requirement"] --> Plan["Plan"]
-    Plan --> PlanReview["5-role\nplan review"]
-    PlanReview --> Build["Build + CI"]
-    Build --> CodeReview["5-role\ncode review"]
-    CodeReview --> Ship["Ship → PR"]
-  end
+flowchart LR
+  Req["Requirement"] --> Plan["Plan"]
+  Plan --> PlanReview["5-role\nplan review"]
+  PlanReview --> Build["Build + CI"]
+  Build --> CodeReview["5-role\ncode review"]
+  CodeReview --> Ship["Ship → PR"]
 
-  subgraph reviewers ["5 parallel reviewers"]
-    direction LR
-    A["Architect"]
-    PO["Product Owner"]
-    Eng["Engineer"]
-    Q["QA"]
-    PM["Project Manager"]
-  end
+  PlanReview -.->|"Architect · Product Owner · Engineer · QA · PM"| CodeReview
 
-  PlanReview -.-> reviewers
-  CodeReview -.-> reviewers
-
-  style pipeline fill:none,stroke:none
   style Req fill:#fff,stroke:#222,stroke-width:2px,color:#000
   style Plan fill:#fff,stroke:#222,stroke-width:2px,color:#000
   style PlanReview fill:#222,stroke:#222,stroke-width:2px,color:#fff
   style Build fill:#fff,stroke:#222,stroke-width:2px,color:#000
   style CodeReview fill:#222,stroke:#222,stroke-width:2px,color:#fff
   style Ship fill:#fff,stroke:#222,stroke-width:2px,color:#000
-  style reviewers fill:none,stroke:#222,stroke-width:1px,stroke-dasharray: 5 5
-  style A fill:#fff,stroke:#222,stroke-width:1px,color:#000
-  style PO fill:#fff,stroke:#222,stroke-width:1px,color:#000
-  style Eng fill:#fff,stroke:#222,stroke-width:1px,color:#000
-  style Q fill:#fff,stroke:#222,stroke-width:1px,color:#000
-  style PM fill:#fff,stroke:#222,stroke-width:1px,color:#000
 ```
 
 Both **plan review** and **code review** dispatch the same 5 parallel reviewers. Findings from 2+ roles are flagged as high confidence.
