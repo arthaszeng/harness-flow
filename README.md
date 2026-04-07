@@ -21,23 +21,23 @@ AI agents can write code — but they **can't ship products**. They lack navigat
 ## Where Harness Flow Fits
 
 ```
-   MANUAL CODING         AI ASSISTANT           AGENT MODE              HARNESS FLOW
+   EVOLUTION: from coding ape to autonomous delivery
 
-        __                    ____                  .----.                  _________
-      _/o \_                _/ __ \_               / .--. \               _/  _____ \_
-     /  |  \               /  /  \  \             / /    \ \             /  _/  _  \  \
-    /  / \  \             /  / /\ \  \            | | () | |            /  /  _|_  \  \
-   /__/   \__\           /__/ /  \ \__\           | |____| |           /__/  / | \  \__\
-      / \                   _/____\_                \______/               _  /  |  \  _
-   __/___\__               /  ____  \                 /||\               _/ |/___|___\| \_
-  /_________\             /__/    \__\               _/  \_             /___/   / \   \___\
-      L0                     L1                       L3                     L5
-   vim + gcc               Copilot          Cursor Agent / Claude Code      Autonomous Ship
+      (ape)               (upright)             (modern)                (copilot)
+        __                  __                    __                      __
+      _/ o\_               / o\                 _/o \_                 __\o/__
+     /  /|  \             / /|\                /  |  \               _/  |   \_
+    /  / \   \           /  / \               /  / \  \             /___/ \___\
+      _/ \_               _/ \_                 _/ \_                  /   \
 
-   write every line        you drive         AI writes, but drifts          AI ships products
-   by hand                 AI assists        (no nav/rules/record)          human stays copilot
+       L0                   L1                    L3                      L5
+    Manual coding        AI assistant          Agent mode            Harness Flow
+      vim + gcc            Copilot       Cursor Agent/Claude Code   Autonomous ship
 
-   ───────────────────────────────────────────────────────────────────────────────────────────
+   write every line   you drive + AI aid  AI writes but drifts      AI ships products
+      by hand          (hands on wheel)   (no nav/rules/record)     human is copilot
+
+   ─────────────────────────────────────────────────────────────────────────────────────
 ```
 
 ### The Three Pillars of L5
