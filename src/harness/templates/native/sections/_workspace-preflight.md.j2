@@ -48,14 +48,37 @@ correct feature branch. Proceed to the next phase.
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 ```
 
-- If `$CURRENT_BRANCH` starts with `{{ branch_prefix }}/`: you are **resuming an existing task**.
-  Inform the user: "当前已在 feature branch `$CURRENT_BRANCH`，继续在此分支工作。"
-  **Align with trunk before continuing:**
-  ```bash
-  git fetch origin {{ trunk_branch }} && git rebase origin/{{ trunk_branch }}
-  ```
-  If rebase conflicts: try auto-resolve mechanical cases (e.g. version file ordering); if complex, `git rebase --abort` and ABORT.
-  **Skip steps 4–5.** Proceed to the next phase.
+- If `$CURRENT_BRANCH` starts with `{{ branch_prefix }}/`:
+  Get the current branch's task key from `harness git-preflight --json` → `context.branch_task_key`.
+  Compare it with your **target task key** (the task id the user explicitly gave, or the next task-NNN number you will determine in step 5).
+
+  - **Task key matches** (resuming the same task):
+    Inform the user: "当前已在 feature branch `$CURRENT_BRANCH`，继续在此分支工作。"
+    **Align with trunk before continuing:**
+    ```bash
+    git fetch origin {{ trunk_branch }} && git rebase origin/{{ trunk_branch }}
+    ```
+    If rebase conflicts: try auto-resolve mechanical cases (e.g. version file ordering); if complex, `git rebase --abort` and ABORT.
+    **Skip steps 4–5.** Proceed to the next phase.
+
+  - **Task key differs** (branch belongs to another task/agent):
+    **Do NOT continue on this branch.** Create an isolated worktree:
+    1. Determine the next task number (per step 5 logic for task-NNN)
+    2. Create worktree:
+       ```bash
+       harness worktree create task-NNN --desc <short-desc> --json
+       ```
+    3. Move to the worktree directory (using Cursor MCP `move_agent_to_root`):
+       ```
+       CallMcpTool: cursor-app-control / move_agent_to_root
+       arguments: { "path": "<worktree path>" }
+       ```
+       If MCP is unavailable, ask the user to open a Cursor window in the new worktree directory.
+    4. After moving, **restart from step 1** (worktree detection in step 2 will short-circuit).
+
+  - **Task key is empty** (extraction failed, e.g. non-standard branch name `{{ branch_prefix }}/foo-bar`):
+    Treat as **resuming** (same path as matching task key).
+
 - If `$CURRENT_BRANCH` is `HEAD` (detached): **ABORT** — "当前处于 detached HEAD 状态，请先 `git checkout {{ trunk_branch }}`。"
 - Otherwise: continue to step 4.
 
