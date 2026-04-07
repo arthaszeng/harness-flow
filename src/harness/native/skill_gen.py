@@ -42,7 +42,6 @@ def resolve_native_lang(project_root: Path | None = None, lang: str | None = Non
 _TEMPLATE_DIR = "native"
 
 _SKILL_TEMPLATES = [
-    ("skill-brainstorm.md.j2", "harness-brainstorm"),
     ("skill-vision.md.j2", "harness-vision"),
     ("skill-plan.md.j2", "harness-plan"),
     ("skill-build.md.j2", "harness-build"),
@@ -150,7 +149,6 @@ ArtifactType = str  # "skill" | "agent" | "rule"
 
 _ARTIFACT_LAYERS: dict[tuple[ArtifactType, str], set[int]] = {
     # Skills — layers per actual template key usage
-    ("skill", "harness-brainstorm"): {0, 1, 2},  # L1: planner_principles; L2: review_gate, hooks, gates
     ("skill", "harness-vision"): {0, 1, 2},       # L1: planner_principles; L2: review_gate, hooks, gates
     ("skill", "harness-plan"): {0, 1, 2},          # L1: planner_principles; L2: plan_review_gate, gates
     ("skill", "harness-build"): {0, 1, 2},         # L1: builder_principles; L2: hooks

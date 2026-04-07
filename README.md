@@ -210,13 +210,12 @@ flowchart LR
 <details>
 <summary><strong>Advanced entry points</strong></summary>
 
-`/harness-brainstorm` is the long-horizon loop with roadmap/backlog; `/harness-vision` clarifies an incremental direction before planning; **`/harness-plan`** is the single-round plan → ship path.
+`/harness-vision` covers everything from vague ideas to clear directions — it auto-detects whether to explore or clarify; **`/harness-plan`** is the single-round plan → ship path.
 
-| Skill                 | When to use            | What it does                                                                                 |
-| --------------------- | ---------------------- | -------------------------------------------------------------------------------------------- |
-| `/harness-brainstorm` | "I have an idea"       | Divergent exploration → structured vision → roadmap/backlog → iterative build/eval/ship loop |
-| `/harness-vision`     | "I have a direction"   | Clarify vision → plan → auto build/eval/ship/retro                                           |
-| `/harness-plan`       | "I have a requirement" | Refine plan + 5-role review → auto build/eval/ship/retro                                     |
+| Skill             | When to use                       | What it does                                                                                       |
+| ----------------- | --------------------------------- | -------------------------------------------------------------------------------------------------- |
+| `/harness-vision` | "I have an idea" or "a direction" | Explore or clarify → structured vision → roadmap/backlog → iterative build/eval/ship loop          |
+| `/harness-plan`   | "I have a requirement"            | Refine plan + 5-role review → auto build/eval/ship/retro                                           |
 
 </details>
 

@@ -16,12 +16,13 @@ Wait for user response:
 
 Assess whether the plan needs human review by calculating an **escalation score**.
 
-**This entry point's interaction depth: {{ interaction_depth | default("low") }}**
+**This entry point's default interaction depth: {{ interaction_depth | default("low") }}**
+(If Phase 0 selected a different path, use that path's depth instead — see Phase 0 review gate notes.)
 
 | Signal | Condition | Score |
 |--------|-----------|-------|
-| Interaction depth | high (brainstorm) | **-2** |
-| Interaction depth | medium (vision) | **-1** |
+| Interaction depth | high (vision exploration mode) | **-2** |
+| Interaction depth | medium (vision clarification mode) | **-1** |
 | Interaction depth | low (plan) | **+0** |
 | Scale | deliverables > 5 | +2 |
 | Scale | estimated files to modify > 10 | +2 |

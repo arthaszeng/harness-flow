@@ -60,11 +60,60 @@ and review for this round.
 
 ---
 
+## Stage Handoff — Plan → Build
+
+### Mandatory: `TASK_DIR/handoff-plan.json` (schema v2)
+
+Before starting **`/harness-build`**, you **MUST** write structured handoff **`handoff-plan.json`**
+under `TASK_DIR`. It is the machine-readable **context pack** for later stages;
+it complements (does not replace) `handoff_summary`.
+
+Required shape (field names exact):
+
+- `schema_version`: **2**
+- `source_phase`: **plan**
+- `target_phase`: **build**
+- `task_id`: same as the task directory name (`task-NNN`)
+- `summary`: short prose aligned with the plan outcome
+- `decisions`, `risks`, `open_items`, `artifacts_produced`, `scope_changes`: arrays
+  populated from the contract / review (use `[]` when empty)
+- `context_footprint`:
+  - `explored_paths`: repo-relative paths you inspected while planning (max ~40 entries)
+  - `primary_read_files`: key files you read for understanding (max ~40)
+  - `primary_touched_files`: usually `[]` at plan time (no implementation yet)
+
+### `workflow-state.json` — `handoff_summary` (required for ship fast path)
+
+Also write **`handoff_summary`** (≤ 2000 chars) so ship can use the **fast path**:
+2-4 sentences — what will be built, approach, constraints, decisions, risks.
+
+If `workflow-state.json` is missing, skip the summary field — **still write**
+`handoff-plan.json` whenever `TASK_DIR` exists.
+
+---
+
 ## Execute the Current Round
 
 The review gate has passed. For the current `Active Plan`, continue in the **same**
-conversation: **`/harness-build`** (implement) then **`/harness-ship`** (tests,
-mandatory eval, gate, PR). `/harness-ship` does **not** replace `/harness-build`.
+conversation with this **two-step** pipeline:
+
+1. **`/harness-build`** — implement the contract, run CI, commit implementation.
+   (`/harness-ship` does **not** write feature code.)
+
+2. **`/harness-ship`** — rebase, full tests, **mandatory 5-role code eval**, `harness save-eval`, `harness gate`, bisectable commits, push, PR.
+
+**Continuity guarantee**: the plan stage should have updated `workflow-state.json`
+with `phase: contracted` and a `handoff_summary`. After build, ship uses the
+task state **fast path** where applicable — skipping redundant pre-flight from plan.
+
+**Eval is part of ship**, not optional: do not skip 5-role eval or `harness gate` because tests passed.
+
+Hard completion rule:
+- Do not stop after plan with only artifacts — start **`/harness-build`** before ending the turn.
+- Do not stop after Build — start **`/harness-ship`** before ending the turn.
+- Do not ask "continue?" between these steps.
+- Continue autonomously through ship until the PR URL is produced, unless one of the explicit stop conditions below is met.
+- If test/eval/gate steps fail, or any command exits non-zero and cannot be auto-fixed, stop and report blockers instead of forcing progress.
 
 Important boundary:
 - "Continue to the next round" means the workflow protocol allows another round

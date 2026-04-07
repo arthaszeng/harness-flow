@@ -56,14 +56,57 @@
 
 ---
 
+## 阶段交接 — Plan → Build
+
+### 强制：`TASK_DIR/handoff-plan.json`（schema v2）
+
+在开始 **`/harness-build`** 之前，**必须**在 `TASK_DIR` 下写入结构化交接文件 **`handoff-plan.json`**。
+这是供后续阶段机读的**上下文包**；**不能**替代 `handoff_summary`，而是与之并存。
+
+必填字段（名称须一致）：
+
+- `schema_version`：**2**
+- `source_phase`：**plan**
+- `target_phase`：**build**
+- `task_id`：与任务目录名一致（`task-NNN`）
+- `summary`：与计划结果一致的短文
+- `decisions`、`risks`、`open_items`、`artifacts_produced`、`scope_changes`：来自合约/评审的数组（无则 `[]`）
+- `context_footprint`：
+  - `explored_paths`：规划时已查看的仓库相对路径（约 ≤40 条）
+  - `primary_read_files`：为理解而阅读的关键文件（约 ≤40）
+  - `primary_touched_files`：计划阶段一般为 `[]`（尚未实现代码）
+
+### `workflow-state.json` — `handoff_summary`（ship 快速路径仍依赖）
+
+同时写入 **`handoff_summary`**（≤ 2000 字符）：2-4 句——将构建什么、方案、约束、决策与风险。
+
+若不存在 `workflow-state.json`，可跳过摘要字段——**只要存在 `TASK_DIR`，仍须写**
+`handoff-plan.json`。
+
+---
+
 ## 执行当前轮
 
-Review gate 已通过。对当前 `Active Plan`，请在**同一对话**内依次执行 **`/harness-build`**
-（实现）与 **`/harness-ship`**（测试、强制评审、门禁、PR）。`/harness-ship` **不能**
-替代 `/harness-build`。
+Review gate 已通过。对当前 `Active Plan`，请在**同一对话**内按**两步**继续：
+
+1. **`/harness-build`** — 按合约实现、跑 CI、提交实现。
+   （`/harness-ship` **不**负责写业务功能代码。）
+
+2. **`/harness-ship`** — rebase、全量测试、**强制 5 角色代码评审**、`harness save-eval`、`harness gate`、可二分提交、推送、PR。
+
+**衔接保障**：plan 阶段应将 `workflow-state.json` 更新为 `phase: contracted` 并写入 `handoff_summary`；build 完成后 ship 在适用时走任务状态**快速路径**，减少重复预检。
+
+**eval 属于 ship 的一环**，不可省略：禁止仅因「pytest 全绿」而跳过 5 角色评审与 `harness gate`。
+
+硬性完成规则：
+- 禁止只交付 `plan.md` 就结束回合 —— 须先开始 **`/harness-build`**。
+- 禁止在 Build 完成后结束回合 —— 须开始 **`/harness-ship`**。
+- 不得在步骤之间询问「是否继续」。
+- 必须自主连续执行到产出 PR URL，除非触发下方定义的显式停止条件。
+- 若测试/eval/gate 失败，或命令非零退出且无法自动修复，必须停止并报告阻塞，禁止强行推进。
 
 重要边界：
-- 这里的“继续下一轮”指 workflow 协议允许你在同一方向下继续推进
+- 这里的"继续下一轮"指 workflow 协议允许你在同一方向下继续推进
 - 这**不是**要求你实现无人值守后台调度器
 - 每一轮仍然是一次完整的 active-plan 交付边界
 
