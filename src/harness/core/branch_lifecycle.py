@@ -239,7 +239,7 @@ class BranchLifecycleManager:
                             "manual_conflict_files": ",".join(manual_conflicts),
                         },
                     )
-                add = run_git_result(["add", f], self.project_root, timeout=10)
+                add = run_git_result(["add", "-f", f], self.project_root, timeout=10)
                 if not add.ok:
                     self._abort_rebase()
                     return GitOperationResult(
