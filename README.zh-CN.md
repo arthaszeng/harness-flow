@@ -40,11 +40,11 @@ classDiagram
         +评估风险
     }
 
-    style 架构师 fill:#222,stroke:#222,color:#fff
-    style 产品负责人 fill:#222,stroke:#222,color:#fff
-    style 工程师 fill:#222,stroke:#222,color:#fff
-    style QA fill:#222,stroke:#222,color:#fff
-    style 项目经理 fill:#222,stroke:#222,color:#fff
+    style 架构师 fill:#fff,stroke:#222,color:#000
+    style 产品负责人 fill:#fff,stroke:#222,color:#000
+    style 工程师 fill:#fff,stroke:#222,color:#000
+    style QA fill:#fff,stroke:#222,color:#000
+    style 项目经理 fill:#fff,stroke:#222,color:#000
 ```
 
 > **不是模拟** — 这些角色作为并行 AI 子代理运行，各自拥有独立系统提示，独立评分。被 2+ 角色发现的问题标注为高置信度。
@@ -91,25 +91,41 @@ harness init
 ## 工作原理
 
 ```mermaid
-flowchart LR
-  Req["需求"] --> Plan["计划"]
-  Plan --> PlanReview["5 角色\n计划评审"]
-  PlanReview --> Build["构建 + CI"]
-  Build --> CodeReview["5 角色\n代码评审"]
-  CodeReview --> Ship["发布 → PR"]
+flowchart TB
+  subgraph pipeline [" "]
+    direction LR
+    Req["需求"] --> Plan["计划"]
+    Plan --> PlanReview["5 角色\n计划评审"]
+    PlanReview --> Build["构建 + CI"]
+    Build --> CodeReview["5 角色\n代码评审"]
+    CodeReview --> Ship["发布 → PR"]
+  end
 
-  PlanReview -.->|"同一组 5 角色"| Reviewers
-  CodeReview -.->|"同一组 5 角色"| Reviewers
+  subgraph reviewers ["5 个并行评审者"]
+    direction LR
+    A["架构师"]
+    PO["产品负责人"]
+    Eng["工程师"]
+    Q["QA"]
+    PM["项目经理"]
+  end
 
-  Reviewers["架构师 · 产品负责人 · 工程师 · QA · 项目经理"]
+  PlanReview -.-> reviewers
+  CodeReview -.-> reviewers
 
+  style pipeline fill:none,stroke:none
   style Req fill:#fff,stroke:#222,stroke-width:2px,color:#000
   style Plan fill:#fff,stroke:#222,stroke-width:2px,color:#000
   style PlanReview fill:#222,stroke:#222,stroke-width:2px,color:#fff
   style Build fill:#fff,stroke:#222,stroke-width:2px,color:#000
   style CodeReview fill:#222,stroke:#222,stroke-width:2px,color:#fff
   style Ship fill:#fff,stroke:#222,stroke-width:2px,color:#000
-  style Reviewers fill:#222,stroke:#222,stroke-width:2px,color:#fff
+  style reviewers fill:none,stroke:#222,stroke-width:1px,stroke-dasharray: 5 5
+  style A fill:#fff,stroke:#222,stroke-width:1px,color:#000
+  style PO fill:#fff,stroke:#222,stroke-width:1px,color:#000
+  style Eng fill:#fff,stroke:#222,stroke-width:1px,color:#000
+  style Q fill:#fff,stroke:#222,stroke-width:1px,color:#000
+  style PM fill:#fff,stroke:#222,stroke-width:1px,color:#000
 ```
 
 **计划评审**和**代码评审**都会派遣同样的 5 个并行评审者。被 2+ 角色发现的问题标注为高置信度。
