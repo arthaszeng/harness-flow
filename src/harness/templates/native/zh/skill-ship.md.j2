@@ -431,6 +431,21 @@ harness gate --task TASK_ID
 ---
 {% endif %}
 
+## 步骤 7.5：推送前 Rebase（追赶主干）
+
+在推送前**再次** rebase 到最新主干，以吸收自步骤 2 以来落入 `{{ trunk_branch }}` 的任何
+commit（如其他 PR 的 CD 版本号递增）：
+
+```bash
+git fetch origin {{ trunk_branch }} && git rebase origin/{{ trunk_branch }}
+```
+
+- **如果已是最新：** 静默继续。
+- **如果 rebase 冲突：** 尝试自动解决简单冲突（如版本文件排序）。
+  如果冲突复杂，运行 `git rebase --abort`，**停止**并显示冲突。
+
+---
+
 ## 步骤 8：推送 + PR
 
 1. 带上游跟踪推送：
