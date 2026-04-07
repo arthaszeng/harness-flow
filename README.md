@@ -2,21 +2,73 @@
 
 # harness-flow
 
-> **Cursor-native AI engineering framework** — plan, build, review, and ship with structured quality gates, all inside your IDE.
+> **Cursor-native AI engineering framework** — one requirement in, one PR out, with a full team of AI reviewers.
 
 [![Python](https://img.shields.io/badge/python-%3E%3D3.9-blue)](https://www.python.org/)
 [![PyPI](https://img.shields.io/pypi/v/harness-flow)](https://pypi.org/project/harness-flow/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
 
+## Your AI Engineering Team
+
+Harness gives you a **complete engineering team** inside Cursor — each role reviews both your plan and your code:
+
+```mermaid
+classDiagram
+    class HarnessTeam {
+        +Requirement
+        +Codebase
+        +IDE: Cursor
+    }
+    class Architect {
+        +ReviewDesign
+        +CheckDependencies
+        +EvaluateSecurity
+    }
+    class ProductOwner {
+        +ReviewVision
+        +ValidateRequirements
+        +CheckUserValue
+    }
+    class Engineer {
+        +ReviewCode
+        +CheckPatterns
+        +EvaluatePerformance
+    }
+    class QA {
+        +WriteTests
+        +RunCI
+        +CheckEdgeCases
+    }
+    class ProjectManager {
+        +TrackScope
+        +ManageDelivery
+        +AssessRisk
+    }
+
+    HarnessTeam --> Architect
+    HarnessTeam --> ProductOwner
+    HarnessTeam --> Engineer
+    HarnessTeam --> QA
+    HarnessTeam --> ProjectManager
+```
+
+> **Not a simulation** — these roles run as parallel AI subagents with distinct system prompts, each scoring independently. Findings from 2+ roles are flagged as high confidence.
+
+---
+
+## How it works
+
 ```mermaid
 flowchart LR
-  You["🧑‍💻 You type a requirement"]
-  Plan["📋 Plan\n5-role review"]
+  You["🧑‍💻 Requirement"]
+  Plan["📋 Plan"]
+  PR1["5-role\nplan review"]
   Build["🔨 Build\nimplement + CI"]
-  Eval["🔍 Eval\n5-role code review"]
+  Eval["🔍 Eval"]
+  PR2["5-role\ncode review"]
   Ship["🚀 Ship\ncommit + PR"]
 
-  You --> Plan --> Build --> Eval --> Ship
+  You --> Plan --> PR1 --> Build --> Eval --> PR2 --> Ship
 
   subgraph "5 parallel reviewers"
     direction TB
@@ -27,45 +79,8 @@ flowchart LR
     PM["Project Manager"]
   end
 
-  Eval -.-> A & PO & E & QA & PM
-```
-
----
-
-## Quick Start
-
-### 0. 10-minute happy path
-
-```bash
-pip install harness-flow
-cd /path/to/your/project
-harness init
-```
-
-Then open Cursor and type:
-
-```
-/harness-plan add input validation to the user registration endpoint
-```
-
-That's it. Harness plans, builds, reviews with 5 specialized roles, and ships a PR — all in one command.
-
-<!-- TODO: Add a demo recording (GIF or video) showing the full flow from requirement to PR -->
-<!-- TODO: Add a screenshot of the 5-role review output -->
-
----
-
-## How it works
-
-One requirement in, one PR out. Here's what happens inside:
-
-```
-/harness-plan "add feature X"
-  → Plan with spec + contract
-  → 5-role parallel review (architect, product-owner, engineer, QA, PM)
-  → Build: implement + test
-  → Eval: 5-role code review + Fix-First auto-remediation
-  → Ship: bisectable commits + push + PR
+  PR1 -.-> A & PO & E & QA & PM
+  PR2 -.-> A & PO & E & QA & PM
 ```
 
 **Fix-First** classifies every review finding before presenting it:
@@ -83,9 +98,51 @@ One requirement in, one PR out. Here's what happens inside:
 | **QA**              | Test strategy, boundary values, regression risk   | Test coverage, edge cases, CI health         |
 | **Project Manager** | Task decomposition, parallelism, scope            | Scope drift, plan completion, delivery risk  |
 
-Findings from 2+ roles are flagged as **high confidence**. Each role can use a different model via `[native.role_models]` in config.
+Each role can use a different model via `[native.role_models]` in config. Invalid pins fall back to IDE default.
 
 </details>
+
+---
+
+## Quick Start
+
+### 0. 10-minute happy path
+
+```mermaid
+flowchart LR
+  S1["① Install\npip install harness-flow"]
+  S2["② Init\nharness init"]
+  S3["③ Update\nharness update"]
+  S1 --> S2 --> S3
+```
+
+```bash
+pip install harness-flow
+cd /path/to/your/project
+harness init
+```
+
+Then open Cursor and type:
+
+```
+/harness-plan add input validation to the user registration endpoint
+```
+
+That's it — plan, build, 5-role review, and PR in one command.
+
+<!-- TODO: Add a demo recording (GIF or video) showing the full flow from requirement to PR -->
+
+---
+
+## Harness in Action
+
+> 🏗️ **Contract-driven development** — every task starts with a spec + contract. No code without a plan.
+
+> 🔍 **Adversarial multi-role review** — 5 AI reviewers challenge your code from different angles, in parallel. Weak spots get caught before merge.
+
+> 🔧 **Fix-First auto-remediation** — trivial findings are fixed instantly. You only see what matters.
+
+> 📋 **Full audit trail** — plans, reviews, build logs, gate results. Every decision is traceable in `.harness-flow/tasks/`.
 
 ---
 
@@ -140,11 +197,11 @@ Project settings live in `.harness-flow/config.toml`:
 | `workflow.max_iterations`         | 3         | Max review iterations per task                                    |
 | `workflow.pass_threshold`         | 7.0       | Evaluator pass threshold (1-10)                                   |
 | `workflow.auto_merge`             | true      | Auto-merge branch after pass                                      |
-| `workflow.branch_prefix`          | "agent"   | Task branch prefix                                                |
 | `native.evaluator_model`          | "inherit" | Default model for review roles; falls back to IDE default         |
 | `native.review_gate`              | "eng"     | Review gate strictness (`eng` = hard gate, `advisory` = log only) |
 | `native.plan_review_gate`         | "auto"    | Plan review gate (`human` / `ai` / `auto`)                       |
-| `native.role_models.*`            | `{}`      | Per-role model overrides                                          |
+| `native.role_models.*`            | `{}`      | Per-role model overrides; falls back to IDE default               |
+| `workflow.branch_prefix`          | "agent"   | Task branch prefix                                                |
 
 </details>
 
@@ -158,10 +215,10 @@ Project settings live in `.harness-flow/config.toml`:
 | `harness gate [--task]`                                    | Check ship-readiness gates                           |
 | `harness update [--check] [--force]`                       | Self-update + config migration                       |
 | `harness git-preflight [--json]`                           | Preflight checks (clean tree, branch, worktree)      |
-| `harness git-prepare-branch --task-key <key>`              | Create or resume task branch                         |
-| `harness git-sync-trunk [--json]`                          | Sync feature branch with trunk                       |
 | `harness save-eval --task <id> [--kind] [--verdict] ...`   | Save evaluation results                              |
 | `harness save-build-log --task <id> [--body]`              | Save build log                                       |
+| `harness git-prepare-branch --task-key <key>`              | Create or resume task branch                         |
+| `harness git-sync-trunk [--json]`                          | Sync feature branch with trunk                       |
 
 </details>
 
