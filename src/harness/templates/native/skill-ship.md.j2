@@ -109,6 +109,7 @@ stage already completed in this session, most pre-flight work is redundant.
    - [ ] Eval Artifact Gate (Step 5.9)
    - [ ] Commit (Step 6)
    - [ ] Verification Gate (Step 7)
+   - [ ] Pre-push Rebase (Step 7.5)
    - [ ] Push + PR (Step 8)
    ```
 
@@ -433,6 +434,21 @@ Claiming work is complete without verification is dishonesty, not efficiency.
 
 ---
 {% endif %}
+
+## Step 7.5: Pre-push Rebase (catch-up with trunk)
+
+Rebase onto the latest trunk **again** right before push, to absorb any commits
+that landed on `{{ trunk_branch }}` since Step 2 (e.g. CD version bumps from other PRs):
+
+```bash
+git fetch origin {{ trunk_branch }} && git rebase origin/{{ trunk_branch }}
+```
+
+- **If already up to date:** continue silently.
+- **If rebase conflicts:** try auto-resolve simple cases (e.g. version file ordering).
+  If complex, `git rebase --abort`, **STOP** and show conflicts.
+
+---
 
 ## Step 8: Push + PR
 
