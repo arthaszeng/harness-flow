@@ -40,11 +40,11 @@ classDiagram
         +AssessRisk
     }
 
-    style Architect fill:#222,stroke:#222,color:#fff
-    style ProductOwner fill:#222,stroke:#222,color:#fff
-    style Engineer fill:#222,stroke:#222,color:#fff
-    style QA fill:#222,stroke:#222,color:#fff
-    style ProjectManager fill:#222,stroke:#222,color:#fff
+    style Architect fill:#fff,stroke:#222,color:#000
+    style ProductOwner fill:#fff,stroke:#222,color:#000
+    style Engineer fill:#fff,stroke:#222,color:#000
+    style QA fill:#fff,stroke:#222,color:#000
+    style ProjectManager fill:#fff,stroke:#222,color:#000
 ```
 
 > **Not a simulation** — these roles run as parallel AI subagents with distinct system prompts, each scoring independently. Findings from 2+ roles are flagged as high confidence.
@@ -91,25 +91,41 @@ That's it — plan, build, 5-role review, and PR in one command.
 ## How it works
 
 ```mermaid
-flowchart LR
-  Req["Requirement"] --> Plan["Plan"]
-  Plan --> PlanReview["5-role\nplan review"]
-  PlanReview --> Build["Build + CI"]
-  Build --> CodeReview["5-role\ncode review"]
-  CodeReview --> Ship["Ship → PR"]
+flowchart TB
+  subgraph pipeline [" "]
+    direction LR
+    Req["Requirement"] --> Plan["Plan"]
+    Plan --> PlanReview["5-role\nplan review"]
+    PlanReview --> Build["Build + CI"]
+    Build --> CodeReview["5-role\ncode review"]
+    CodeReview --> Ship["Ship → PR"]
+  end
 
-  PlanReview -.->|"same 5 roles"| Reviewers
-  CodeReview -.->|"same 5 roles"| Reviewers
+  subgraph reviewers ["5 parallel reviewers"]
+    direction LR
+    A["Architect"]
+    PO["Product Owner"]
+    Eng["Engineer"]
+    Q["QA"]
+    PM["Project Manager"]
+  end
 
-  Reviewers["Architect · Product Owner · Engineer · QA · PM"]
+  PlanReview -.-> reviewers
+  CodeReview -.-> reviewers
 
+  style pipeline fill:none,stroke:none
   style Req fill:#fff,stroke:#222,stroke-width:2px,color:#000
   style Plan fill:#fff,stroke:#222,stroke-width:2px,color:#000
   style PlanReview fill:#222,stroke:#222,stroke-width:2px,color:#fff
   style Build fill:#fff,stroke:#222,stroke-width:2px,color:#000
   style CodeReview fill:#222,stroke:#222,stroke-width:2px,color:#fff
   style Ship fill:#fff,stroke:#222,stroke-width:2px,color:#000
-  style Reviewers fill:#222,stroke:#222,stroke-width:2px,color:#fff
+  style reviewers fill:none,stroke:#222,stroke-width:1px,stroke-dasharray: 5 5
+  style A fill:#fff,stroke:#222,stroke-width:1px,color:#000
+  style PO fill:#fff,stroke:#222,stroke-width:1px,color:#000
+  style Eng fill:#fff,stroke:#222,stroke-width:1px,color:#000
+  style Q fill:#fff,stroke:#222,stroke-width:1px,color:#000
+  style PM fill:#fff,stroke:#222,stroke-width:1px,color:#000
 ```
 
 Both **plan review** and **code review** dispatch the same 5 parallel reviewers. Findings from 2+ roles are flagged as high confidence.
