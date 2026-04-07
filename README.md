@@ -21,35 +21,26 @@ AI agents can write code — but they **can't ship products**. They lack navigat
 ## Where Harness Flow Fits
 
 ```
-                                        ┌─────────────────────────────────────────┐
-                                        │  ★  HARNESS FLOW — L5 Self-Driving      │
-                                        │  Human as copilot, AI ships products     │
-                                   ┌────┴─────────────────────────────────────────┘
-                                   │  L3  Agent Mode  (Cursor Agent, Claude Code)
-                                   │  AI writes, but no navigation / rules / record
-                              ┌────┘
-                              │  L1  AI Assistants  (GitHub Copilot)
-                              │  Hands on wheel, AI autocompletes
-                         ┌────┘
-                         │  L0  Manual Coding  (vim + gcc)
-                         │  Write every line yourself
-  ───────────────────────┘
+    Manual          AI Assistant       Agent Mode        Harness Flow
+    Coding                                              
+                                                          \O/
+                                          \O              _|_    ★
+         O             O/                  |    ?!        / \
+        /|\           /|                  /|\   !!     __|   |__
+        / \          / \                  / \          |  CAR  |
+   ___________   ___________         ___________    ═══════════════
+   vim + gcc     Copilot            Cursor Agent     L5 Autopilot
+                                    Claude Code
+   You write     You drive,         AI writes,       AI ships.
+   every line.   AI assists.        but crashes.     You relax.
 ```
 
 ### The Three Pillars of L5
 
-```
-  ┌──────────────┐    ┌──────────────┐    ┌──────────────┐
-  │  🧭 Navigate  │    │  🚦 Rules     │    │  📹 Dashcam   │
-  │              │    │              │    │              │
-  │ vision       │    │ 5-role       │    │ audit trail  │
-  │  → plan      │    │  review      │    │  + learnings │
-  │  → roadmap   │    │  + gates     │    │  + retro     │
-  │              │    │  + trust     │    │              │
-  │ AI knows     │    │ AI obeys     │    │ every call   │
-  │ WHERE to go  │    │ the RULES    │    │ is RECORDED  │
-  └──────────────┘    └──────────────┘    └──────────────┘
-```
+|  | Navigation | Traffic Rules | Dashcam |
+|--|:----------:|:------------:|:-------:|
+|  | vision → plan → roadmap | 5-role review + gates + trust | audit trail + learnings + retro |
+|  | AI knows **where** to go | AI obeys the **rules** | every decision **recorded** |
 
 ---
 
