@@ -277,6 +277,69 @@ def test_sync_feature_with_trunk_continue_fails_non_conflict(tmp_path: Path, mon
     assert result.code == "REBASE_CONTINUE_FAILED"
 
 
+def test_preflight_returns_branch_task_key_for_agent_branch(tmp_path: Path, monkeypatch):
+    """preflight context includes branch_task_key extracted from agent branch."""
+    manager = _manager(tmp_path)
+    monkeypatch.setattr(
+        "harness.core.branch_lifecycle.ensure_clean_result",
+        lambda _cwd: GitOperationResult(ok=True, code="OK", message="clean"),
+    )
+    monkeypatch.setattr("harness.core.branch_lifecycle.current_branch", lambda _cwd: "agent/task-036-worktree-bug-bash")
+    monkeypatch.setattr("harness.core.branch_lifecycle.detect_worktree", lambda _cwd: None)
+    extract_calls: list[dict] = []
+
+    def _spy_extract(branch, **kwargs):
+        extract_calls.append({"branch": branch, "kwargs": kwargs})
+        return "task-036"
+
+    monkeypatch.setattr(
+        "harness.core.branch_lifecycle.extract_task_key_from_branch",
+        _spy_extract,
+    )
+    result = manager.preflight_repo_state()
+    assert result.ok is True
+    assert result.context["branch_task_key"] == "task-036"
+    assert len(extract_calls) == 1
+    assert extract_calls[0]["branch"] == "agent/task-036-worktree-bug-bash"
+    assert extract_calls[0]["kwargs"].get("cwd") == tmp_path
+
+
+def test_preflight_returns_empty_task_key_for_non_agent_branch(tmp_path: Path, monkeypatch):
+    """preflight context returns empty branch_task_key for non-agent branches."""
+    manager = _manager(tmp_path)
+    monkeypatch.setattr(
+        "harness.core.branch_lifecycle.ensure_clean_result",
+        lambda _cwd: GitOperationResult(ok=True, code="OK", message="clean"),
+    )
+    monkeypatch.setattr("harness.core.branch_lifecycle.current_branch", lambda _cwd: "main")
+    monkeypatch.setattr("harness.core.branch_lifecycle.detect_worktree", lambda _cwd: None)
+    monkeypatch.setattr(
+        "harness.core.branch_lifecycle.extract_task_key_from_branch",
+        lambda branch, **_kw: None,
+    )
+    result = manager.preflight_repo_state()
+    assert result.ok is True
+    assert result.context["branch_task_key"] == ""
+
+
+def test_preflight_returns_empty_task_key_for_nonstandard_agent_branch(tmp_path: Path, monkeypatch):
+    """Agent branch without task key pattern returns empty branch_task_key."""
+    manager = _manager(tmp_path)
+    monkeypatch.setattr(
+        "harness.core.branch_lifecycle.ensure_clean_result",
+        lambda _cwd: GitOperationResult(ok=True, code="OK", message="clean"),
+    )
+    monkeypatch.setattr("harness.core.branch_lifecycle.current_branch", lambda _cwd: "agent/foo-bar")
+    monkeypatch.setattr("harness.core.branch_lifecycle.detect_worktree", lambda _cwd: None)
+    monkeypatch.setattr(
+        "harness.core.branch_lifecycle.extract_task_key_from_branch",
+        lambda branch, **_kw: None,
+    )
+    result = manager.preflight_repo_state()
+    assert result.ok is True
+    assert result.context["branch_task_key"] == ""
+
+
 def test_prepare_task_branch_resumes_existing_branch(tmp_path: Path, monkeypatch):
     manager = _manager(tmp_path)
     monkeypatch.setattr(

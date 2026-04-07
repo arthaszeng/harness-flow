@@ -10,7 +10,7 @@ from pathlib import Path
 
 from harness.core.config import HarnessConfig
 from harness.core.task_identity import TaskIdentityResolver
-from harness.core.worktree import detect_worktree
+from harness.core.worktree import detect_worktree, extract_task_key_from_branch
 from harness.integrations.git_ops import (
     GitOperationResult,
     current_branch,
@@ -82,6 +82,7 @@ class BranchLifecycleManager:
                 message="repository is in detached HEAD state",
             )
         wt = detect_worktree(self.project_root)
+        task_key = extract_task_key_from_branch(branch, cwd=self.project_root) or ""
         return GitOperationResult(
             ok=True,
             code="OK",
@@ -90,6 +91,7 @@ class BranchLifecycleManager:
                 "branch": branch,
                 "trunk": self.trunk_branch,
                 "worktree": "true" if wt is not None else "false",
+                "branch_task_key": task_key,
             },
         )
 
