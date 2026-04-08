@@ -1,8 +1,8 @@
-"""Pure-function task lifecycle operations (done / archive).
+"""Core task lifecycle operations (done / archive).
 
-These live in ``harness.core`` so that both CLI commands and internal
-callers (e.g. ``BranchLifecycleManager.preflight_repo_state``) can use
-them without a ``core → commands`` reverse dependency.
+Filesystem-backed helpers shared by CLI commands and internal callers
+(e.g. ``BranchLifecycleManager.preflight_repo_state``) without a
+``core → commands`` reverse dependency.
 """
 
 from __future__ import annotations
@@ -76,7 +76,9 @@ def archive_task(agents_dir: Path, task_key: str, *, force: bool = False) -> Tas
         return bad
 
     tasks_dir = agents_dir / "tasks"
-    source = tasks_dir / task_key
+    source = (tasks_dir / task_key).resolve()
+    if not source.is_relative_to(tasks_dir.resolve()):
+        return TaskOpResult(ok=False, code="INVALID_TASK_KEY", message=f"task path escapes sandbox: {task_key}")
     if not source.is_dir():
         return TaskOpResult(ok=False, code="TASK_DIR_NOT_FOUND", message=f"task directory not found: {task_key}")
 

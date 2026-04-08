@@ -64,6 +64,18 @@ class TestMarkTaskDone:
         assert not result.ok
         assert result.code == "INVALID_TASK_KEY"
 
+    def test_state_transition_failed(self, tmp_path: Path) -> None:
+        from unittest.mock import patch
+
+        agents = _make_agents_dir(tmp_path)
+        td = agents / "tasks" / "task-001"
+        _write_workflow_state(td, phase="shipping")
+
+        with patch("harness.core.task_ops.sync_task_state", side_effect=ValueError("bad transition")):
+            result = mark_task_done(agents, "task-001")
+        assert not result.ok
+        assert result.code == "STATE_TRANSITION_FAILED"
+
 
 # ── archive_task ────────────────────────────────────────────────
 
@@ -148,6 +160,18 @@ class TestArchiveTask:
         result = archive_task(agents, "task-001")
         assert not result.ok
         assert result.code == "NO_WORKFLOW_STATE"
+
+    def test_archive_move_failed(self, tmp_path: Path) -> None:
+        from unittest.mock import patch
+
+        agents = _make_agents_dir(tmp_path)
+        td = agents / "tasks" / "task-001"
+        _write_workflow_state(td, phase="done")
+
+        with patch("harness.core.task_ops.shutil.move", side_effect=OSError("disk full")):
+            result = archive_task(agents, "task-001")
+        assert not result.ok
+        assert result.code == "ARCHIVE_MOVE_FAILED"
 
     def test_symlink_agents_dir(self, tmp_path: Path) -> None:
         """archive_task works when agents_dir is a symlink (worktree scenario)."""
