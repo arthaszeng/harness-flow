@@ -38,7 +38,7 @@ class TestClassifyFile:
 
 
 class TestRunDiffStat:
-    def test_with_changes(self, tmp_path, monkeypatch):
+    def test_with_changes(self, tmp_path, monkeypatch, capture_echo):
         (tmp_path / ".harness-flow").mkdir()
         monkeypatch.chdir(tmp_path)
 
@@ -47,8 +47,8 @@ class TestRunDiffStat:
         mock_result.stdout = "src/foo.py\ntests/test_foo.py\nREADME.md\npyproject.toml\n"
         monkeypatch.setattr("harness.commands.diff_stat.run_git", lambda *a, **kw: mock_result)
 
-        out = _capture(lambda: run_diff_stat(as_json=True))
-        data = json.loads(out)
+        run_diff_stat(as_json=True)
+        data = json.loads(capture_echo[0])
         assert data["total_files"] == 4
         assert data["code_files"] == 1
         assert data["test_files"] == 1
@@ -57,7 +57,7 @@ class TestRunDiffStat:
         assert data["has_md_changes"] is True
         assert data["trunk_branch"] == "main"
 
-    def test_no_changes(self, tmp_path, monkeypatch):
+    def test_no_changes(self, tmp_path, monkeypatch, capture_echo):
         (tmp_path / ".harness-flow").mkdir()
         monkeypatch.chdir(tmp_path)
 
@@ -66,12 +66,12 @@ class TestRunDiffStat:
         mock_result.stdout = ""
         monkeypatch.setattr("harness.commands.diff_stat.run_git", lambda *a, **kw: mock_result)
 
-        out = _capture(lambda: run_diff_stat(as_json=True))
-        data = json.loads(out)
+        run_diff_stat(as_json=True)
+        data = json.loads(capture_echo[0])
         assert data["total_files"] == 0
         assert data["has_md_changes"] is False
 
-    def test_only_md_changes(self, tmp_path, monkeypatch):
+    def test_only_md_changes(self, tmp_path, monkeypatch, capture_echo):
         (tmp_path / ".harness-flow").mkdir()
         monkeypatch.chdir(tmp_path)
 
@@ -80,13 +80,13 @@ class TestRunDiffStat:
         mock_result.stdout = "CHANGELOG.md\ndocs/api.md\n"
         monkeypatch.setattr("harness.commands.diff_stat.run_git", lambda *a, **kw: mock_result)
 
-        out = _capture(lambda: run_diff_stat(as_json=True))
-        data = json.loads(out)
+        run_diff_stat(as_json=True)
+        data = json.loads(capture_echo[0])
         assert data["code_files"] == 0
         assert data["doc_files"] == 2
         assert data["has_md_changes"] is True
 
-    def test_git_failure_exits_1(self, tmp_path, monkeypatch):
+    def test_git_failure_exits_1(self, tmp_path, monkeypatch, capture_echo):
         (tmp_path / ".harness-flow").mkdir()
         monkeypatch.chdir(tmp_path)
 
@@ -100,7 +100,7 @@ class TestRunDiffStat:
             run_diff_stat(as_json=True)
         assert exc_info.value.exit_code == 1
 
-    def test_mixed_changes(self, tmp_path, monkeypatch):
+    def test_mixed_changes(self, tmp_path, monkeypatch, capture_echo):
         (tmp_path / ".harness-flow").mkdir()
         monkeypatch.chdir(tmp_path)
 
@@ -117,29 +117,10 @@ class TestRunDiffStat:
         )
         monkeypatch.setattr("harness.commands.diff_stat.run_git", lambda *a, **kw: mock_result)
 
-        out = _capture(lambda: run_diff_stat(as_json=True))
-        data = json.loads(out)
+        run_diff_stat(as_json=True)
+        data = json.loads(capture_echo[0])
         assert data["total_files"] == 7
         assert data["code_files"] == 3
         assert data["test_files"] == 2
         assert data["doc_files"] == 1
         assert data["other_files"] == 1
-
-
-def _capture(fn) -> str:
-    """Capture typer.echo output from a function call."""
-    lines: list[str] = []
-    original_echo = typer.echo
-
-    def _mock_echo(message=None, **kwargs):
-        if kwargs.get("err"):
-            return
-        if message is not None:
-            lines.append(str(message))
-
-    typer.echo = _mock_echo
-    try:
-        fn()
-    finally:
-        typer.echo = original_echo
-    return "\n".join(lines)

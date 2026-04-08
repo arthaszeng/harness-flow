@@ -39,14 +39,19 @@ def run_task_next_id(*, as_json: bool = False) -> None:
 
 def run_task_resolve(*, task: str | None = None, as_json: bool = False) -> None:
     """Print the currently active task directory and its state."""
+    import os
+
     cwd = Path.cwd()
     agents_dir = cwd / ".harness-flow"
+    env_task_id = os.environ.get("HARNESS_TASK_ID") or None
 
     if task:
         resolution_source = "explicit"
+    elif env_task_id:
+        env_dir = resolve_task_dir(agents_dir, explicit_task_id=env_task_id)
+        resolution_source = "env" if env_dir is not None else "latest_numeric"
     else:
-        import os
-        resolution_source = "env" if os.environ.get("HARNESS_TASK_ID") else "latest_numeric"
+        resolution_source = "latest_numeric"
 
     task_dir = resolve_task_dir(agents_dir, explicit_task_id=task or None)
 

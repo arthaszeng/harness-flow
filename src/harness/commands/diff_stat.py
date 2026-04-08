@@ -40,6 +40,8 @@ def run_diff_stat(*, as_json: bool = True) -> None:
     try:
         cfg = HarnessConfig.load(cwd)
     except Exception:
+        import warnings
+        warnings.warn("Failed to load .harness-flow/config.toml; using default trunk_branch=main")
         cfg = HarnessConfig()
     trunk = cfg.workflow.trunk_branch
     diff_range = f"origin/{trunk}..HEAD"
