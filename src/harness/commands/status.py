@@ -9,7 +9,6 @@ import typer
 from rich.panel import Panel
 from rich.table import Table
 
-from harness.core.config import HarnessConfig, WorkflowConfig
 from harness.core.progress import suggest_next_action
 from harness.core.ui import get_ui
 from harness.core.worktree import detect_worktree, extract_task_id_from_branch
@@ -24,8 +23,6 @@ from harness.i18n import apply_project_lang_from_cwd, t
 
 log = logging.getLogger("harness.commands.status")
 
-_DEFAULT_PASS_THRESHOLD = WorkflowConfig().pass_threshold
-
 
 def _emit_progress_line_only() -> None:
     """Stdout: one HARNESS_PROGRESS line when workflow-state is valid; else silent."""
@@ -36,16 +33,6 @@ def _emit_progress_line_only() -> None:
     if workflow_state is None:
         return
     typer.echo(format_harness_progress_line(phase=workflow_state.phase))
-
-
-def _load_pass_threshold() -> float:
-    """Load pass_threshold from config, falling back to default on any error."""
-    try:
-        cfg = HarnessConfig.load()
-        return cfg.workflow.pass_threshold
-    except Exception:
-        log.debug("could not load config for pass_threshold, using default", exc_info=True)
-        return _DEFAULT_PASS_THRESHOLD
 
 
 def run_status(*, verbose: bool = False, progress_line: bool = False) -> None:
@@ -110,7 +97,7 @@ def _render_current(
     workflow_state: WorkflowState,
 ) -> None:
     task_label = workflow_state.active_plan.title or workflow_state.task_id
-    console.print(f"\n[cyber.magenta]Current Task:[/] {task_label}")
+    console.print(f"\n[cyber.magenta]{t('status.current_task')}:[/] {task_label}")
     console.print(f"  Task ID:   {workflow_state.task_id}")
     console.print(f"  Phase:     {workflow_state.phase.value}")
     console.print(f"  Iteration: {workflow_state.iteration}")

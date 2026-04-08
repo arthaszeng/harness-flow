@@ -58,7 +58,7 @@ class TestWorktreeInitCreatesSymlinks:
             assert target.is_symlink(), f"{rel} should be a symlink"
             assert target.resolve() == (main_root / rel).resolve()
 
-    def test_skips_existing_correct_symlinks(self, linked_worktree, monkeypatch, capsys):
+    def test_skips_existing_correct_symlinks(self, linked_worktree, monkeypatch):
         main_root, linked_root, wt_info = linked_worktree
         monkeypatch.chdir(linked_root)
 
@@ -69,6 +69,11 @@ class TestWorktreeInitCreatesSymlinks:
 
         with patch("harness.commands.worktree_init.resolve_main_worktree_root", return_value=main_root):
             run_worktree_init(force=False)
+
+        for rel in _SYMLINK_TARGETS:
+            target = linked_root / rel
+            assert target.is_symlink()
+            assert target.resolve() == (main_root / rel).resolve()
 
     def test_skips_missing_source(self, linked_worktree, monkeypatch):
         main_root, linked_root, wt_info = linked_worktree
@@ -95,13 +100,16 @@ class TestWorktreeInitCreatesSymlinks:
         assert (linked_root / ".harness-flow").is_symlink()
 
     def test_refuses_without_force_when_dir_exists(self, linked_worktree, monkeypatch):
+        from click.exceptions import Exit
+
         main_root, linked_root, wt_info = linked_worktree
         monkeypatch.chdir(linked_root)
         existing = linked_root / ".harness-flow"
         existing.mkdir(parents=True, exist_ok=True)
 
         with patch("harness.commands.worktree_init.resolve_main_worktree_root", return_value=main_root):
-            run_worktree_init(force=False)
+            with pytest.raises(Exit):
+                run_worktree_init(force=False)
 
         assert not (linked_root / ".harness-flow").is_symlink()
 

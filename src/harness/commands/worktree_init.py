@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 import typer
+from rich.console import Console
 
 from harness.core.worktree import resolve_main_worktree_root
 from harness.i18n import apply_project_lang_from_cwd, t
@@ -36,6 +37,7 @@ def run_worktree_init(*, force: bool = False) -> None:
 
     created = 0
     skipped = 0
+    errors = 0
     for rel_path in _SYMLINK_TARGETS:
         source = main_root / rel_path
         target = project_root / rel_path
@@ -55,7 +57,7 @@ def run_worktree_init(*, force: bool = False) -> None:
                 console.print(
                     f"  [red]✗[/] {t('worktree_init.exists_symlink_mismatch', path=rel_path)}"
                 )
-                skipped += 1
+                errors += 1
                 continue
             target.unlink()
 
@@ -64,7 +66,7 @@ def run_worktree_init(*, force: bool = False) -> None:
                 console.print(
                     f"  [red]✗[/] {t('worktree_init.exists_not_symlink', path=rel_path)}"
                 )
-                skipped += 1
+                errors += 1
                 continue
             import shutil
             if target.is_dir():
@@ -83,7 +85,9 @@ def run_worktree_init(*, force: bool = False) -> None:
     elif skipped > 0:
         console.print(f"  {t('worktree_init.nothing_created', skipped=skipped)}")
 
+    if errors > 0:
+        raise typer.Exit(1)
 
-def _get_console():
-    from rich.console import Console
+
+def _get_console() -> Console:
     return Console()
