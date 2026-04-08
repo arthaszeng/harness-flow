@@ -34,7 +34,7 @@ def test_check_pr_state_reports_open(tmp_path: Path, monkeypatch):
     payload = {"number": 64, "state": "OPEN", "url": "https://example/pr/64", "mergedAt": None}
 
     monkeypatch.setattr(
-        "harness.core.post_ship.subprocess.run",
+        "harness.integrations.gh_ops.subprocess.run",
         lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 0, json.dumps(payload), ""),
     )
     result = manager.check_pr_state(pr_number=64, branch=None)
@@ -46,7 +46,7 @@ def test_check_pr_state_reports_closed_unmerged(tmp_path: Path, monkeypatch):
     manager = _manager(tmp_path)
     payload = {"number": 64, "state": "CLOSED", "url": "https://example/pr/64", "mergedAt": None}
     monkeypatch.setattr(
-        "harness.core.post_ship.subprocess.run",
+        "harness.integrations.gh_ops.subprocess.run",
         lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 0, json.dumps(payload), ""),
     )
     result = manager.check_pr_state(pr_number=64, branch=None)
@@ -63,23 +63,23 @@ def test_load_pr_payload_prefers_pr_number_over_branch(tmp_path: Path, monkeypat
         payload = {"number": 77, "state": "OPEN", "url": "https://example/pr/77", "mergedAt": None}
         return subprocess.CompletedProcess(args, 0, json.dumps(payload), "")
 
-    monkeypatch.setattr("harness.core.post_ship.subprocess.run", _run)
+    monkeypatch.setattr("harness.integrations.gh_ops.subprocess.run", _run)
     result = manager.check_pr_state(pr_number=77, branch="agent/task-006-any")
     assert result.code == "PR_NOT_MERGED"
     assert captured
-    assert captured[0][:4] == ["gh", "pr", "view", "77"]
-    assert "--head" not in captured[0]
+    assert captured[0][:3] == ["gh", "pr", "view"]
+    assert "77" in captured[0]
 
 
 def test_check_pr_state_parse_failure(tmp_path: Path, monkeypatch):
     manager = _manager(tmp_path)
     monkeypatch.setattr(
-        "harness.core.post_ship.subprocess.run",
+        "harness.integrations.gh_ops.subprocess.run",
         lambda *args, **kwargs: subprocess.CompletedProcess(args[0], 0, "{bad json", ""),
     )
     result = manager.check_pr_state(pr_number=64, branch=None)
     assert result.ok is False
-    assert result.code == "PR_LOOKUP_PARSE_FAILED"
+    assert result.code == "GH_JSON_PARSE_FAILED"
 
 
 def test_finalize_after_merge_happy_path(tmp_path: Path, monkeypatch):

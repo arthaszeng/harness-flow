@@ -112,6 +112,7 @@ class TestWorkflowNext:
             (TaskState.IDLE, "/harness-plan"),
             (TaskState.PLANNING, "/harness-plan"),
             (TaskState.SHIPPING, "/harness-ship"),
+            (TaskState.LANDING, "/harness-ship"),
             (TaskState.DONE, "/harness-plan"),
             (TaskState.BLOCKED, "/harness-plan"),
         ],

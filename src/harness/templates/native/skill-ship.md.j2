@@ -656,10 +656,109 @@ artifact ref, ship metrics ref, and final phase/blocker outcome before finishing
 
 ---
 
+## Step 9: PR Landing — CI Monitoring & Auto-Fix Loop
+
+After the PR is created and metrics persisted, monitor remote CI until the PR
+reaches **merge-ready** state (all required checks green + no merge conflict).
+
+**Skip entirely** if `gh` is not available — output a manual-check reminder instead.
+
+### 9.1 Transition to Landing
+
+```bash
+# Update workflow state (if workflow-state.json exists)
+# phase: shipping → landing
+```
+
+### 9.2 Polling Loop (max 3 fix rounds)
+
+```
+for round in 1..3:
+  1. Check PR CI status:
+     ```bash
+     harness pr-status --branch "$(git rev-parse --abbrev-ref HEAD)" --json
+     ```
+
+  2. If ci_status == "pass" AND conflict == false:
+     → PR is merge-ready. Break loop. Continue to Step 9.4.
+
+  3. If conflict == true:
+     → Rebase onto trunk (same as Step 7.5):
+       ```bash
+       git fetch origin {{ trunk_branch }} && git rebase origin/{{ trunk_branch }}
+       ```
+     → If rebase fails: STOP and report conflict.
+     → Push: `git push --force-with-lease`
+     → Wait 30s, then re-poll.
+
+  4. If ci_status == "fail":
+     a. Get failure logs:
+        ```bash
+        harness ci-logs --branch "$(git rev-parse --abbrev-ref HEAD)" --json
+        ```
+     b. Diagnose each failed job (auto-fixable / needs-human / infra-issue).
+     c. If ALL failures are infra-issue: STOP — report infrastructure problem.
+     d. If ANY failure is needs-human AND no auto-fixable failures: STOP — report.
+     e. Otherwise: attempt auto-fix:
+        - Read the failed test / lint output
+        - Apply code fixes
+        - Run local CI: `{{ ci_command }}`
+        - If local CI passes: commit and push
+          ```bash
+          git add <fixed-files>
+          git commit -m "fix: auto-fix CI failure (landing round N)"
+          git push
+          ```
+        - Wait 30s, then re-poll.
+
+  5. If ci_status == "pending":
+     → Wait with exponential backoff: 30s, 60s, 120s (cap at 2 min).
+     → Total wait cap: 15 minutes. If exceeded: STOP — report timeout.
+```
+
+### 9.3 Exit Conditions
+
+| Condition | Action |
+|-----------|--------|
+| CI green + no conflict | → Step 9.4 (success) |
+| 3 fix rounds exhausted | → STOP with structured report |
+| All failures are infra-issue | → STOP with structured report |
+| needs-human failure, no auto-fixable | → STOP with structured report |
+| Rebase conflict unresolvable | → STOP with conflict details |
+| Polling timeout (15 min) | → STOP with timeout report |
+
+**Structured failure report format:**
+```
+PR LANDING REPORT
+═══════════════════════════════════════════
+  PR:          #N (URL)
+  Status:      BLOCKED
+  Rounds:      M/3 attempted
+  Category:    auto-fixable | needs-human | infra-issue | timeout | conflict
+  Failed jobs: [list]
+  Suggestion:  [actionable next step for user]
+═══════════════════════════════════════════
+```
+
+### 9.4 Landing Success
+
+When CI is green and no conflict:
+1. Update `workflow-state.json`: landing gate → pass, phase → done
+2. Output:
+   ```
+   PR LANDING: MERGE-READY ✓
+   PR #N: [URL]
+   CI: all checks passed
+   Conflict: none
+   ```
+
+---
+
 ## Ship Handoff
 
 Write a ship outcome summary to the `handoff_summary` field of `workflow-state.json` (≤ 2000 chars):
-PR URL, commit count, review scores, key findings addressed, remaining open items.
+PR URL, commit count, review scores, key findings addressed, remaining open items,
+landing outcome (merge-ready / blocked with reason).
 
 If `workflow-state.json` does not exist, skip.
 
@@ -687,6 +786,8 @@ where to continue** instead of starting from scratch:
 | `plan.md` + `code-eval-rN.md` (verdict=PASS) | `evaluating` | Step 5.9 (Gate check) | Eval passed, verify gate |
 | Gate PASS + not pushed | `shipping` | Step 6 (Commit) | Needs commit and push |
 | Pushed + no PR | `shipping` | Step 8 (Create PR) | Code pushed, create PR |
+| PR exists + CI pending/fail | `landing` | Step 9.2 (Landing loop) | PR submitted, monitor CI |
+| PR exists + CI green | `landing` | Step 9.4 (Landing success) | Finalize landing |
 
 **When resuming, do NOT**:
 - Re-run eval that already passed (unless code changed after eval)

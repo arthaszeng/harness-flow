@@ -120,6 +120,8 @@ def _suggest(phase: TaskState) -> tuple[str, str]:
         return "/harness-ship", "Code review / eval — continue ship workflow or fix loop"
     if phase == TaskState.SHIPPING:
         return "/harness-ship", "Delivery in progress — continue until PR URL"
+    if phase == TaskState.LANDING:
+        return "/harness-ship", "PR submitted — monitoring CI, auto-fixing failures"
     if phase == TaskState.DONE:
         return "/harness-plan", "Task done — start a new plan if needed"
     if phase == TaskState.BLOCKED:

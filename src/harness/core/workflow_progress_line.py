@@ -23,6 +23,8 @@ def task_state_to_slug_and_step(state: TaskState) -> tuple[str, int, int]:
         return "eval", 3, total
     if state == TaskState.SHIPPING:
         return "ship", 4, total
+    if state == TaskState.LANDING:
+        return "ship", 4, total
     if state == TaskState.DONE:
         return "plan", 1, total
     if state == TaskState.BLOCKED:

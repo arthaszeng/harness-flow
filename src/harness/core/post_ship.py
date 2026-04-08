@@ -4,11 +4,11 @@ from __future__ import annotations
 
 import json
 import logging
-import subprocess
 from dataclasses import dataclass
 from pathlib import Path
 
 from harness.core.branch_lifecycle import BranchLifecycleManager
+from harness.integrations.gh_ops import run_gh_json
 from harness.integrations.git_ops import GitOperationResult, current_branch, ensure_clean_result, run_git_result
 
 log = logging.getLogger(__name__)
@@ -271,47 +271,36 @@ class PostShipManager:
                 message="either pr_number or branch must be provided to lookup PR state",
             )
 
-        args = ["gh", "pr", "view"]
+        args = ["pr", "view"]
         if pr_number is not None:
             args.append(str(pr_number))
         else:
             args.extend(["--head", branch.strip()])
         args.extend(["--json", "number,state,url,mergedAt,headRefName"])
 
-        try:
-            completed = subprocess.run(
-                args,
-                cwd=str(self.project_root),
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-        except subprocess.TimeoutExpired as exc:
+        result, payload = run_gh_json(
+            args,
+            self.project_root,
+            timeout=30,
+            code_on_error="PR_LOOKUP_FAILED",
+        )
+        if not result.ok:
+            code = result.code
+            if code == "GH_TIMEOUT":
+                code = "PR_LOOKUP_TIMEOUT"
+            elif code == "GH_IO_ERROR":
+                code = "PR_LOOKUP_IO_ERROR"
+            elif code == "GH_NOT_FOUND":
+                code = "PR_LOOKUP_IO_ERROR"
             return GitOperationResult(
                 ok=False,
-                code="PR_LOOKUP_TIMEOUT",
-                message="timed out while querying pull request state",
-                stderr=str(exc),
+                code=code,
+                message=result.message or "failed to query pull request state",
+                stdout=result.stdout,
+                stderr=result.stderr,
+                context=result.context,
             )
-        except OSError as exc:
-            return GitOperationResult(
-                ok=False,
-                code="PR_LOOKUP_IO_ERROR",
-                message="failed to execute gh command for pull request lookup",
-                stderr=str(exc),
-            )
-
-        if completed.returncode != 0:
-            return GitOperationResult(
-                ok=False,
-                code="PR_LOOKUP_FAILED",
-                message="failed to query pull request state",
-                stdout=completed.stdout,
-                stderr=completed.stderr,
-                context={"returncode": str(completed.returncode)},
-            )
-
-        return GitOperationResult(ok=True, code="OK", stdout=completed.stdout)
+        return GitOperationResult(ok=True, code="OK", stdout=result.stdout)
 
     def _resolve_task_branch(self, *, task_key: str, branch: str | None, pr_head_ref: str | None = None) -> str | None:
         if branch and branch.strip():

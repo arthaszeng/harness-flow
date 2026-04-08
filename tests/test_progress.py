@@ -58,3 +58,18 @@ class TestSuggestNextAction:
         set_lang("en")
         label = workflow_phase_user_label(phase)
         assert label != phase.value
+
+
+class TestLandingProgressLine:
+    def test_landing_slug_and_step(self):
+        from harness.core.workflow_progress_line import task_state_to_slug_and_step
+
+        slug, step, total = task_state_to_slug_and_step(TaskState.LANDING)
+        assert slug == "ship"
+        assert step == 4
+
+    def test_landing_suggest_next(self):
+        workflow_state = WorkflowState(task_id="task-099", phase=TaskState.LANDING)
+        action = suggest_next_action(workflow_state)
+        assert action
+        assert len(action) > 0
