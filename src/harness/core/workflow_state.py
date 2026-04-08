@@ -145,16 +145,24 @@ def _resolver_for_agents_dir(agents_dir: Path) -> TaskIdentityResolver:
         return TaskIdentityResolver()
 
 
-def iter_task_dirs(agents_dir: Path) -> list[Path]:
-    tasks_dir = agents_dir / "tasks"
-    if not tasks_dir.exists():
+def _iter_validated_dirs(parent_dir: Path, agents_dir: Path) -> list[Path]:
+    """Enumerate and sort validated task directories under *parent_dir*."""
+    if not parent_dir.exists():
         return []
     resolver = _resolver_for_agents_dir(agents_dir)
-    task_dirs = [p for p in tasks_dir.iterdir() if p.is_dir() and resolver.is_valid_task_key(p.name)]
+    dirs = [p for p in parent_dir.iterdir() if p.is_dir() and resolver.is_valid_task_key(p.name)]
     return sorted(
-        task_dirs,
+        dirs,
         key=lambda p: (0, task_dir_number(p) or -1) if task_dir_number(p) is not None else (1, p.name),
     )
+
+
+def iter_task_dirs(agents_dir: Path) -> list[Path]:
+    return _iter_validated_dirs(agents_dir / "tasks", agents_dir)
+
+
+def iter_archive_dirs(agents_dir: Path) -> list[Path]:
+    return _iter_validated_dirs(agents_dir / "archive", agents_dir)
 
 
 def resolve_task_dir(

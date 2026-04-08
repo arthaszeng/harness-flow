@@ -9,42 +9,12 @@ from pathlib import Path
 import typer
 
 from harness.core.state import TaskState
-from harness.core.task_identity import TaskIdentityResolver
 from harness.core.workflow_state import (
+    iter_archive_dirs,
     iter_task_dirs,
     load_workflow_state,
     sync_task_state,
-    task_dir_number,
 )
-
-
-def _resolver_for_cwd() -> TaskIdentityResolver:
-    from harness.core.config import HarnessConfig
-
-    try:
-        cfg = HarnessConfig.load(Path.cwd())
-        return TaskIdentityResolver.from_config(cfg)
-    except Exception:
-        return TaskIdentityResolver()
-
-
-def iter_archive_dirs(agents_dir: Path) -> list[Path]:
-    """Enumerate validated task directories under archive/, sorted like iter_task_dirs."""
-    archive_dir = agents_dir / "archive"
-    if not archive_dir.exists():
-        return []
-    try:
-        from harness.core.config import HarnessConfig
-
-        cfg = HarnessConfig.load(agents_dir.parent)
-        resolver = TaskIdentityResolver.from_config(cfg)
-    except Exception:
-        resolver = TaskIdentityResolver()
-    dirs = [p for p in archive_dir.iterdir() if p.is_dir() and resolver.is_valid_task_key(p.name)]
-    return sorted(
-        dirs,
-        key=lambda p: (0, task_dir_number(p) or -1) if task_dir_number(p) is not None else (1, p.name),
-    )
 
 
 def _task_summary(task_dir: Path, source: str) -> dict:
@@ -132,12 +102,14 @@ def run_task_list(
 
 def run_task_archive(*, task: str, force: bool = False) -> None:
     """Move a done task from tasks/ to archive/."""
+    from harness.core.workflow_state import _resolver_for_agents_dir
+
     cwd = Path.cwd()
     agents_dir = cwd / ".harness-flow"
     tasks_dir = agents_dir / "tasks"
     archive_dir = agents_dir / "archive"
 
-    resolver = _resolver_for_cwd()
+    resolver = _resolver_for_agents_dir(agents_dir)
     if not resolver.is_valid_task_key(task):
         typer.echo(f"  ✗ Invalid task ID: {task}", err=True)
         raise typer.Exit(1)
@@ -178,11 +150,13 @@ def run_task_archive(*, task: str, force: bool = False) -> None:
 
 def run_task_done(*, task: str) -> None:
     """Transition a task to phase=done and clear blockers."""
+    from harness.core.workflow_state import _resolver_for_agents_dir
+
     cwd = Path.cwd()
     agents_dir = cwd / ".harness-flow"
     tasks_dir = agents_dir / "tasks"
 
-    resolver = _resolver_for_cwd()
+    resolver = _resolver_for_agents_dir(agents_dir)
     if not resolver.is_valid_task_key(task):
         typer.echo(f"  ✗ Invalid task ID: {task}", err=True)
         raise typer.Exit(1)
@@ -197,9 +171,13 @@ def run_task_done(*, task: str) -> None:
         typer.echo(f"  ✓ Task {task} is already done.", err=True)
         return
 
-    sync_task_state(
-        task_dir,
-        phase=TaskState.DONE,
-        blocker={"kind": "", "reason": ""},
-    )
+    try:
+        sync_task_state(
+            task_dir,
+            phase=TaskState.DONE,
+            blocker={"kind": "", "reason": ""},
+        )
+    except ValueError as exc:
+        typer.echo(f"  ✗ Cannot mark {task} as done: {exc}", err=True)
+        raise typer.Exit(1) from None
     typer.echo(f"  ✓ Task {task} marked as done.", err=True)

@@ -9,12 +9,11 @@ import pytest
 import typer
 
 from harness.commands.task_lifecycle import (
-    iter_archive_dirs,
     run_task_archive,
     run_task_done,
     run_task_list,
 )
-from harness.core.workflow_state import WORKFLOW_STATE_FILENAME
+from harness.core.workflow_state import WORKFLOW_STATE_FILENAME, iter_archive_dirs
 
 
 def _write_ws(task_dir: Path, phase: str = "done", task_id: str | None = None) -> None:
@@ -77,6 +76,20 @@ class TestTaskList:
         assert len(data) == 1
         assert data[0]["task_id"] == "task-002"
 
+    def test_multi_phase_filter(self, tmp_path, monkeypatch, capture_echo):
+        tasks = tmp_path / ".harness-flow" / "tasks"
+        for tid, phase in [("task-001", "building"), ("task-002", "done"), ("task-003", "evaluating")]:
+            td = tasks / tid
+            td.mkdir(parents=True, exist_ok=True)
+            _write_ws(td, phase=phase)
+
+        monkeypatch.chdir(tmp_path)
+        run_task_list(phase_filter="done, building", as_json=True)
+        data = json.loads(capture_echo[0])
+        assert len(data) == 2
+        ids = {e["task_id"] for e in data}
+        assert ids == {"task-001", "task-002"}
+
     def test_include_archived(self, tmp_path, monkeypatch, capture_echo):
         tasks = tmp_path / ".harness-flow" / "tasks"
         t1 = tasks / "task-002"
@@ -125,6 +138,11 @@ class TestTaskList:
         monkeypatch.chdir(tmp_path)
         run_task_list(as_json=False)
 
+    def test_empty_rich_table_no_error(self, tmp_path, monkeypatch):
+        (tmp_path / ".harness-flow" / "tasks").mkdir(parents=True)
+        monkeypatch.chdir(tmp_path)
+        run_task_list(as_json=False)
+
 
 # ────────────────────────────────────────────────────────────
 # task archive
@@ -162,6 +180,16 @@ class TestTaskArchive:
         t1 = tasks / "task-001"
         t1.mkdir(parents=True)
         _write_ws(t1, phase="building")
+        (t1 / "plan.md").write_text("plan")
+
+        monkeypatch.chdir(tmp_path)
+        run_task_archive(task="task-001", force=True)
+        assert (tmp_path / ".harness-flow" / "archive" / "task-001").is_dir()
+
+    def test_force_without_workflow_state(self, tmp_path, monkeypatch):
+        tasks = tmp_path / ".harness-flow" / "tasks"
+        t1 = tasks / "task-001"
+        t1.mkdir(parents=True)
         (t1 / "plan.md").write_text("plan")
 
         monkeypatch.chdir(tmp_path)
@@ -287,9 +315,32 @@ class TestTaskDone:
         ws_data = json.loads((tasks / "task-001" / WORKFLOW_STATE_FILENAME).read_text())
         assert ws_data["phase"] == "done"
 
+    def test_corrupt_workflow_state_friendly_error(self, tmp_path, monkeypatch):
+        tasks = tmp_path / ".harness-flow" / "tasks"
+        t1 = tasks / "task-001"
+        t1.mkdir(parents=True)
+        (t1 / WORKFLOW_STATE_FILENAME).write_text("NOT JSON")
+
+        monkeypatch.chdir(tmp_path)
+        with pytest.raises(typer.Exit) as exc_info:
+            run_task_done(task="task-001")
+        assert exc_info.value.exit_code == 1
+
+    def test_done_from_shipping(self, tmp_path, monkeypatch):
+        tasks = tmp_path / ".harness-flow" / "tasks"
+        t1 = tasks / "task-001"
+        t1.mkdir(parents=True)
+        _write_ws(t1, phase="shipping")
+
+        monkeypatch.chdir(tmp_path)
+        run_task_done(task="task-001")
+
+        ws_data = json.loads((t1 / WORKFLOW_STATE_FILENAME).read_text())
+        assert ws_data["phase"] == "done"
+
 
 # ────────────────────────────────────────────────────────────
-# iter_archive_dirs
+# iter_archive_dirs (core function)
 # ────────────────────────────────────────────────────────────
 
 
