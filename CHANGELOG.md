@@ -9,8 +9,9 @@
 - **Removed `--wait-merge` / `--timeout-sec` / `--poll-interval-sec` options** from `git-post-ship`
 - **Removed worktree subsystem**: `harness.core.worktree` module and `harness.commands.worktree_init` deleted. Worktree symlink setup is now handled by Cursor's native `.cursor/worktrees.json` post-create hook. If not using Cursor, create symlinks manually: `ln -sfn <main-tree>/.harness-flow .harness-flow` and similarly for `.cursor/skills/harness`, `.cursor/agents`, `.cursor/rules`.
 - **Removed `context.worktree` field** from `harness git-preflight --json` output. Scripts consuming this field should remove the check.
+- **Removed `WORKTREE_SKIP`** return from `prepare_task_branch()` in linked worktrees. Branch preparation now executes normally regardless of worktree status.
 - **Renamed `DirtyWorktreeError`** → `DirtyWorkingTreeError` in `harness.integrations.git_ops`. A compatibility alias `DirtyWorktreeError` is retained.
-- `**extract_task_key_from_branch` / `extract_task_id_from_branch**` moved from `harness.core.worktree` to `harness.core.task_identity`.
+- **Moved `extract_task_key_from_branch` / `extract_task_id_from_branch`** from `harness.core.worktree` to `harness.core.task_identity`.
 
 ### Changed
 
@@ -30,7 +31,7 @@
 
 ### Added
 
-- `**harness workflow next**` — prints one machine-readable `HARNESS_NEXT task=… phase=… skill=… hint="…"` line from the latest task’s `workflow-state.json`, using the **same task resolution as `harness gate`** (explicit `--task`, then `HARNESS_TASK_ID`, then latest numeric `task-NNN`).
+- `**harness workflow next`** — prints one machine-readable `HARNESS_NEXT task=… phase=… skill=… hint="…"` line from the latest task’s `workflow-state.json`, using the **same task resolution as `harness gate`** (explicit `--task`, then `HARNESS_TASK_ID`, then latest numeric `task-NNN`).
 
 ### Changed
 
