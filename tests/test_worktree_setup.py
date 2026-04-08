@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from unittest.mock import MagicMock
-
-import pytest
 
 from harness.commands.worktree_setup import (
     WORKTREE_SYMLINK_TARGETS,
