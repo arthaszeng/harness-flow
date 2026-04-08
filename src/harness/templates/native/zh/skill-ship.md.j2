@@ -648,10 +648,109 @@ harness save-ship-metrics --task TASK_ID --branch "$(git rev-parse --abbrev-ref 
 
 ---
 
+## 步骤 9：PR 着陆 — CI 监控与自动修复循环
+
+PR 创建并持久化指标后，监控远端 CI 直到 PR 达到 **merge-ready** 状态
+（所有 required checks 通过 + 无 merge conflict）。
+
+如果 `gh` 不可用，**完全跳过** — 输出手动检查提示。
+
+### 9.1 转换到 Landing 阶段
+
+```bash
+# 更新 workflow state（如 workflow-state.json 存在）
+# phase: shipping → landing
+```
+
+### 9.2 轮询循环（最多 3 轮修复）
+
+```
+for round in 1..3:
+  1. 检查 PR CI 状态：
+     ```bash
+     harness pr-status --branch "$(git rev-parse --abbrev-ref HEAD)" --json
+     ```
+
+  2. 如果 ci_status == "pass" 且 conflict == false：
+     → PR 已 merge-ready。跳出循环，继续步骤 9.4。
+
+  3. 如果 conflict == true：
+     → Rebase 到主干（与步骤 7.5 相同）：
+       ```bash
+       git fetch origin {{ trunk_branch }} && git rebase origin/{{ trunk_branch }}
+       ```
+     → 如果 rebase 失败：停止并报告冲突。
+     → 推送：`git push --force-with-lease`
+     → 等待 30s，然后重新轮询。
+
+  4. 如果 ci_status == "fail"：
+     a. 获取失败日志：
+        ```bash
+        harness ci-logs --branch "$(git rev-parse --abbrev-ref HEAD)" --json
+        ```
+     b. 诊断每个失败 job（auto-fixable / needs-human / infra-issue）。
+     c. 如果所有失败都是 infra-issue：停止 — 报告基础设施问题。
+     d. 如果存在 needs-human 且无 auto-fixable 失败：停止 — 报告。
+     e. 否则：尝试自动修复：
+        - 阅读失败的测试 / lint 输出
+        - 应用代码修复
+        - 运行本地 CI：`{{ ci_command }}`
+        - 如果本地 CI 通过：提交并推送
+          ```bash
+          git add <fixed-files>
+          git commit -m "fix: auto-fix CI failure (landing round N)"
+          git push
+          ```
+        - 等待 30s，然后重新轮询。
+
+  5. 如果 ci_status == "pending"：
+     → 指数退避等待：30s、60s、120s（上限 2 分钟）。
+     → 总等待上限：15 分钟。超时则停止并报告。
+```
+
+### 9.3 退出条件
+
+| 条件 | 动作 |
+|------|------|
+| CI 全绿 + 无冲突 | → 步骤 9.4（成功） |
+| 3 轮修复用尽 | → 停止并输出结构化报告 |
+| 所有失败都是 infra-issue | → 停止并输出结构化报告 |
+| needs-human 失败，无 auto-fixable | → 停止并输出结构化报告 |
+| Rebase 冲突无法解决 | → 停止并显示冲突详情 |
+| 轮询超时（15 分钟） | → 停止并报告超时 |
+
+**结构化失败报告格式：**
+```
+PR LANDING REPORT
+═══════════════════════════════════════════
+  PR:          #N (URL)
+  Status:      BLOCKED
+  Rounds:      M/3 attempted
+  Category:    auto-fixable | needs-human | infra-issue | timeout | conflict
+  Failed jobs: [list]
+  Suggestion:  [用户可执行的下一步建议]
+═══════════════════════════════════════════
+```
+
+### 9.4 着陆成功
+
+当 CI 全绿且无冲突时：
+1. 更新 `workflow-state.json`：landing gate → pass，phase → done
+2. 输出：
+   ```
+   PR LANDING: MERGE-READY ✓
+   PR #N: [URL]
+   CI: all checks passed
+   Conflict: none
+   ```
+
+---
+
 ## Ship 交接
 
 将交付结果摘要写入 `workflow-state.json` 的 `handoff_summary` 字段（≤ 2000 字符）：
-PR URL、提交数、评审分数、处理的关键发现、遗留的 open items。
+PR URL、提交数、评审分数、处理的关键发现、遗留的 open items、
+着陆结果（merge-ready / 被阻塞及原因）。
 
 如果 `workflow-state.json` 不存在，跳过。
 
@@ -678,6 +777,8 @@ PR URL、提交数、评审分数、处理的关键发现、遗留的 open items
 | `plan.md` + `code-eval-rN.md`（verdict=PASS） | `evaluating` | Step 5.9（Gate 检查） | eval 已通过，验证 gate |
 | gate PASS + 未推送 | `shipping` | Step 6（提交） | 需要提交并推送 |
 | 已推送 + 无 PR | `shipping` | Step 8（创建 PR） | 代码已推送，创建 PR |
+| PR 已存在 + CI pending/fail | `landing` | Step 9.2（着陆循环） | PR 已提交，监控 CI |
+| PR 已存在 + CI 全绿 | `landing` | Step 9.4（着陆成功） | 完成着陆 |
 
 **恢复时不要**：
 - 不要重新运行已通过的 eval（除非 eval 之后有代码变更）

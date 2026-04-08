@@ -398,6 +398,34 @@ def save_intervention_audit(
     run_save_intervention_audit(task=task, event_type=event_type, command=command, summary=summary)
 
 
+@app.command(name="pr-status")
+def pr_status_cmd(
+    pr: Optional[int] = typer.Option(None, "--pr", help="Pull request number"),
+    branch: str = typer.Option("", "--branch", "-b", help="Branch name for PR lookup"),
+    as_json: bool = typer.Option(False, "--json", help="Print machine-readable JSON"),
+) -> None:
+    """Query CI and merge status of a pull request."""
+    from harness.commands.pr_lifecycle import run_pr_status
+
+    if pr is None and not branch:
+        raise typer.BadParameter("either --pr or --branch is required")
+    run_pr_status(pr=pr, branch=branch, as_json=as_json)
+
+
+@app.command(name="ci-logs")
+def ci_logs_cmd(
+    pr: Optional[int] = typer.Option(None, "--pr", help="Pull request number"),
+    branch: str = typer.Option("", "--branch", "-b", help="Branch name for CI lookup"),
+    as_json: bool = typer.Option(False, "--json", help="Print machine-readable JSON"),
+) -> None:
+    """Retrieve logs from failed CI jobs."""
+    from harness.commands.pr_lifecycle import run_ci_logs
+
+    if pr is None and not branch:
+        raise typer.BadParameter("either --pr or --branch is required")
+    run_ci_logs(pr=pr, branch=branch, as_json=as_json)
+
+
 @app.command(name="worktree-setup")
 def worktree_setup() -> None:
     """Create symlinks in a linked worktree to share artifacts from the main tree."""

@@ -93,6 +93,7 @@ class GateRefs(BaseModel):
     plan_review: GateSnapshot = Field(default_factory=GateSnapshot)
     evaluation: GateSnapshot = Field(default_factory=GateSnapshot)
     ship_readiness: GateSnapshot = Field(default_factory=GateSnapshot)
+    landing: GateSnapshot = Field(default_factory=GateSnapshot)
 
 
 class WorkflowBlocker(BaseModel):
@@ -281,6 +282,12 @@ _VALID_TRANSITIONS: dict[TaskState, frozenset[TaskState]] = {
         TaskState.BLOCKED,
         TaskState.EVALUATING,     # ship eval ITERATE fallback
         TaskState.BUILDING,       # rebuild during ship
+        TaskState.LANDING,        # PR submitted, monitoring CI
+    }),
+    TaskState.LANDING: frozenset({
+        TaskState.DONE,           # CI green, PR merge-ready
+        TaskState.BLOCKED,
+        TaskState.SHIPPING,       # pushed hotfix, back to ship flow
     }),
     TaskState.DONE: frozenset({
         TaskState.IDLE,           # new task
@@ -427,6 +434,7 @@ def gate_pairs(state: WorkflowState) -> list[tuple[str, GateSnapshot]]:
         ("plan_review", state.gates.plan_review),
         ("evaluation", state.gates.evaluation),
         ("ship_readiness", state.gates.ship_readiness),
+        ("landing", state.gates.landing),
     ]
     return [
         (label, snapshot)
