@@ -31,8 +31,9 @@ def detect_worktree(cwd: Path | None = None) -> WorktreeInfo | None:
     """Detect if *cwd* is inside a Cursor parallel-agent worktree.
 
     Returns ``WorktreeInfo`` when the git common dir differs from the git dir
-    (indicating a linked worktree), or ``None`` for the main working tree or
-    when git is unavailable.
+    (indicating a linked worktree), or ``None`` for the main working tree,
+    when git is unavailable, or when git output is malformed (empty, contains
+    null bytes, etc.).
     """
     root = cwd or Path.cwd()
     try:
@@ -45,8 +46,14 @@ def detect_worktree(cwd: Path | None = None) -> WorktreeInfo | None:
     if common_result.returncode != 0 or git_result.returncode != 0:
         return None
 
-    raw_common = Path(common_result.stdout.strip())
-    raw_git = Path(git_result.stdout.strip())
+    common_stdout = common_result.stdout.strip()
+    git_stdout = git_result.stdout.strip()
+    if "\0" in common_stdout or "\0" in git_stdout or not common_stdout or not git_stdout:
+        log.debug("git rev-parse returned empty or null-byte output; treating as non-worktree")
+        return None
+
+    raw_common = Path(common_stdout)
+    raw_git = Path(git_stdout)
     common_dir = (raw_common if raw_common.is_absolute() else (root / raw_common)).resolve()
     git_dir = (raw_git if raw_git.is_absolute() else (root / raw_git)).resolve()
 

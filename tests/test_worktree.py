@@ -111,14 +111,13 @@ class TestDetectWorktreeEdgeCases:
     """Edge cases for detect_worktree: malformed stdout, empty stdout, whitespace-only."""
 
     def test_malformed_git_output_with_null_bytes(self, tmp_path: Path):
-        """Null bytes in git stdout → ValueError (documents current behavior)."""
+        """Null bytes in git stdout → graceful None (defensive handling)."""
 
         def mock_run(args, cwd, *, timeout=30):
             return subprocess.CompletedProcess(args, 0, stdout="\x00\xff\n")
 
         with patch("harness.core.worktree.run_git", side_effect=mock_run):
-            with pytest.raises(ValueError, match="null (byte|character)"):
-                detect_worktree(tmp_path)
+            assert detect_worktree(tmp_path) is None
 
     def test_malformed_git_output_no_null(self, tmp_path: Path):
         """Non-path garbage (no null bytes) should not crash."""
