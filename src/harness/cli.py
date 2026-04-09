@@ -398,6 +398,73 @@ def save_intervention_audit(
     run_save_intervention_audit(task=task, event_type=event_type, command=command, summary=summary)
 
 
+@app.command(name="save-failure")
+def save_failure(
+    task: str = typer.Option(
+        ..., "--task", "-t",
+        help="Task ID (e.g. task-001)",
+    ),
+    phase: str = typer.Option(
+        ..., "--phase",
+        help="Pipeline phase where failure occurred (e.g. build, eval, ship)",
+    ),
+    category: str = typer.Option(
+        ..., "--category",
+        help="Failure category (e.g. ci-failure, test-failure, lint-error)",
+    ),
+    summary: str = typer.Option(
+        ..., "--summary",
+        help="Short summary of the failure",
+    ),
+    error_output: str = typer.Option(
+        "", "--error-output",
+        help="Relevant error output (truncated, no secrets)",
+    ),
+    root_cause: str = typer.Option(
+        "", "--root-cause",
+        help="Root cause analysis",
+    ),
+    fix: str = typer.Option(
+        "", "--fix",
+        help="Fix that was applied",
+    ),
+) -> None:
+    """Record a failure pattern to task directory (append to failure-patterns.jsonl)."""
+    from harness.commands.artifact import run_save_failure
+
+    run_save_failure(
+        task=task,
+        phase=phase,
+        category=category,
+        summary=summary,
+        error_output=error_output,
+        root_cause=root_cause,
+        fix_applied=fix,
+    )
+
+
+@app.command(name="search-failures")
+def search_failures(
+    query: str = typer.Option(
+        "", "--query", "-q",
+        help="Search query (normalized substring match against signatures)",
+    ),
+    category: str = typer.Option(
+        "", "--category", "-c",
+        help="Filter by category (case-insensitive exact match)",
+    ),
+    limit: int = typer.Option(
+        20, "--limit", "-n",
+        help="Maximum number of results (min 1)",
+        min=1,
+    ),
+) -> None:
+    """Search failure patterns across all tasks."""
+    from harness.commands.artifact import run_search_failures
+
+    run_search_failures(query=query, category=category, limit=limit)
+
+
 @app.command(name="pr-status")
 def pr_status_cmd(
     pr: Optional[int] = typer.Option(None, "--pr", help="Pull request number"),

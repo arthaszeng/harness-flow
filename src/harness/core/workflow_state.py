@@ -75,6 +75,7 @@ class ArtifactRefs(BaseModel):
     plan_evaluation: str = Field(default="", max_length=400)
     code_evaluation: str = Field(default="", max_length=400)
     feedback_ledger: str = Field(default="", max_length=400)
+    failure_patterns: str = Field(default="", max_length=400)
     ship_metrics: str = Field(default="", max_length=400)
     handoff: str = Field(default="", max_length=400)
 
