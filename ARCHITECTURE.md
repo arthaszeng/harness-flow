@@ -162,6 +162,17 @@ of three review intensities:
 This is a **soft gate** (computed by the agent per template instructions). The
 Python-level `gates.py` machine gate remains unchanged and always runs.
 
+### `failure_patterns.py`
+
+Structured failure pattern library for cross-task failure tracking. Each task
+records its own failure patterns in `failure-patterns.jsonl` (JSONL append mode,
+same as `intervention_audit.py`). `save_failure_pattern()` appends one pattern
+with auto-generated signature via `normalize_finding_signature()` and syncs
+`workflow-state.json` artifact refs. `load_failure_patterns()` loads patterns
+from a single task directory (skipping corrupt lines). `search_failure_patterns()`
+aggregates across all task and archive directories via `iter_task_dirs` /
+`iter_archive_dirs`, supporting normalized substring query and category filtering.
+
 ### `progress.py`
 
 **`suggest_next_action`** and **`update_progress`** helpers for markdown progress narratives (e.g. `.harness-flow/progress.md`) aligned with native workflows.

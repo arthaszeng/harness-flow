@@ -202,6 +202,59 @@ def run_save_intervention_audit(
     ui.info(f"✓ intervention-audit.jsonl updated for {task_dir.name}")
 
 
+def run_save_failure(
+    *,
+    task: str,
+    phase: str,
+    category: str,
+    summary: str,
+    error_output: str = "",
+    root_cause: str = "",
+    fix_applied: str = "",
+) -> None:
+    """Append a failure pattern to failure-patterns.jsonl."""
+    from harness.core.failure_patterns import save_failure_pattern
+
+    ui = get_ui()
+    task_dir = _resolve_task_dir(task)
+    pattern = save_failure_pattern(
+        task_dir,
+        task_id=task,
+        phase=phase,
+        category=category,
+        summary=summary,
+        error_output=error_output,
+        root_cause=root_cause,
+        fix_applied=fix_applied,
+    )
+    ui.info(f"✓ failure pattern {pattern.id} saved to {task}")
+
+
+def run_search_failures(
+    *,
+    query: str = "",
+    category: str = "",
+    limit: int = 20,
+) -> None:
+    """Search failure patterns across all task directories."""
+    from harness.core.failure_patterns import search_failure_patterns
+
+    ui = get_ui()
+    agents_dir = Path.cwd() / ".harness-flow"
+    results = search_failure_patterns(agents_dir, query=query, category=category, limit=limit)
+
+    if not results:
+        ui.info("No matching failure patterns found.")
+        return
+
+    ui.info(f"Found {len(results)} failure pattern(s):")
+    for item in results:
+        typer.echo(
+            f"  [{item.category}] {item.task_id}/{item.phase}: {item.summary}"
+            + (f" (fix: {item.fix_applied})" if item.fix_applied else "")
+        )
+
+
 def _parse_iso(ts: str) -> datetime | None:
     if not ts:
         return None
