@@ -1,0 +1,18 @@
+{% if memverse_enabled == "true" %}
+**Memverse Sync:** If the `--json` output contains a non-null `memverse_sync` field, execute the MCP call to persist this failure pattern to semantic memory:
+
+```
+CallMcpTool(
+  server="user-Memverse",
+  toolName="upsert_memory",
+  arguments={
+    "content": <memverse_sync.content>,
+    "metadata": <memverse_sync.metadata>,
+    "upsert_key": "signature",
+    "domain": "{{ memverse_domain }}"
+  }
+)
+```
+
+This is best-effort — if the MCP call fails, log the error and continue.  The local JSONL record is the source of truth.
+{% endif %}

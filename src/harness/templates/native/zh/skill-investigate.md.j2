@@ -24,6 +24,8 @@ description: "系统化调试工作流，包含根因分析、假设测试、范
 - "先修再追踪" → 顺序反了。先追踪。
 - "每次修复都暴露新问题" → 你在追逐症状，不是根因。
 
+{% include 'sections/_failure-pattern-prereview.md.j2' %}
+
 ---
 
 ## 阶段 1：根因调查
@@ -131,6 +133,8 @@ git stash && {{ ci_command }} 2>&1 | grep -i "fail\|error"; git stash pop
 ```bash
 {{ ci_command }}
 ```
+
+{% include 'sections/_failure-pattern-save.md.j2' %}
 
 ---
 

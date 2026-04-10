@@ -1,0 +1,18 @@
+### Failure Pattern Recording
+
+When a CI test fails, lint check fails, or any reproducible error is encountered during this phase, record it **before** moving on:
+
+```bash
+harness save-failure --json \
+  --task task-NNN \
+  --phase <current-phase> \
+  --category <ci-failure|test-failure|lint-error|type-error|build-error|runtime-error|other> \
+  --summary "Short description of the failure" \
+  --error-output "Relevant error output (first 500 chars, no secrets)" \
+  --root-cause "Root cause if known" \
+  --fix "Fix applied if any"
+```
+
+Replace `task-NNN`, `<current-phase>`, and field values with actuals.  The `--json` flag returns a machine-readable JSON object for downstream consumption.
+
+{% include 'sections/_failure-pattern-sync.md.j2' %}

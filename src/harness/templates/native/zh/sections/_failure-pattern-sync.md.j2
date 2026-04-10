@@ -1,0 +1,18 @@
+{% if memverse_enabled == "true" %}
+**Memverse 同步：** 如果 `--json` 输出包含非 null 的 `memverse_sync` 字段，执行 MCP 调用将此失败模式持久化到语义记忆：
+
+```
+CallMcpTool(
+  server="user-Memverse",
+  toolName="upsert_memory",
+  arguments={
+    "content": <memverse_sync.content>,
+    "metadata": <memverse_sync.metadata>,
+    "upsert_key": "signature",
+    "domain": "{{ memverse_domain }}"
+  }
+)
+```
+
+这是尽力而为的操作 — 如果 MCP 调用失败，记录错误并继续。本地 JSONL 记录是数据源。
+{% endif %}

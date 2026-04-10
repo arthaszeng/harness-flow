@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from uuid import uuid4
 
@@ -77,22 +78,35 @@ def _append_line(path: Path, payload: str) -> None:
 
 
 def _is_memverse_enabled(task_dir: Path) -> bool:
-    """Check config to see if Memverse integration is on."""
+    """Check config to see if Memverse integration is on.
+
+    Delegates to a cached helper keyed on the resolved project root so
+    repeated calls within the same CLI invocation skip file I/O.
+    """
+    project_root = _find_project_root(task_dir)
+    if project_root is None:
+        return False
+    return _memverse_enabled_cached(str(project_root))
+
+
+def _find_project_root(start: Path) -> Path | None:
+    cur = start
+    for _ in range(6):
+        if (cur / ".harness-flow" / "config.toml").exists():
+            return cur
+        parent = cur.parent
+        if parent == cur:
+            return None
+        cur = parent
+    return None
+
+
+@lru_cache(maxsize=4)
+def _memverse_enabled_cached(project_root_str: str) -> bool:
     try:
         from harness.core.config import HarnessConfig
 
-        project_root = task_dir
-        for _ in range(6):
-            if (project_root / ".harness-flow" / "config.toml").exists():
-                break
-            parent = project_root.parent
-            if parent == project_root:
-                break
-            project_root = parent
-        else:
-            return False
-
-        cfg = HarnessConfig.load(project_root)
+        cfg = HarnessConfig.load(Path(project_root_str))
         return cfg.integrations.memverse.enabled
     except Exception:
         return False

@@ -32,6 +32,8 @@ Every decision during planning falls into one of three categories:
 4. Run `git log --oneline -10` for recent activity context
 5. Determine the next task number: run `harness task next-id` (or `harness task next-id --json` for `{"next_id": "task-NNN", "max_existing": N}`)
 
+{% include 'sections/_failure-pattern-prereview.md.j2' %}
+
 ### Produce Spec + Contract
 
 Write output to `.harness-flow/tasks/task-NNN/plan.md` (create directory if needed).

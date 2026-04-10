@@ -1,0 +1,18 @@
+### 失败模式记录
+
+当 CI 测试失败、lint 检查失败或遇到任何可复现的错误时，在继续之前**先记录**：
+
+```bash
+harness save-failure --json \
+  --task task-NNN \
+  --phase <当前阶段> \
+  --category <ci-failure|test-failure|lint-error|type-error|build-error|runtime-error|other> \
+  --summary "失败的简短描述" \
+  --error-output "相关错误输出（前 500 字符，不含密钥）" \
+  --root-cause "已知的根因" \
+  --fix "已应用的修复"
+```
+
+将 `task-NNN`、`<当前阶段>` 和字段值替换为实际内容。`--json` 返回机读 JSON 对象供下游消费。
+
+{% include 'sections/_failure-pattern-sync.md.j2' %}

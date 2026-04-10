@@ -211,6 +211,7 @@ def run_save_failure(
     error_output: str = "",
     root_cause: str = "",
     fix_applied: str = "",
+    as_json: bool = False,
 ) -> None:
     """Append a failure pattern to failure-patterns.jsonl."""
     from harness.core.failure_patterns import save_failure_pattern
@@ -227,7 +228,15 @@ def run_save_failure(
         root_cause=root_cause,
         fix_applied=fix_applied,
     )
-    ui.info(f"✓ failure pattern {pattern.id} saved to {task}")
+
+    if as_json:
+        result = pattern.model_dump(mode="json")
+        result["memverse_sync"] = pattern.memverse_sync
+        typer.echo(json.dumps(result, ensure_ascii=False))
+    else:
+        ui.info(f"✓ failure pattern {pattern.id} saved to {task}")
+        if pattern.memverse_sync:
+            ui.info("MEMVERSE_SYNC: " + json.dumps(pattern.memverse_sync, ensure_ascii=False))
 
 
 def run_search_failures(
