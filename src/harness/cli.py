@@ -428,6 +428,10 @@ def save_failure(
         "", "--fix",
         help="Fix that was applied",
     ),
+    as_json: bool = typer.Option(
+        False, "--json",
+        help="Print machine-readable JSON (includes memverse_sync payload)",
+    ),
 ) -> None:
     """Record a failure pattern to task directory (append to failure-patterns.jsonl)."""
     from harness.commands.artifact import run_save_failure
@@ -440,6 +444,7 @@ def save_failure(
         error_output=error_output,
         root_cause=root_cause,
         fix_applied=fix,
+        as_json=as_json,
     )
 
 

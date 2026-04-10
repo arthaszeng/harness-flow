@@ -199,7 +199,7 @@ def _build_full_context(cfg: HarnessConfig, *, lang: str = "en") -> dict[str, st
         "memverse_domain": (
             cfg.integrations.memverse.domain_prefix.strip()
             or cfg.project.name
-            or "default"
+            or "harness-flow"
         ),
         # Layer 1 — Role
         "evaluator_model": effective_evaluator_model or "IDE default",

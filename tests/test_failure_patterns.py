@@ -1,9 +1,8 @@
-"""Tests for the failure pattern library (task-062)."""
+"""Tests for the failure pattern library (task-062 + Memverse payload builder)."""
 
 from __future__ import annotations
 
 from pathlib import Path
-
 import pytest
 
 from harness.core.failure_patterns import (
@@ -102,6 +101,19 @@ class TestFailurePatternModel:
             "unknown_field": "ignored",
         })
         assert fp.id == "fp-abc"
+
+    def test_memverse_sync_excluded_from_dump(self):
+        fp = FailurePattern(
+            id="fp-abc",
+            task_id="task-001",
+            phase="build",
+            category="test-failure",
+            summary="error",
+            memverse_sync={"content": "x"},
+        )
+        data = fp.model_dump()
+        assert "memverse_sync" not in data
+        assert fp.memverse_sync == {"content": "x"}
 
 
 # ---------------------------------------------------------------------------
@@ -369,3 +381,310 @@ class TestCLI:
         result = runner.invoke(app, ["search-failures"])
         assert result.exit_code == 0, result.output
         assert "no matching" in result.output.lower()
+
+
+# ---------------------------------------------------------------------------
+# Memverse payload builder (MCP-mediated, no network)
+# ---------------------------------------------------------------------------
+
+class TestMemversePayloadBuilder:
+    """Tests for Memverse upsert payload generation."""
+
+    def test_save_with_memverse_enabled_attaches_sync(self, tmp_path: Path):
+        task_dir = tmp_path / "task-001"
+        fp = _save(task_dir, task_id="task-001", memverse_enabled=True)
+        assert fp.memverse_sync is not None
+        assert fp.memverse_sync["content"].startswith("[failure-pattern]")
+        assert fp.memverse_sync["upsert_key"] == "signature"
+        assert fp.memverse_sync["domain"] == "harness-flow"
+
+    def test_save_with_memverse_disabled_no_sync(self, tmp_path: Path):
+        task_dir = tmp_path / "task-001"
+        fp = _save(task_dir, task_id="task-001", memverse_enabled=False)
+        assert fp.memverse_sync is None
+
+    def test_memverse_sync_excluded_from_json(self, tmp_path: Path):
+        task_dir = tmp_path / "task-001"
+        fp = _save(task_dir, task_id="task-001", memverse_enabled=True)
+        json_str = fp.model_dump_json()
+        assert "memverse_sync" not in json_str
+
+    def test_memverse_sync_metadata_has_required_fields(self, tmp_path: Path):
+        import json
+
+        task_dir = tmp_path / "task-001"
+        fp = _save(
+            task_dir,
+            task_id="task-001",
+            category="ci-failure",
+            summary="some CI error",
+            memverse_enabled=True,
+        )
+        meta = json.loads(fp.memverse_sync["metadata"])
+        assert meta["type"] == "failure-pattern"
+        assert meta["category"] == "ci-failure"
+        assert meta["task_id"] == "task-001"
+        assert meta["fp_id"] == fp.id
+        assert "signature" in meta
+
+    def test_memverse_sync_content_includes_optional_fields(self, tmp_path: Path):
+        task_dir = tmp_path / "task-001"
+        fp = save_failure_pattern(
+            task_dir,
+            task_id="task-001",
+            phase="build",
+            category="ci-failure",
+            summary="import error",
+            root_cause="module renamed",
+            fix_applied="update import path",
+            error_output="ImportError: no module",
+            memverse_enabled=True,
+        )
+        content = fp.memverse_sync["content"]
+        assert "Root cause: module renamed" in content
+        assert "Fix: update import path" in content
+        assert "Error: ImportError: no module" in content
+
+    def test_auto_detect_memverse_disabled(self, tmp_path: Path):
+        """Without config, memverse_enabled=None resolves to False."""
+        task_dir = tmp_path / "task-001"
+        fp = _save(task_dir, task_id="task-001")
+        assert fp.memverse_sync is None
+
+    def test_jsonl_always_written_regardless_of_memverse(self, tmp_path: Path):
+        task_dir = tmp_path / "task-001"
+        _save(task_dir, task_id="task-001", memverse_enabled=True)
+        loaded = load_failure_patterns(task_dir)
+        assert len(loaded.items) == 1
+
+
+class TestCLIJsonOutput:
+    """Tests for save-failure --json and memverse_sync output."""
+
+    def _make_config(self, tmp_path: Path, memverse_enabled: bool = False) -> None:
+        (tmp_path / ".harness-flow").mkdir(parents=True, exist_ok=True)
+        (tmp_path / ".harness-flow" / "tasks" / "task-001").mkdir(parents=True, exist_ok=True)
+        enabled = "true" if memverse_enabled else "false"
+        (tmp_path / ".harness-flow" / "config.toml").write_text(
+            f'[project]\nname = "test"\n[ci]\ncommand = ""\n'
+            f'[models]\ndefault = ""\n[workflow]\n[native]\n'
+            f'[integrations.memverse]\nenabled = {enabled}\ndomain_prefix = "test-domain"\n',
+            encoding="utf-8",
+        )
+
+    def test_json_output_memverse_off(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        import json
+        from typer.testing import CliRunner
+        from harness.cli import app
+        from harness.core.failure_patterns import _memverse_enabled_cached
+
+        _memverse_enabled_cached.cache_clear()
+        self._make_config(tmp_path, memverse_enabled=False)
+        monkeypatch.chdir(tmp_path)
+
+        runner = CliRunner()
+        result = runner.invoke(app, [
+            "save-failure", "--json",
+            "--task", "task-001", "--phase", "build",
+            "--category", "test-failure", "--summary", "some error",
+        ])
+        assert result.exit_code == 0, result.output
+        data = json.loads(result.output.strip())
+        assert data["task_id"] == "task-001"
+        assert data["memverse_sync"] is None
+        _memverse_enabled_cached.cache_clear()
+
+    def test_json_output_memverse_on(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        import json
+        from typer.testing import CliRunner
+        from harness.cli import app
+        from harness.core.failure_patterns import _memverse_enabled_cached
+
+        _memverse_enabled_cached.cache_clear()
+        self._make_config(tmp_path, memverse_enabled=True)
+        monkeypatch.chdir(tmp_path)
+
+        runner = CliRunner()
+        result = runner.invoke(app, [
+            "save-failure", "--json",
+            "--task", "task-001", "--phase", "build",
+            "--category", "ci-failure", "--summary", "CI timeout",
+        ])
+        assert result.exit_code == 0, result.output
+        data = json.loads(result.output.strip())
+        assert data["memverse_sync"] is not None
+        assert data["memverse_sync"]["domain"] == "test-domain"
+        assert data["memverse_sync"]["upsert_key"] == "signature"
+        _memverse_enabled_cached.cache_clear()
+
+    def test_non_json_memverse_on_shows_sync_block(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        from typer.testing import CliRunner
+        from harness.cli import app
+        from harness.core.failure_patterns import _memverse_enabled_cached
+
+        _memverse_enabled_cached.cache_clear()
+        self._make_config(tmp_path, memverse_enabled=True)
+        monkeypatch.chdir(tmp_path)
+
+        runner = CliRunner()
+        result = runner.invoke(app, [
+            "save-failure",
+            "--task", "task-001", "--phase", "build",
+            "--category", "ci-failure", "--summary", "lint error",
+        ])
+        assert result.exit_code == 0, result.output
+        assert "MEMVERSE_SYNC:" in result.output
+        _memverse_enabled_cached.cache_clear()
+
+    def test_non_json_memverse_off_no_sync_block(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+        from typer.testing import CliRunner
+        from harness.cli import app
+        from harness.core.failure_patterns import _memverse_enabled_cached
+
+        _memverse_enabled_cached.cache_clear()
+        self._make_config(tmp_path, memverse_enabled=False)
+        monkeypatch.chdir(tmp_path)
+
+        runner = CliRunner()
+        result = runner.invoke(app, [
+            "save-failure",
+            "--task", "task-001", "--phase", "build",
+            "--category", "ci-failure", "--summary", "some lint error",
+        ])
+        assert result.exit_code == 0, result.output
+        assert "MEMVERSE_SYNC:" not in result.output
+        _memverse_enabled_cached.cache_clear()
+
+
+class TestMemverseCachePerformance:
+    """Tests for _is_memverse_enabled lru_cache behavior."""
+
+    def test_cache_avoids_repeated_config_reads(self, tmp_path: Path):
+        from harness.core.failure_patterns import _is_memverse_enabled, _memverse_enabled_cached
+
+        _memverse_enabled_cached.cache_clear()
+
+        project_root = tmp_path
+        (project_root / ".harness-flow").mkdir(parents=True)
+        (project_root / ".harness-flow" / "config.toml").write_text(
+            '[project]\nname = "test"\n[ci]\ncommand = ""\n'
+            '[models]\ndefault = ""\n[workflow]\n[native]\n'
+            '[integrations.memverse]\nenabled = true\n',
+            encoding="utf-8",
+        )
+
+        result1 = _is_memverse_enabled(project_root / "some-task")
+        info_after_first = _memverse_enabled_cached.cache_info()
+        assert info_after_first.misses == 1
+        assert info_after_first.hits == 0
+
+        result2 = _is_memverse_enabled(project_root / "another-task")
+        info_after_second = _memverse_enabled_cached.cache_info()
+        assert info_after_second.misses == 1
+        assert info_after_second.hits == 1
+
+        assert result1 is True
+        assert result2 is True
+
+        _memverse_enabled_cached.cache_clear()
+
+    def test_cache_clear_resets(self, tmp_path: Path):
+        from harness.core.failure_patterns import _is_memverse_enabled, _memverse_enabled_cached
+
+        _memverse_enabled_cached.cache_clear()
+
+        project_root = tmp_path
+        (project_root / ".harness-flow").mkdir(parents=True)
+        (project_root / ".harness-flow" / "config.toml").write_text(
+            '[project]\nname = "test"\n[ci]\ncommand = ""\n'
+            '[models]\ndefault = ""\n[workflow]\n[native]\n'
+            '[integrations.memverse]\nenabled = false\n',
+            encoding="utf-8",
+        )
+
+        assert _is_memverse_enabled(project_root / "task") is False
+        assert _memverse_enabled_cached.cache_info().currsize == 1
+
+        _memverse_enabled_cached.cache_clear()
+        assert _memverse_enabled_cached.cache_info().currsize == 0
+
+        assert _is_memverse_enabled(project_root / "task") is False
+        assert _memverse_enabled_cached.cache_info().misses == 1
+
+
+class TestTemplateRendering:
+    """Tests for failure pattern template sections in rendered skills."""
+
+    def _render_skill(self, name: str, memverse_enabled: bool = True, lang: str = "en") -> str:
+        """Render a single skill template and return its content."""
+        from harness.native.skill_gen import _build_full_context, _filter_context, _render_template
+        from harness.core.config import HarnessConfig
+
+        cfg = HarnessConfig.model_validate({
+            "project": {"name": "test", "lang": lang},
+            "ci": {"command": "make test"},
+            "integrations": {"memverse": {"enabled": memverse_enabled, "domain_prefix": "test-proj"}},
+        })
+
+        full_ctx = _build_full_context(cfg, lang=lang)
+        ctx = _filter_context(full_ctx, "skill", f"harness-{name}")
+
+        tmpl_dir = Path(__file__).resolve().parent.parent / "src" / "harness" / "templates" / "native"
+        if lang != "en":
+            tmpl_name = f"{lang}/skill-{name}.md.j2"
+        else:
+            tmpl_name = f"skill-{name}.md.j2"
+        return _render_template(tmpl_dir, tmpl_name, ctx)
+
+    def test_build_skill_contains_failure_pattern_includes(self):
+        content = self._render_skill("build", memverse_enabled=True)
+        assert "harness save-failure" in content
+        assert "harness search-failures" in content
+
+    def test_build_skill_zh_contains_failure_pattern_includes(self):
+        content = self._render_skill("build", memverse_enabled=True, lang="zh")
+        assert "harness save-failure" in content
+
+    def test_memverse_disabled_no_upsert_in_build(self):
+        content = self._render_skill("build", memverse_enabled=False)
+        assert "harness save-failure" in content
+        assert "upsert_memory" not in content
+
+
+class TestMemversePayloadModule:
+    """Unit tests for harness.integrations.memverse payload builders."""
+
+    def test_build_upsert_payload(self):
+        from harness.integrations.memverse import build_upsert_payload
+        sync = build_upsert_payload(
+            summary="test error",
+            category="ci-failure",
+            phase="build",
+            task_id="task-001",
+            fp_id="fp-abc",
+            signature="TEST ERROR",
+            first_seen="2026-04-09T00:00:00+00:00",
+        )
+        d = sync.payload.as_dict()
+        assert d["domain"] == "harness-flow"
+        assert d["upsert_key"] == "signature"
+        assert "[failure-pattern] test error" in d["content"]
+
+    def test_build_search_payload(self):
+        from harness.integrations.memverse import build_search_payload
+        payload = build_search_payload(query="import error", category="ci-failure")
+        d = payload.as_dict()
+        assert d["query"] == "import error"
+        assert d["domains"] == "harness-flow"
+        assert '"type": "failure-pattern"' in d["metadata_filter"]
+        assert '"category": "ci-failure"' in d["metadata_filter"]
+
+    def test_payload_as_dict_is_json_serializable(self):
+        import json
+        from harness.integrations.memverse import build_upsert_payload
+        sync = build_upsert_payload(
+            summary="x", category="y", phase="z", task_id="t",
+            fp_id="fp", signature="SIG", first_seen="now",
+        )
+        serialized = json.dumps(sync.payload.as_dict())
+        assert isinstance(serialized, str)

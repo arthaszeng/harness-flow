@@ -167,6 +167,8 @@ git fetch origin {{ trunk_branch }} && git rebase origin/{{ trunk_branch }}
 
 **如果全部通过：** 静默继续 — 简要记录计数。
 
+{% include 'sections/_failure-pattern-save.md.j2' %}
+
 ---
 
 ## 步骤 3.4：测试覆盖率审计

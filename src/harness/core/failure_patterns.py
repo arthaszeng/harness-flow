@@ -3,12 +3,18 @@
 Each task records its own failure patterns in ``failure-patterns.jsonl``.
 ``search_failure_patterns`` aggregates across all task (and archive) directories
 to surface recurring issues during build planning.
+
+When Memverse integration is enabled, ``save_failure_pattern`` attaches a
+``memverse_sync`` payload to the returned ``FailurePattern``.  The Cursor
+agent (which has an authenticated MCP session) executes the actual
+``upsert_memory`` call — Python never touches the network.
 """
 
 from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from functools import lru_cache
 from pathlib import Path
 from uuid import uuid4
 
@@ -49,6 +55,9 @@ class FailurePattern(BaseModel):
     first_seen: str = Field(default="", max_length=64)
     last_seen: str = Field(default="", max_length=64)
 
+    memverse_sync: dict | None = Field(default=None, exclude=True)
+    """When set, contains MCP ``upsert_memory`` arguments for the Cursor agent."""
+
 
 class FailurePatternLoadResult(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -68,6 +77,70 @@ def _append_line(path: Path, payload: str) -> None:
         fh.write(payload + "\n")
 
 
+def _is_memverse_enabled(task_dir: Path) -> bool:
+    """Check config to see if Memverse integration is on.
+
+    Delegates to a cached helper keyed on the resolved project root so
+    repeated calls within the same CLI invocation skip file I/O.
+    """
+    project_root = _find_project_root(task_dir)
+    if project_root is None:
+        return False
+    return _memverse_enabled_cached(str(project_root))
+
+
+def _memverse_domain(task_dir: Path) -> str:
+    """Return the configured Memverse domain for failure patterns."""
+    project_root = _find_project_root(task_dir)
+    if project_root is None:
+        return "harness-flow"
+    return _memverse_domain_cached(str(project_root))
+
+
+def _find_project_root(start: Path) -> Path | None:
+    cur = start
+    for _ in range(6):
+        if (cur / ".harness-flow" / "config.toml").exists():
+            return cur
+        parent = cur.parent
+        if parent == cur:
+            return None
+        cur = parent
+    return None
+
+
+@lru_cache(maxsize=4)
+def _memverse_enabled_cached(project_root_str: str) -> bool:
+    try:
+        from harness.core.config import HarnessConfig
+
+        cfg = HarnessConfig.load(Path(project_root_str))
+        return cfg.integrations.memverse.enabled
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).debug("Failed to load memverse config", exc_info=True)
+        return False
+
+
+@lru_cache(maxsize=4)
+def _memverse_domain_cached(project_root_str: str) -> str:
+    try:
+        from harness.core.config import HarnessConfig
+
+        cfg = HarnessConfig.load(Path(project_root_str))
+        return (
+            cfg.integrations.memverse.domain_prefix.strip()
+            or cfg.project.name
+            or "harness-flow"
+        )
+    except Exception:
+        import logging
+
+        logging.getLogger(__name__).debug("Failed to load memverse domain config", exc_info=True)
+        return "harness-flow"
+
+
 def save_failure_pattern(
     task_dir: Path,
     *,
@@ -79,8 +152,15 @@ def save_failure_pattern(
     root_cause: str = "",
     fix_applied: str = "",
     recurrence_count: int = 1,
+    memverse_enabled: bool | None = None,
 ) -> FailurePattern:
-    """Append a single failure pattern to ``failure-patterns.jsonl``."""
+    """Append a single failure pattern to ``failure-patterns.jsonl``.
+
+    When *memverse_enabled* is ``True`` (or auto-detected from config),
+    ``pattern.memverse_sync`` is populated with MCP ``upsert_memory``
+    arguments.  The caller (Cursor agent) is responsible for executing
+    the MCP call within its authenticated session.
+    """
     now = _utc_now()
     sig = normalize_finding_signature(summary)
     pattern = FailurePattern(
@@ -103,6 +183,28 @@ def save_failure_pattern(
 
     if task_dir_number(task_dir) is not None or (task_dir / WORKFLOW_STATE_FILENAME).exists():
         sync_task_state(task_dir, artifact_updates={"failure_patterns": FAILURE_PATTERNS_FILENAME})
+
+    if memverse_enabled is None:
+        memverse_enabled = _is_memverse_enabled(task_dir)
+
+    if memverse_enabled:
+        from harness.integrations.memverse import build_upsert_payload
+
+        domain = _memverse_domain(task_dir)
+        sync = build_upsert_payload(
+            summary=summary,
+            category=category,
+            phase=phase,
+            task_id=task_id,
+            fp_id=pattern.id,
+            signature=sig,
+            first_seen=now,
+            error_output=error_output,
+            root_cause=root_cause,
+            fix_applied=fix_applied,
+            domain=domain,
+        )
+        pattern.memverse_sync = sync.payload.as_dict()
 
     return pattern
 

@@ -1,0 +1,26 @@
+### Prior Failure Patterns
+
+Before starting work, check for known failure patterns from previous tasks:
+
+```bash
+harness search-failures --query "<relevant keywords>" --limit 10
+```
+
+Review results for recurring issues that may affect this task.  If prior patterns suggest known pitfalls, factor them into your approach.
+
+{% if memverse_enabled == "true" %}
+**Memverse semantic search:** For broader cross-project pattern matching, also query Memverse:
+
+```
+CallMcpTool(
+  server="user-Memverse",
+  toolName="search_memory",
+  arguments={
+    "query": "<relevant keywords>",
+    "domains": "{{ memverse_domain }}",
+    "metadata_filter": "{\"type\": \"failure-pattern\"}",
+    "limit": 10
+  }
+)
+```
+{% endif %}
