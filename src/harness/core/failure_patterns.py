@@ -3,6 +3,11 @@
 Each task records its own failure patterns in ``failure-patterns.jsonl``.
 ``search_failure_patterns`` aggregates across all task (and archive) directories
 to surface recurring issues during build planning.
+
+When Memverse integration is enabled, ``save_failure_pattern`` attaches a
+``memverse_sync`` payload to the returned ``FailurePattern``.  The Cursor
+agent (which has an authenticated MCP session) executes the actual
+``upsert_memory`` call — Python never touches the network.
 """
 
 from __future__ import annotations
@@ -49,6 +54,9 @@ class FailurePattern(BaseModel):
     first_seen: str = Field(default="", max_length=64)
     last_seen: str = Field(default="", max_length=64)
 
+    memverse_sync: dict | None = Field(default=None, exclude=True)
+    """When set, contains MCP ``upsert_memory`` arguments for the Cursor agent."""
+
 
 class FailurePatternLoadResult(BaseModel):
     model_config = ConfigDict(extra="ignore")
@@ -68,6 +76,28 @@ def _append_line(path: Path, payload: str) -> None:
         fh.write(payload + "\n")
 
 
+def _is_memverse_enabled(task_dir: Path) -> bool:
+    """Check config to see if Memverse integration is on."""
+    try:
+        from harness.core.config import HarnessConfig
+
+        project_root = task_dir
+        for _ in range(6):
+            if (project_root / ".harness-flow" / "config.toml").exists():
+                break
+            parent = project_root.parent
+            if parent == project_root:
+                break
+            project_root = parent
+        else:
+            return False
+
+        cfg = HarnessConfig.load(project_root)
+        return cfg.integrations.memverse.enabled
+    except Exception:
+        return False
+
+
 def save_failure_pattern(
     task_dir: Path,
     *,
@@ -79,8 +109,15 @@ def save_failure_pattern(
     root_cause: str = "",
     fix_applied: str = "",
     recurrence_count: int = 1,
+    memverse_enabled: bool | None = None,
 ) -> FailurePattern:
-    """Append a single failure pattern to ``failure-patterns.jsonl``."""
+    """Append a single failure pattern to ``failure-patterns.jsonl``.
+
+    When *memverse_enabled* is ``True`` (or auto-detected from config),
+    ``pattern.memverse_sync`` is populated with MCP ``upsert_memory``
+    arguments.  The caller (Cursor agent) is responsible for executing
+    the MCP call within its authenticated session.
+    """
     now = _utc_now()
     sig = normalize_finding_signature(summary)
     pattern = FailurePattern(
@@ -103,6 +140,26 @@ def save_failure_pattern(
 
     if task_dir_number(task_dir) is not None or (task_dir / WORKFLOW_STATE_FILENAME).exists():
         sync_task_state(task_dir, artifact_updates={"failure_patterns": FAILURE_PATTERNS_FILENAME})
+
+    if memverse_enabled is None:
+        memverse_enabled = _is_memverse_enabled(task_dir)
+
+    if memverse_enabled:
+        from harness.integrations.memverse import build_upsert_payload
+
+        sync = build_upsert_payload(
+            summary=summary,
+            category=category,
+            phase=phase,
+            task_id=task_id,
+            fp_id=pattern.id,
+            signature=sig,
+            first_seen=now,
+            error_output=error_output,
+            root_cause=root_cause,
+            fix_applied=fix_applied,
+        )
+        pattern.memverse_sync = sync.payload.as_dict()
 
     return pattern
 
