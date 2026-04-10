@@ -135,6 +135,9 @@ def _memverse_domain_cached(project_root_str: str) -> str:
             or "harness-flow"
         )
     except Exception:
+        import logging
+
+        logging.getLogger(__name__).debug("Failed to load memverse domain config", exc_info=True)
         return "harness-flow"
 
 
