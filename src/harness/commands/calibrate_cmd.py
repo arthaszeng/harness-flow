@@ -85,32 +85,30 @@ def _show_single_task(
 
 
 def _print_outcome_summary(outcome: "ReviewOutcome", ui: object) -> None:  # noqa: F821
+    from rich.console import Console
 
+    console = Console()
     pred = outcome.prediction
     act = outcome.outcome
 
-    lines = []
     if pred.eval_aggregate is not None:
-        lines.append(f"  Prediction:  {pred.eval_aggregate:.1f}/10 ({pred.verdict})")
+        console.print(f"  Prediction:  {pred.eval_aggregate:.1f}/10 ({pred.verdict})")
     else:
-        lines.append("  Prediction:  (not recorded)")
+        console.print("  Prediction:  (not recorded)")
 
     if pred.dimension_scores:
         dims = ", ".join(f"{k}: {v:.1f}" for k, v in pred.dimension_scores.items())
-        lines.append(f"  Dimensions:  {dims}")
+        console.print(f"  Dimensions:  {dims}")
 
     if act.ci_passed is not None:
         ci_str = "PASSED" if act.ci_passed else "FAILED"
-        lines.append(f"  CI result:   {ci_str}")
+        console.print(f"  CI result:   {ci_str}")
     else:
-        lines.append("  CI result:   (not recorded)")
+        console.print("  CI result:   (not recorded)")
 
     if act.has_revert is not None:
         revert_str = "Yes" if act.has_revert else "No"
-        lines.append(f"  Has revert:  {revert_str}")
-
-    for line in lines:
-        print(line)
+        console.print(f"  Has revert:  {revert_str}")
 
 
 def _print_json_report(
@@ -130,53 +128,60 @@ def _print_rich_report(
     outcomes: list,
     ui: object,
 ) -> None:
+    from rich.console import Console
+
     from harness.core.review_calibration import MIN_SAMPLES_FOR_AGGREGATION
 
-    print()
-    print("REVIEW CALIBRATION REPORT")
-    print("═" * 50)
-    print(f"  Total outcomes:       {report.sample_count}")
-    print(f"  With prediction:      {report.outcomes_with_prediction}")
-    print(f"  With actual result:   {report.outcomes_with_result}")
-    print()
+    console = Console()
+
+    console.print()
+    console.print("REVIEW CALIBRATION REPORT")
+    console.print("═" * 50)
+    console.print(f"  Total outcomes:       {report.sample_count}")
+    console.print(f"  With prediction:      {report.outcomes_with_prediction}")
+    console.print(f"  With actual result:   {report.outcomes_with_result}")
+    paired_count = min(report.outcomes_with_prediction, report.outcomes_with_result)
+    console.print(f"  Paired (pred+result): {paired_count}")
+    console.print()
 
     if report.has_sufficient_data:
-        print("AGGREGATED STATISTICS")
-        print("─" * 50)
+        console.print("AGGREGATED STATISTICS")
+        console.print("─" * 50)
         if report.prediction_accuracy is not None:
-            print(f"  Prediction accuracy:  {report.prediction_accuracy:.1%}")
+            console.print(f"  Prediction accuracy:  {report.prediction_accuracy:.1%}")
         if report.mean_aggregate_score is not None:
             std_str = f" (σ={report.score_stddev:.2f})" if report.score_stddev is not None else ""
-            print(f"  Mean aggregate score: {report.mean_aggregate_score:.2f}/10{std_str}")
+            console.print(f"  Mean aggregate score: {report.mean_aggregate_score:.2f}/10{std_str}")
         if report.score_outcome_correlation is not None:
-            print(f"  Score-outcome corr:   {report.score_outcome_correlation:.3f}")
-        print()
+            console.print(f"  Score-outcome corr:   {report.score_outcome_correlation:.3f}")
+        console.print()
 
         if report.dimension_biases:
-            print("DIMENSION BIASES (delta from aggregate)")
-            print("─" * 50)
+            console.print("DIMENSION BIASES (delta from aggregate)")
+            console.print("─" * 50)
             for bias in report.dimension_biases:
                 sign = "+" if bias.mean_delta_from_aggregate >= 0 else ""
-                print(
+                console.print(
                     f"  {bias.dimension:20s}  "
                     f"mean={bias.mean_score:.1f}  "
                     f"delta={sign}{bias.mean_delta_from_aggregate:.2f}  "
                     f"(n={bias.sample_count})"
                 )
-            print()
+            console.print()
     else:
-        paired_count = min(report.outcomes_with_prediction, report.outcomes_with_result)
-        print(
+        console.print(
             f"  Insufficient data for aggregation "
             f"(need {MIN_SAMPLES_FOR_AGGREGATION}, have {paired_count} paired outcomes)"
         )
+        if report.mean_aggregate_score is not None:
+            console.print(f"  Mean prediction score: {report.mean_aggregate_score:.2f}/10")
         if report.prediction_accuracy is not None:
-            print(f"  Preliminary accuracy: {report.prediction_accuracy:.1%}")
-        print()
+            console.print(f"  Preliminary accuracy: {report.prediction_accuracy:.1%}")
+        console.print()
 
     if outcomes:
-        print("INDIVIDUAL OUTCOMES")
-        print("─" * 50)
+        console.print("INDIVIDUAL OUTCOMES")
+        console.print("─" * 50)
         for o in outcomes:
             pred_str = f"{o.prediction.eval_aggregate:.1f}" if o.prediction.eval_aggregate is not None else "—"
             verdict_str = o.prediction.verdict or "—"
@@ -186,5 +191,5 @@ def _print_rich_report(
                 ci_str = "✗"
             else:
                 ci_str = "—"
-            print(f"  {o.task_id:16s}  score={pred_str:>5s}/10  verdict={verdict_str:7s}  ci={ci_str}")
-        print()
+            console.print(f"  {o.task_id:16s}  score={pred_str:>5s}/10  verdict={verdict_str:7s}  ci={ci_str}")
+        console.print()

@@ -326,8 +326,12 @@ class PostShipManager:
         pr_number: int | None,
         branch: str | None,
     ) -> bool | None:
-        """Query PR checks to determine CI pass/fail. Returns None on failure."""
-        args = ["pr", "checks"]
+        """Query PR checks to determine CI pass/fail.
+
+        Returns ``True`` (all passed), ``False`` (any failed), or ``None``
+        (pending/unknown/error).
+        """
+        args = ["pr", "checks", "--json", "name,bucket,state"]
         if pr_number is not None:
             args.append(str(pr_number))
         elif branch and branch.strip():
@@ -356,14 +360,19 @@ class PostShipManager:
         if not checks:
             return None
 
+        _FAIL = {"FAILURE", "ERROR", "CANCELLED", "TIMED_OUT", "STARTUP_FAILURE"}
+        _PASS = {"SUCCESS", "NEUTRAL", "SKIPPED", "PASS"}
+        has_pending = False
         for check in checks:
             if not isinstance(check, dict):
                 continue
-            conclusion = str(check.get("conclusion", "")).upper()
+            bucket = str(check.get("bucket", check.get("conclusion", ""))).upper()
             state = str(check.get("state", "")).upper()
-            if conclusion == "FAILURE" or state == "FAILURE":
+            if bucket in _FAIL or state in _FAIL:
                 return False
-        return True
+            if bucket not in _PASS and state not in _PASS:
+                has_pending = True
+        return None if has_pending else True
 
     def _detect_revert(
         self,
