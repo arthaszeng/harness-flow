@@ -638,16 +638,16 @@ class TestTemplateRendering:
 
     def test_build_skill_contains_failure_pattern_includes(self):
         content = self._render_skill("build", memverse_enabled=True)
-        assert "harness save-failure" in content
+        assert "build-test-triage.md" in content
         assert "harness search-failures" in content
 
     def test_build_skill_zh_contains_failure_pattern_includes(self):
         content = self._render_skill("build", memverse_enabled=True, lang="zh")
-        assert "harness save-failure" in content
+        assert "build-test-triage.md" in content
 
     def test_memverse_disabled_no_upsert_in_build(self):
         content = self._render_skill("build", memverse_enabled=False)
-        assert "harness save-failure" in content
+        assert "build-test-triage.md" in content
         assert "upsert_memory" not in content
 
 

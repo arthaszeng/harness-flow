@@ -88,6 +88,7 @@ _REFERENCE_FILES: list[tuple[str, str, str, str]] = [
     ("references/ship-pr-protocol.md.j2", "harness-ship", "ship-pr-protocol.md", "render"),
     ("references/ship-test-triage.md.j2", "harness-ship", "ship-test-triage.md", "render"),
     ("references/ship-coverage-audit.md.j2", "harness-ship", "ship-coverage-audit.md", "render"),
+    ("references/build-test-triage.md.j2", "harness-build", "build-test-triage.md", "render"),
 ]
 
 
@@ -298,18 +299,18 @@ def _planner_principles(lang: str = "en") -> str:
 def _builder_principles(lang: str = "en") -> str:
     if lang == "zh":
         return (
-            "1. **严格按合约交付** — 只实现合约列出的内容\n"
-            "2. **小提交** — 每个逻辑单元一个提交；格式 `<type>(scope): description`\n"
-            "3. **遵循项目约定** — 写新代码前先检查已有模式\n"
-            "4. **测试覆盖** — 新行为需要测试；变更必须保持现有测试通过\n"
-            "5. **对照设计原则实现** — 合约中的 Design Principles 是必须满足的架构约束；实现前逐条确认"
+            "1. **对照设计原则实现** — 合约中的 Design Principles 是必须满足的架构约束；实现前逐条确认\n"
+            "2. **严格按合约交付** — 只实现合约列出的内容\n"
+            "3. **小提交** — 每个逻辑单元一个提交；格式 `<type>(scope): description`\n"
+            "4. **遵循项目约定** — 写新代码前先检查已有模式\n"
+            "5. **测试覆盖** — 新行为需要测试；变更必须保持现有测试通过"
         )
     return (
-        "1. **Deliver exactly per contract** — implement only what the contract lists\n"
-        "2. **Small commits** — one commit per logical unit; message format `<type>(scope): description`\n"
-        "3. **Follow project conventions** — check existing patterns before writing new code\n"
-        "4. **Test coverage** — new behavior needs tests; changes must keep existing tests passing\n"
-        "5. **Implement against Design Principles** — the Design Principles in the contract are mandatory architectural constraints; verify each one before implementing"
+        "1. **Implement against Design Principles** — the Design Principles in the contract are mandatory architectural constraints; verify each one before implementing\n"
+        "2. **Deliver exactly per contract** — implement only what the contract lists\n"
+        "3. **Small commits** — one commit per logical unit; message format `<type>(scope): description`\n"
+        "4. **Follow project conventions** — check existing patterns before writing new code\n"
+        "5. **Test coverage** — new behavior needs tests; changes must keep existing tests passing"
     )
 
 

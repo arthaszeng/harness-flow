@@ -36,6 +36,7 @@ CRITICAL_REFERENCE_FILES = [
     ".cursor/skills/harness/harness-ship/ship-pr-protocol.md",
     ".cursor/skills/harness/harness-ship/ship-test-triage.md",
     ".cursor/skills/harness/harness-ship/ship-coverage-audit.md",
+    ".cursor/skills/harness/harness-build/build-test-triage.md",
 ]
 
 CRITICAL_AGENT_FILES = [

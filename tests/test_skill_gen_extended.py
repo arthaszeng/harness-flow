@@ -272,8 +272,12 @@ def test_generated_skill_includes_error_recovery(tmp_path: Path):
 
     build_skill = (tmp_path / ".cursor" / "skills" / "harness" / "harness-build" / "PROTOCOL.md")
     content = build_skill.read_text(encoding="utf-8")
-    assert "Error Recovery Matrix" in content
-    assert "Import error" in content
+    assert "build-test-triage.md" in content
+
+    ref_file = (tmp_path / ".cursor" / "skills" / "harness" / "harness-build" / "build-test-triage.md")
+    ref_content = ref_file.read_text(encoding="utf-8")
+    assert "Error Recovery Matrix" in ref_content
+    assert "Import error" in ref_content
 
 
 def test_generated_eval_includes_trust_boundary(tmp_path: Path):
@@ -443,8 +447,8 @@ def test_no_claude_references_in_templates(tmp_path: Path):
 def test_error_recovery_no_test_overlap(tmp_path: Path):
     cfg = _make_cfg(tmp_path)
     generate_native_artifacts(tmp_path, cfg=cfg)
-    build = (tmp_path / ".cursor" / "skills" / "harness" / "harness-build" / "PROTOCOL.md")
-    content = build.read_text(encoding="utf-8")
+    ref = (tmp_path / ".cursor" / "skills" / "harness" / "harness-build" / "build-test-triage.md")
+    content = ref.read_text(encoding="utf-8")
     assert "Error Recovery Matrix" in content
     matrix_start = content.index("Error Recovery Matrix")
     matrix_section = content[matrix_start:matrix_start + 500]

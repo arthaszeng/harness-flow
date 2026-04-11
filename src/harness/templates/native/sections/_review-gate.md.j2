@@ -14,14 +14,7 @@ Wait for user response:
 - **reject** → terminate the workflow
 {% elif plan_review_gate == "auto" %}
 
-Compute the **escalation score** via CLI to determine whether the plan needs human review:
-
-```bash
-harness escalation-score compute --phase plan --json
-```
-
-The CLI reads plan metadata (deliverable count, estimated files, security/schema/API flags,
-review score, interaction depth, trust adjustment) and returns `{score, level, signals}`.
+**Reuse the escalation level** already computed in the Plan Review step above (the `harness escalation-score compute` call that determined FAST/LITE/FULL dispatch). Do NOT re-compute — the level does not change between plan review and this gate.
 
 **This entry point's default interaction depth: {{ interaction_depth | default("low") }}**
 (If Phase 0 selected a different path, use that path's depth instead — see Phase 0 review gate notes.)
