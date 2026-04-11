@@ -14,14 +14,7 @@
 - **reject** → 终止工作流
 {% elif plan_review_gate == "auto" %}
 
-通过 CLI 计算**升级评分**来确定计划是否需要人工审查：
-
-```bash
-harness escalation-score compute --phase plan --json
-```
-
-CLI 读取计划元数据（交付物数量、预计文件数、安全/schema/API 标志、评审分数、交互深度、信任调整），
-返回 `{score, level, signals}`。
+**复用计划评审步骤中已计算的 escalation level**（即上面 `harness escalation-score compute` 调用确定的 FAST/LITE/FULL level）。不要重新计算——评审前后 level 不会改变。
 
 **此入口的默认交互深度：{{ interaction_depth | default("low") }}**
 （若阶段 0 选择了不同路径，以该路径的深度为准——见阶段 0 的 review gate 说明。）

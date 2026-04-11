@@ -35,60 +35,38 @@ which means DO IT. Implement everything and output the build result.
 
 ## Step 1: Read the Contract
 
-1. **Preflight bundle** (replaces 4 serial calls — task resolve + handoff + session + context-budget):
+1. **Preflight bundle:**
    ```bash
    harness preflight-bundle --phase build --json
    ```
-   Returns `{task: {task_id, task_dir, phase, ...}, handoff: {...}, session: {...}, context_budget: {...}}`.
-   Use `task.task_dir` as `TASK_DIR`. If the command fails, fall back to individual calls:
-   ```bash
-   harness task resolve --json
-   harness handoff read --task task-NNN --json
-   harness session read --task task-NNN --json
-   harness context-budget --task task-NNN
-   ```
-   If session context exists, resume from the recorded step — do not restart from scratch.
-   If context budget is over (exit 1), consider trimming old artifacts before proceeding.
-2. Read `.harness-flow/tasks/task-NNN/plan.md` — extract the deliverables checklist
-   from the Contract section
-3. If this is a subsequent round (feedback exists from evaluation), also read
-   `.harness-flow/tasks/task-NNN/code-eval-rN.md` for the fix suggestions
-4. If `.harness-flow/tasks/task-NNN/workflow-state.json` exists, treat it as the canonical
-   source for phase / gate / blocker / artifact refs. Update it when you write
-   new build artifacts; do not treat session summaries as a parallel gate source.
+   Use `task.task_dir` as `TASK_DIR`. If session context exists, resume from recorded step.
+   Fallback (if bundle fails): `harness task resolve --json`, `harness handoff read --task task-NNN --json`, `harness session read --task task-NNN --json`.
+2. Read `TASK_DIR/plan.md` — extract deliverables from Contract section
+3. If subsequent round, also read `TASK_DIR/code-eval-rN.md` for fix suggestions
+4. If `TASK_DIR/workflow-state.json` exists, treat as canonical phase/gate source
 
 ---
 
 ## Step 2: Search Before Building
 
-Before writing any code:
-
-1. **Reuse the plan footprint first:** Re-open paths listed in `handoff-plan.json` → `context_footprint`
-   (`explored_paths`, `primary_read_files`) when present — only expand to wider search when gaps remain.
-2. Scan the project for existing patterns, utilities, and conventions
-3. Check if any deliverable can be solved by reusing existing code
-4. Note the project's testing patterns (framework, directory structure, naming)
-
-This prevents reinventing what already exists and ensures consistency.
+Before writing any code, reuse paths from `handoff-plan.json` → `context_footprint` when present. Scan existing patterns, utilities, and test conventions. Only expand search when gaps remain.
 
 {% include 'sections/_failure-pattern-prereview.md.j2' %}
 
-**Session boundary:** After completing Step 2, update session context:
-```bash
-echo '{"task_id":"task-NNN","current_phase":"build","current_step":"2/7","current_state":"Pre-build search complete","next_step":"Implement deliverables"}' | harness session write --task task-NNN
-```
+**Session boundary:** Update session via `harness session write --task task-NNN` with step `2/7`.
 
 ---
 
-## Step 2.5: Review Design Principles
+## Step 2.5: Design Principles Verification (mandatory)
 
-If `plan.md` contains a `## Design Principles` section, review each item before writing code:
+If `plan.md` contains a `## Design Principles` section:
 
-1. Read all DP (Design Principle) entries
-2. For each principle, confirm your planned implementation will satisfy it
-3. If a principle conflicts with your implementation approach, note it in the build log and adjust to follow the principle
+1. Read each DP entry
+2. For each principle, confirm your implementation approach satisfies it
+3. **If any DP is not satisfied, stop and redesign before writing code**
+4. Record a one-line confirmation per DP in the build log (Step 5)
 
-This step requires no extra tool calls — just 10 seconds of thought before you start implementing.
+**Exemption:** If `plan.md` has no Design Principles section (e.g. pure documentation or hotfix tasks), skip this step.
 
 ---
 
@@ -135,8 +113,6 @@ For each deliverable in the contract:
 - Run `cargo fmt --check` for formatting
 {% endif %}
 
-**Session boundary:** After completing implementation, update session context with deliverable status and working set.
-
 ---
 
 ## Step 4: Run CI
@@ -149,25 +125,9 @@ Run the full test suite:
 
 ### Test Failure Triage
 
-If tests fail, determine ownership:
+If tests fail, classify: **pre-existing** (fails on `{{ trunk_branch }}` too → note and continue) vs **in-branch** (your problem → fix, max 3 attempts).
 
-**Pre-existing failures** (test fails on `{{ trunk_branch }}` too):
-- Note in build log: "Pre-existing failure: test_name — not introduced by this change"
-- Continue — not your problem
-
-**In-branch failures** (test passes on base, fails on HEAD):
-- This IS your problem
-- Read the failure output carefully
-- Fix the issue in your implementation
-- Re-run `{{ ci_command }}`
-- Maximum 3 fix attempts per failing test
-
-**After triage:** If in-branch failures remain after 3 attempts, note them as blockers
-in the build log and stop.
-
-{% include 'sections/_error-recovery.md.j2' %}
-
-{% include 'sections/_failure-pattern-save.md.j2' %}
+**On any failure, you MUST first read** `.cursor/skills/harness/harness-build/build-test-triage.md` for the full triage protocol, error recovery matrix, and failure pattern recording instructions.
 
 ---
 
@@ -180,35 +140,24 @@ harness save-build-log --task task-NNN --body "$(cat <<'BUILD_EOF'
 # Build Log — Round N
 
 ## Deliverables
-- [x] Deliverable 1: what was done, files changed
-- [x] Deliverable 2: what was done, files changed
-- [ ] Deliverable 3: NOT DONE — reason
+- [x] D1: what was done
+- [ ] D2: NOT DONE — reason
 
-## Files Changed
-- `path/to/file1.py` — description of change
-- `path/to/file2.py` — description of change
+## Design Principles Verification
+- DP1: satisfied — (how)
 
 ## CI Result
-- Command: `{{ ci_command }}`
-- Result: PASS / FAIL
-- Tests: N passed, M failed
-- Pre-existing failures: K (not introduced by this change)
+PASS / FAIL — N passed, M failed (K pre-existing)
 
-## Decisions Made
-- (implementation decisions you made without asking — explain rationale)
-
-## Out-of-Scope Issues Found
-- (issues discovered but not fixed — outside contract scope)
+## Blockers
+(none, or list)
 BUILD_EOF
 )"
 ```
 
 Replace `task-NNN` and fill in actual values.
 The command creates `build-rN.md` with auto-incremented round number.
-
-When the build log is written, also update `workflow-state.json` (if present, or
-if the contract requires task-level state) so the task reflects the latest build
-phase, build artifact ref, iteration, and any blocker reason.
+Also update `workflow-state.json` if present.
 
 {% if hooks_pre_build or hooks_post_eval or hooks_pre_ship %}
 ---
@@ -220,25 +169,11 @@ phase, build artifact ref, iteration, and any blocker reason.
 
 ## Step 5.5: Write Build Handoff Summary
 
-Write a build outcome summary to the `handoff_summary` field of `workflow-state.json` (≤ 2000 chars):
-what was built, CI result, key decisions, deviations from plan, open items.
+If `workflow-state.json` exists, write build outcome (≤ 2000 chars) to its `handoff_summary` field.
 
-If `workflow-state.json` does not exist, skip.
+## Step 5.6: Write `handoff-build.json` — mandatory
 
-## Step 5.6: Write `handoff-build.json` (schema v3) — mandatory
-
-Write **`TASK_DIR/handoff-build.json`** before commit. Same schema family as plan handoff:
-
-- `schema_version`: **2**
-- `source_phase`: **build**
-- `target_phase`: **eval**
-- `task_id`: matching `task-NNN`
-- `summary`: build / CI outcome in prose
-- `decisions`, `risks`, `open_items`, `artifacts_produced`, `scope_changes`: from this build
-- `context_footprint`:
-  - `explored_paths`: dirs/files you searched beyond the plan footprint (union is OK)
-  - `primary_read_files`: files read for implementation understanding
-  - `primary_touched_files`: files actually modified or created for deliverables
+Write `TASK_DIR/handoff-build.json` with: `schema_version: 2`, `source_phase: build`, `target_phase: eval`, `task_id`, `summary`, `decisions`, `risks`, `open_items`, `artifacts_produced`, `scope_changes`, and `context_footprint` (`explored_paths`, `primary_read_files`, `primary_touched_files`).
 
 ## Step 6: Commit
 

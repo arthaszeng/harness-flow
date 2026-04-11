@@ -108,6 +108,9 @@ def test_reference_files_have_anchors(tmp_path: Path):
     assert "Test Coverage Audit Protocol" in (base / "harness-ship" / "ship-coverage-audit.md").read_text(
         encoding="utf-8"
     )
+    build_triage = (base / "harness-build" / "build-test-triage.md").read_text(encoding="utf-8")
+    assert "Error Recovery Matrix" in build_triage
+    assert "Failure Pattern Recording" in build_triage
 
 
 def test_reference_files_size_floor(tmp_path: Path):
@@ -505,10 +508,12 @@ def test_resume_directive_in_rendered_skills(tmp_path: Path):
     generate_native_artifacts(root, cfg=cfg, lang="en")
     base = root / ".cursor" / "skills" / "harness"
     internal_names = {"harness-build", "harness-eval"}
-    for name in ("harness-build", "harness-ship", "harness-eval"):
+    for name in ("harness-ship", "harness-eval"):
         filename = "PROTOCOL.md" if name in internal_names else "SKILL.md"
         text = (base / name / filename).read_text(encoding="utf-8")
         assert "Recovery after interruption" in text
+    build_ref = (base / "harness-build" / "build-test-triage.md").read_text(encoding="utf-8")
+    assert "Recovery after interruption" in build_ref
 
 
 # --- D10: Build template ---
