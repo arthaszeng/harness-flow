@@ -197,7 +197,7 @@ def _migrate_config(project_root: Path) -> int:
     return warnings
 
 
-def run_update(*, check: bool = False, force: bool = False) -> None:
+def run_update(*, check: bool = False, force: bool = False, target_version: str | None = None) -> None:
     """Execute the harness update workflow."""
     project_root = Path.cwd()
     ui = get_ui()
@@ -205,31 +205,43 @@ def run_update(*, check: bool = False, force: bool = False) -> None:
 
     ui.banner("update", __version__)
 
-    # Step 1: Check for new version
-    console.print()
-    console.print(f"  [cyber.magenta]▸[/] {t('update.checking')}")
-    latest = _get_latest_version()
-
     upgraded = False
     pypi_unreachable = False
 
-    if latest is None:
-        console.print(f"  [cyber.warn]![/] {t('update.check_failed')}")
-        pypi_unreachable = True
-        if check:
-            raise typer.Exit(1)
-    elif latest == __version__:
-        console.print(f"  [cyber.green]✓[/] {t('update.up_to_date')}")
-        if check:
-            raise typer.Exit(0)
+    if target_version:
+        # Pinned version mode — skip PyPI latest check, install directly
+        console.print()
+        if target_version == __version__:
+            console.print(f"  [cyber.green]✓[/] Already at version {target_version}")
+        else:
+            console.print(f"  [cyber.cyan]▸[/] Installing harness-flow=={target_version}")
+            if not _pip_upgrade(target_version):
+                console.print(f"  [cyber.dim]{t('update.skip_reinstall')}[/]")
+                raise typer.Exit(1)
+            upgraded = True
     else:
-        console.print(f"  [cyber.cyan]▸[/] {t('update.new_version', version=latest)}")
-        if check:
-            raise typer.Exit(0)
-        if not _pip_upgrade(latest):
-            console.print(f"  [cyber.dim]{t('update.skip_reinstall')}[/]")
-            raise typer.Exit(1)
-        upgraded = True
+        # Standard mode — check PyPI for latest
+        console.print()
+        console.print(f"  [cyber.magenta]▸[/] {t('update.checking')}")
+        latest = _get_latest_version()
+
+        if latest is None:
+            console.print(f"  [cyber.warn]![/] {t('update.check_failed')}")
+            pypi_unreachable = True
+            if check:
+                raise typer.Exit(1)
+        elif latest == __version__:
+            console.print(f"  [cyber.green]✓[/] {t('update.up_to_date')}")
+            if check:
+                raise typer.Exit(0)
+        else:
+            console.print(f"  [cyber.cyan]▸[/] {t('update.new_version', version=latest)}")
+            if check:
+                raise typer.Exit(0)
+            if not _pip_upgrade(latest):
+                console.print(f"  [cyber.dim]{t('update.skip_reinstall')}[/]")
+                raise typer.Exit(1)
+            upgraded = True
 
     if check:
         raise typer.Exit(0)

@@ -679,6 +679,10 @@ def update(
         False, "--force", "-f",
         help="Do not write project artifacts; print init --force reminder for target repo",
     ),
+    target_version: Optional[str] = typer.Option(
+        None, "--version",
+        help="Install a specific version instead of latest (e.g. 4.1.104)",
+    ),
 ) -> None:
     """Self-update harness and run config migration checks.
 
@@ -688,7 +692,7 @@ def update(
     3. Check .harness-flow/config.toml for new/deprecated keys
     """
     from harness.commands.update import run_update
-    run_update(check=check, force=force)
+    run_update(check=check, force=force, target_version=target_version)
 
 
 @app.command()
