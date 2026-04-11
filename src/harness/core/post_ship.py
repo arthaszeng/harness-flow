@@ -468,7 +468,10 @@ class PostShipManager:
         branches: list[str] = []
         for raw in listed.stdout.splitlines():
             candidate = raw.strip().lstrip("*").strip()
-            if candidate:
+            if not candidate:
+                continue
+            inferred = self.infer_task_key_from_branch(candidate)
+            if inferred == task_key:
                 branches.append(candidate)
         if not branches:
             if pr_head_ref:
