@@ -12,6 +12,7 @@ from pathlib import Path
 import typer
 
 from harness.core.config import HarnessConfig
+from harness.core.diff_collect import collect_diff_data, get_trust_adjustment
 from harness.core.escalation import compute_ship_escalation
 
 
@@ -19,7 +20,6 @@ def run_ship_prepare(*, task: str | None = None, as_json: bool = True) -> None:
     """Pre-compute ship phase metadata (diff + escalation + review hints)."""
     from harness.commands.diff_stat import classify_file
     from harness.core.workflow_state import resolve_task_dir
-    from harness.integrations.git_ops import run_git
 
     cwd = Path.cwd()
     try:
@@ -27,57 +27,27 @@ def run_ship_prepare(*, task: str | None = None, as_json: bool = True) -> None:
     except Exception:
         cfg = HarnessConfig()
 
-    trunk = cfg.workflow.trunk_branch
-    diff_range = f"origin/{trunk}..HEAD"
+    diff_data = collect_diff_data(cwd=cwd, trunk=cfg.workflow.trunk_branch)
+    files = diff_data["files"]
+    additions = diff_data["additions"]
+    deletions = diff_data["deletions"]
+    commit_count = diff_data["commit_count"]
 
-    result = run_git(["diff", "--name-only", diff_range], cwd, timeout=10)
-    if result.returncode != 0:
-        err_msg = result.stderr.strip() or f"git diff failed (exit {result.returncode})"
-        if as_json:
-            typer.echo(json.dumps({"error": err_msg}))
-        raise typer.Exit(1)
+    if not files:
+        from harness.integrations.git_ops import run_git
 
-    files = [f for f in (result.stdout or "").strip().splitlines() if f]
+        probe = run_git(["diff", "--name-only", f"origin/{cfg.workflow.trunk_branch}..HEAD"], cwd, timeout=10)
+        if probe.returncode != 0:
+            err_msg = probe.stderr.strip() or f"git diff failed (exit {probe.returncode})"
+            if as_json:
+                typer.echo(json.dumps({"error": err_msg}))
+            raise typer.Exit(1)
+
     categories: dict[str, list[str]] = {"code": [], "test": [], "doc": [], "other": []}
     for f in files:
         categories[classify_file(f)].append(f)
 
-    stat_result = run_git(["diff", "--shortstat", diff_range], cwd, timeout=10)
-    additions, deletions = 0, 0
-    if stat_result.returncode == 0:
-        stat_line = (stat_result.stdout or "").strip()
-        import re
-        add_m = re.search(r"(\d+)\s+insertion", stat_line)
-        del_m = re.search(r"(\d+)\s+deletion", stat_line)
-        if add_m:
-            additions = int(add_m.group(1))
-        if del_m:
-            deletions = int(del_m.group(1))
-
-    log_result = run_git(["rev-list", "--count", diff_range], cwd, timeout=10)
-    commit_count = 1
-    if log_result.returncode == 0:
-        try:
-            commit_count = int(log_result.stdout.strip())
-        except ValueError:
-            pass
-
-    trust_adj = 0
-    try:
-        from harness.core.review_calibration import (
-            collect_outcomes,
-            generate_calibration_report,
-        )
-        from harness.core.trust_engine import TrustConfig, compute_trust_profile
-
-        agents_dir = cwd / ".harness-flow"
-        outcomes = collect_outcomes(agents_dir)
-        if outcomes:
-            report = generate_calibration_report(outcomes)
-            profile = compute_trust_profile(report, outcomes, config=TrustConfig())
-            trust_adj = profile.escalation_adjustment
-    except Exception:
-        pass
+    trust_adj = get_trust_adjustment(cwd=cwd)
 
     escalation = compute_ship_escalation(
         changed_files=files,

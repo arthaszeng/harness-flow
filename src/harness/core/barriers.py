@@ -9,14 +9,14 @@ Inspired by Claude Code's per-task JSON file pattern:
 
 from __future__ import annotations
 
-import os
-import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from enum import Enum
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
+
+from harness.core.atomic_io import write_text_atomic
 
 
 class BarrierStatus(str, Enum):
@@ -55,28 +55,7 @@ def _barrier_path(task_dir: Path, barrier_id: str) -> Path:
     return _barriers_dir(task_dir) / f"{safe_id}.json"
 
 
-def _write_atomic(path: Path, content: str) -> None:
-    """Write content to path atomically via tmp file + rename."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd, tmp_path_str = tempfile.mkstemp(
-        dir=str(path.parent),
-        prefix=f".{path.stem}.",
-        suffix=".tmp",
-    )
-    closed = False
-    try:
-        os.write(fd, content.encode("utf-8"))
-        os.close(fd)
-        closed = True
-        os.replace(tmp_path_str, str(path))
-    except BaseException:
-        if not closed:
-            os.close(fd)
-        try:
-            os.unlink(tmp_path_str)
-        except OSError:
-            pass
-        raise
+_write_atomic = write_text_atomic
 
 
 def register_barrier(

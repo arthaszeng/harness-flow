@@ -3,88 +3,18 @@
 from __future__ import annotations
 
 import json
-from pathlib import Path
 from typing import Optional
 
 import typer
 
 from harness.core.config import HarnessConfig
+from harness.core.diff_collect import collect_diff_data, get_trust_adjustment
 from harness.core.escalation import (
     compute_plan_escalation,
     compute_ship_escalation,
 )
 
 app = typer.Typer(help="Escalation score computation")
-
-
-def _get_trust_adjustment() -> int:
-    """Best-effort trust adjustment from calibration data."""
-    try:
-        from harness.core.review_calibration import (
-            collect_outcomes,
-            generate_calibration_report,
-        )
-        from harness.core.trust_engine import TrustConfig, compute_trust_profile
-
-        agents_dir = Path.cwd() / ".harness-flow"
-        outcomes = collect_outcomes(agents_dir)
-        if not outcomes:
-            return 0
-        report = generate_calibration_report(outcomes)
-        profile = compute_trust_profile(report, outcomes, config=TrustConfig())
-        return profile.escalation_adjustment
-    except Exception:
-        return 0
-
-
-def _get_ship_diff_data() -> dict:
-    """Collect diff data for ship escalation."""
-    from harness.integrations.git_ops import run_git
-
-    cwd = Path.cwd()
-    try:
-        cfg = HarnessConfig.load(cwd)
-    except Exception:
-        cfg = HarnessConfig()
-    trunk = cfg.workflow.trunk_branch
-    diff_range = f"origin/{trunk}..HEAD"
-
-    result = run_git(["diff", "--name-only", diff_range], cwd, timeout=10)
-    files = [f for f in (result.stdout or "").strip().splitlines() if f] if result.returncode == 0 else []
-
-    stat_result = run_git(["diff", "--stat", diff_range], cwd, timeout=10)
-    additions, deletions = 0, 0
-    if stat_result.returncode == 0:
-        for line in (stat_result.stdout or "").strip().splitlines():
-            if "insertion" in line or "deletion" in line:
-                parts = line.split(",")
-                for part in parts:
-                    part = part.strip()
-                    if "insertion" in part:
-                        try:
-                            additions = int(part.split()[0])
-                        except (ValueError, IndexError):
-                            pass
-                    elif "deletion" in part:
-                        try:
-                            deletions = int(part.split()[0])
-                        except (ValueError, IndexError):
-                            pass
-
-    log_result = run_git(["rev-list", "--count", diff_range], cwd, timeout=10)
-    commit_count = 1
-    if log_result.returncode == 0:
-        try:
-            commit_count = int(log_result.stdout.strip())
-        except ValueError:
-            pass
-
-    return {
-        "files": files,
-        "additions": additions,
-        "deletions": deletions,
-        "commit_count": commit_count,
-    }
 
 
 @app.command("compute")
@@ -103,7 +33,7 @@ def compute_cmd(
     depth: str = typer.Option("low", "--depth", help="[plan] Interaction depth: low|medium|high"),
 ) -> None:
     """Compute escalation score for plan or ship phase."""
-    trust_adj = _get_trust_adjustment()
+    trust_adj = get_trust_adjustment()
 
     if phase == "plan":
         result = compute_plan_escalation(
@@ -118,11 +48,11 @@ def compute_cmd(
             trust_adjustment=trust_adj,
         )
     elif phase == "ship":
-        diff_data = _get_ship_diff_data()
         try:
             cfg = HarnessConfig.load()
         except Exception:
             cfg = HarnessConfig()
+        diff_data = collect_diff_data(trunk=cfg.workflow.trunk_branch)
         result = compute_ship_escalation(
             changed_files=diff_data["files"],
             total_additions=diff_data["additions"],
