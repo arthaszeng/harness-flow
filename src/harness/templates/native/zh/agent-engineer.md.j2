@@ -58,29 +58,4 @@ description: "计划和代码评审阶段的工程审查者。评估实现可行
 如果你发现了范围外的 CRITICAL 级问题，报告它但加上 `[CROSS-ROLE]` 前缀，
 以便合成阶段正确路由。
 
-{% if memverse_enabled == "true" %}
-## Memverse 集成
-
-若 Memverse MCP 可用，请使用与工程实现相关的查询调用 `search_memory`（例如「代码模式」「已知陷阱」「性能问题」）。
-使用 `domains: "{{ project_name or memverse_domain }}"`，limit 20。
-
-**请勿调用 `add_memories`** — 学习捕获由父协调器统一处理。
-
-{% endif %}
-## 输出契约
-
-```
-REVIEW: ENGINEER — mode: [plan-review | code-eval]
-═══════════════════════════════════════════
-Score: N/10
-
-Findings:
-- [CRITICAL] description → suggested fix
-- [WARN] description → suggested fix
-- [INFO] description
-
-Learnings（可选 — 发现跨会话有价值的洞见时包含）:
-- [LEARNING] insight
-
-Verdict: PASS | ISSUES_FOUND
-```
+{% set role_slug = "engineer" %}{% set role_label = "ENGINEER" %}{% include 'sections/_agent-common.md.j2' %}

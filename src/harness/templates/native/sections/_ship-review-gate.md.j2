@@ -22,6 +22,18 @@ harness escalation-score compute --phase ship --json
 The CLI reads `git diff/log` and computes signals (diff size, file count, risk directories,
 API surface, commit count) + trust adjustment automatically.
 
+### Barrier Registration
+
+Before dispatching review, register barriers for sidecar tasks that will run in parallel:
+
+```bash
+harness barrier register --task TASK_ID --id code-review --phase ship --required
+harness barrier register --task TASK_ID --id memverse-sync --phase ship
+harness barrier register --task TASK_ID --id scope-drift --phase ship
+```
+
+These barriers are checked by `harness gate` before ship is allowed.
+
 ### Review Intensity Levels
 
 **Score >= {{ gate_full_review_min }} → FULL REVIEW**

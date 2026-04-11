@@ -3,11 +3,11 @@
 ## Continuity & quality gates (read first)
 
 **Standard pipeline:** `/harness-plan` → `/harness-build` → `/harness-ship`.  
-`/harness-ship` does **not** write feature code — it runs tests, **mandatory 5-role code eval**, `harness save-eval`, `harness gate`, then push/PR.
+`/harness-ship` does **not** write feature code — it runs tests, **mandatory adaptive code eval** (FAST/LITE/FULL intensity selected by escalation score), `harness save-eval`, `harness gate`, then push/PR.
 
 **Do not end the session until:**
 - After **plan + review gate:** you have started **`/harness-build`** in the **same** conversation (do not stop at `plan.md` only).
 - After **build (implementation committed):** you have started **`/harness-ship`** in the **same** conversation (do not stop at “tests pass” only).
-- During **`/harness-ship`:** you have run **eval** (5 roles + `harness save-eval`) and **`harness gate`** — **never** skip eval because “pytest is green”.
+- During **`/harness-ship`:** you have run **eval** (adaptive multi-role review + `harness save-eval`) and **`harness gate`** — **never** skip eval because “pytest is green”.
 
 **Mechanical check (optional):** run `harness workflow next` in the repo root for a one-line `HARNESS_NEXT ...` hint tied to `workflow-state.json`.

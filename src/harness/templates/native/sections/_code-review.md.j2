@@ -1,4 +1,4 @@
-## Code Review — 5-Role Parallel Dispatch
+## Code Review — Adaptive Multi-Role Dispatch
 
 ### Dispatch
 
@@ -111,6 +111,18 @@ computes weighted average, and returns `{dimensions, aggregate, calibrated, verd
 **Single truth source:** The CLI verdict is advisory. Write the calibrated score and verdict
 into the `harness save-eval` body so `gates.py` can parse `## Verdict:` from the markdown.
 The gate always reads the eval file as the authoritative source.
+
+### Barrier Orchestration (if applicable)
+
+After synthesis, register and complete barriers for sidecar tasks that ran during review:
+
+```bash
+harness barrier complete --task TASK_ID --id code-review --status done
+```
+
+If scope-drift or memverse-sync barriers were registered earlier, complete them once their
+respective sidecar work finishes. The gate (`harness gate`) checks all `required_for_gate`
+barriers before allowing ship.
 
 ### Fix-First Triage
 

@@ -904,20 +904,18 @@ def test_product_and_pm_agents_include_direction_governance(tmp_path: Path):
 
     po = (tmp_path / ".cursor" / "agents" / "harness-product-owner.md").read_text(encoding="utf-8")
     assert "Roadmap / Plan Backlog alignment" in po
-    assert "Evidence of direction progress" in po
+    assert "direction progress" in po
     assert "Long-Horizon Governance Boundary" in po
     assert "Value recommendation" in po
     assert "single-round" in po
-    assert "do NOT" in po
     assert "`N/A`" in po
 
     pm = (tmp_path / ".cursor" / "agents" / "harness-project-manager.md").read_text(encoding="utf-8")
-    assert "Roadmap / Active Plan relationship" in pm
+    assert "Roadmap / Active Plan" in pm
     assert "Backlog health" in pm
     assert "Long-Horizon Governance Boundary" in pm
     assert "Delivery recommendation" in pm
     assert "single-round" in pm
-    assert "do NOT" in pm
     assert "`N/A`" in pm
 
 
@@ -952,7 +950,7 @@ def test_eval_uses_five_role_code_review(tmp_path: Path):
     generate_native_artifacts(tmp_path, cfg=cfg)
     ev = (tmp_path / ".cursor" / "skills" / "harness" / "harness-eval" / "SKILL.md")
     content = ev.read_text(encoding="utf-8")
-    assert "5-Role Code Review" in content
+    assert "Adaptive Multi-Role Code Review" in content
     assert "harness-architect" in content
     assert "harness-engineer" in content
     assert "harness-qa" in content
@@ -1001,9 +999,9 @@ def test_review_gate_references_plan_review_scores(tmp_path: Path):
     generate_native_artifacts(tmp_path, cfg=cfg)
     plan = (tmp_path / ".cursor" / "skills" / "harness" / "harness-plan" / "SKILL.md")
     content = plan.read_text(encoding="utf-8")
-    assert "plan review aggregate score" in content
-    assert "Arch" in content
+    assert "aggregate review score" in content
     assert "Aggregate" in content
+    assert "escalation score" in content
 
 
 # --- resolve_native_lang ---

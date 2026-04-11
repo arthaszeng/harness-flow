@@ -26,6 +26,10 @@ Findings:
 
 Learnings（可选 — 发现跨会话有价值的洞见时包含）:
 - [LEARNING] 洞见
-
+{% if _role_slug == "product_owner" %}
+Value recommendation: continue | reprioritize | pause/pivot | n/a
+{% elif _role_slug == "project_manager" %}
+Delivery recommendation: continue | reprioritize | pause/pivot | n/a
+{% endif %}
 Verdict: PASS | ISSUES_FOUND
 ```

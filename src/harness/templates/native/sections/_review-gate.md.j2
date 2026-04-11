@@ -5,7 +5,7 @@
 
 Display:
 1. The full plan (spec + contract)
-2. Plan review summary (5-role scores, aggregate, findings)
+2. Plan review summary (scores, aggregate, findings)
 3. Any unresolved reviewer concerns
 
 Wait for user response:
@@ -14,31 +14,27 @@ Wait for user response:
 - **reject** → terminate the workflow
 {% elif plan_review_gate == "auto" %}
 
-Assess whether the plan needs human review by calculating an **escalation score**.
+Compute the **escalation score** via CLI to determine whether the plan needs human review:
+
+```bash
+harness escalation-score compute --phase plan --json
+```
+
+The CLI reads plan metadata (deliverable count, estimated files, security/schema/API flags,
+review score, interaction depth, trust adjustment) and returns `{score, level, signals}`.
 
 **This entry point's default interaction depth: {{ interaction_depth | default("low") }}**
 (If Phase 0 selected a different path, use that path's depth instead — see Phase 0 review gate notes.)
 
-| Signal | Condition | Score |
-|--------|-----------|-------|
-| Interaction depth | high (vision exploration mode) | **-2** |
-| Interaction depth | medium (vision clarification mode) | **-1** |
-| Interaction depth | low (plan) | **+0** |
-| Scale | deliverables > 5 | +2 |
-| Scale | estimated files to modify > 10 | +2 |
-| Risk | security, authentication, or authorization changes | +3 |
-| Risk | data model or schema changes | +3 |
-| Risk | public API surface changes | +2 |
-| Quality | plan review aggregate score < {{ pass_threshold }}/10 | +2 |
-| Type | new feature (not fix or refactor) | +1 |
+### Review Intensity Routing
 
-**Score >= {{ gate_full_review_min }} → FULL REVIEW**
-Present the complete plan + 5-role review summary. Wait for:
+**Level = FULL (score >= {{ gate_full_review_min }}) → FULL REVIEW**
+Present the complete plan + review summary. Wait for:
 - **approve** → continue
 - **edit: [feedback]** → re-plan
 - **reject** → terminate
 
-**Score {{ gate_summary_confirm_min }}–{{ (gate_full_review_min | int) - 1 }} → SUMMARY CONFIRM**
+**Level = LITE (score {{ gate_summary_confirm_min }}–{{ (gate_full_review_min | int) - 1 }}) → SUMMARY CONFIRM**
 Show a concise summary:
 ```
 PLAN SUMMARY
@@ -47,15 +43,14 @@ PLAN SUMMARY
   Deliverables:  N items
   Files:         ~N estimated
   Risk flags:    [list or "none"]
-  Review scores: Arch X/10 | Prod X/10 | Eng X/10 | QA X/10 | PM X/10
+  Escalation:    score N / level LITE
   Aggregate:     X/10
-  Gate score:    N (SUMMARY CONFIRM)
 ═══════════════════════════════════════════
 Continue? [approve / edit / reject]
 ```
 
-**Score < {{ gate_summary_confirm_min }} → AUTO PROCEED**
-Log: `"Plan auto-approved (gate score N, aggregate review score X/10)"` and continue.
+**Level = FAST (score < {{ gate_summary_confirm_min }}) → AUTO PROCEED**
+Log: `"Plan auto-approved (escalation score N, level FAST, aggregate review score X/10)"` and continue.
 Record the plan-review gate snapshot in `workflow-state.json` when that task-level
 state file exists.
 {% else %}

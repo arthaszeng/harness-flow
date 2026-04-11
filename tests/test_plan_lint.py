@@ -89,6 +89,8 @@ class TestLintPlan:
         assert "valid" in d
         assert "errors" in d
         assert "deliverable_count" in d
+        assert "plan_mode" in d
+        assert d["plan_mode"] in ("small", "medium", "large")
 
     def test_estimated_files_extraction(self, tmp_path):
         p = tmp_path / "plan.md"

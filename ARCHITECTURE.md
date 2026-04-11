@@ -93,6 +93,34 @@ Supports Rich terminal and `--json` output. Exit 0 always (including no-data cas
 
 Queries PyPI for newer versions, runs `**pip install --upgrade harness-flow`** when requested, and runs lightweight **config migration** checks with user-visible warnings. It does **not** write project artifacts; users should run `**harness init --force`** in the target repository when regeneration is needed.
 
+### `escalation.py` (command)
+
+`harness escalation-score compute --phase plan|ship --json` — deterministic escalation score computation. Reads git diff/log + plan metadata, delegates to `core/escalation.py`, returns `{score, level, signals}`. Integrates `trust_engine.escalation_adjustment` at the CLI boundary.
+
+### `review_score.py` (command)
+
+`harness review-score compute --kind plan|code --json` — calibrated review score from stdin JSON. Reads per-role scores, applies repeat penalties via `core/score_calibration.py`, returns `{dimensions, aggregate, calibrated, verdict}`. Stdin schema: `{"roles": [{"role": "...", "score": N, "findings": [...]}]}`.
+
+### `plan_lint.py` (command)
+
+`harness plan-lint --task TASK_ID --json` — structural validation of plan.md. Checks required sections (Spec, Contract, Deliverables, AC), returns `{valid, errors[], plan_mode}`.
+
+### `ship_prepare.py` (command)
+
+`harness ship-prepare --task TASK_ID --json` — combined diff-stat + escalation + review dispatch hints. Pre-computes ship metadata in one call, returns `{diff_stat, escalation, review_dispatch}`.
+
+### `preflight.py` (command)
+
+`harness preflight-bundle --task TASK_ID --phase build|ship --json` — 4-in-1 preflight combining task resolve, handoff read, session read, and context-budget check.
+
+### `plan_audit.py` (command)
+
+`harness plan-completion-audit --task TASK_ID --json` — cross-references plan deliverables against git diff for DONE/PARTIAL/NOT_DONE status per deliverable.
+
+### `barrier.py` (command)
+
+`harness barrier register|complete|check|list` — async sidecar barrier management. Each barrier is an independent JSON file under `task-NNN/barriers/`. Supports `--required` flag for gate integration.
+
 ---
 
 ## Core (`src/harness/core/`)
@@ -353,7 +381,7 @@ All user-visible harness **behavior** in the IDE is intended to flow from these 
 
 1. **Cursor IDE is the execution engine** — Harness generates **skills, agents, and rules** that Cursor’s agent runtime executes. No in-package external CLI orchestration of other IDEs.
 2. **Deterministic logic offloading** — Arithmetic, scoring, validation, and structural checks run as **millisecond CLI commands** (escalation-score, review-score, plan-lint, ship-prepare, preflight-bundle, plan-completion-audit), freeing LLM context for reasoning tasks only.
-3. **Five-role adaptive review** — The five native roles review **plans and code** in parallel; **FAST/LITE/FULL** intensity is selected by escalation score, not hardcoded.
+3. **Adaptive multi-role review** — The five native roles review **plans and code** in parallel; **FAST/LITE/FULL** intensity is selected by deterministic escalation score, not hardcoded. FAST skips multi-role review; LITE dispatches Engineer + QA only; FULL uses all five roles.
 4. **Barrier-based async orchestration** — Per-barrier JSON files (atomic write, no global state lock) enable sidecar execution patterns: register → run in background → complete → gate checks.
 5. **Fix-First auto-remediation** — Review output is classified into **AUTO-FIX** vs **ASK** before presentation (encoded in generated rules/skills, not in a Python state machine).
 6. **Config cascade** — **Project** and **global** TOML merge with **project overriding global**; `**HARNESS_`* env vars** override both; Pydantic validates the result.

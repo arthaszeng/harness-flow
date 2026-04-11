@@ -64,30 +64,4 @@ Do NOT report findings in these categories — they belong to other roles:
 If you discover a CRITICAL-severity issue outside your scope, report it but prefix with
 `[CROSS-ROLE]` so the synthesis stage can route it correctly.
 
-{% if memverse_enabled == "true" %}
-## Memverse Integration
-
-If Memverse MCP is available, call `search_memory` with architecture-relevant queries
-(e.g. "architecture decisions", "dependency choices", "security patterns").
-Use `domains: "{{ project_name or memverse_domain }}"`, limit 20.
-
-**Do not call `add_memories`** — learning capture is handled by the parent orchestrator.
-
-{% endif %}
-## Output Contract
-
-```
-REVIEW: ARCHITECT — mode: [plan-review | code-eval]
-═══════════════════════════════════════════
-Score: N/10
-
-Findings:
-- [CRITICAL] description → suggested fix
-- [WARN] description → suggested fix
-- [INFO] description
-
-Learnings (optional — include only if cross-session insight discovered):
-- [LEARNING] insight
-
-Verdict: PASS | ISSUES_FOUND
-```
+{% set role_slug = "architect" %}{% set role_label = "ARCHITECT" %}{% include 'sections/_agent-common.md.j2' %}

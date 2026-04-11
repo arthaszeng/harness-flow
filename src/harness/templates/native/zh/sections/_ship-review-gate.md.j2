@@ -21,6 +21,18 @@ harness escalation-score compute --phase ship --json
 
 CLI 读取 `git diff/log`，计算信号（diff 规模、文件数、风险目录、API 表面、commit 数）+ trust 调整。
 
+### Barrier 注册
+
+派遣评审前，为将并行运行的 sidecar 任务注册 barrier：
+
+```bash
+harness barrier register --task TASK_ID --id code-review --phase ship --required
+harness barrier register --task TASK_ID --id memverse-sync --phase ship
+harness barrier register --task TASK_ID --id scope-drift --phase ship
+```
+
+这些 barrier 会在 `harness gate` 允许 ship 前被检查。
+
 ### 评审强度级别
 
 **评分 >= {{ gate_full_review_min }} → FULL（完整评审）**

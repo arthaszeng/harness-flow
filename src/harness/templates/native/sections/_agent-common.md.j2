@@ -26,6 +26,10 @@ Findings:
 
 Learnings (optional — include only if cross-session insight discovered):
 - [LEARNING] insight
-
+{% if _role_slug == "product_owner" %}
+Value recommendation: continue | reprioritize | pause/pivot | n/a
+{% elif _role_slug == "project_manager" %}
+Delivery recommendation: continue | reprioritize | pause/pivot | n/a
+{% endif %}
 Verdict: PASS | ISSUES_FOUND
 ```

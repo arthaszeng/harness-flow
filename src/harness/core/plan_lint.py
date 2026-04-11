@@ -33,11 +33,13 @@ class PlanLintResult:
     has_contract: bool = False
     deliverable_count: int = 0
     estimated_files: int | None = None
+    plan_mode: str = "unknown"
 
     def to_dict(self) -> dict:
         return {
             "valid": self.valid,
             "errors": [{"code": e.code, "message": e.message, "line": e.line} for e in self.errors],
+            "plan_mode": self.plan_mode,
             "has_spec": self.has_spec,
             "has_contract": self.has_contract,
             "deliverable_count": self.deliverable_count,
@@ -112,8 +114,8 @@ def lint_plan(plan_path: Path) -> PlanLintResult:
             message="no deliverables found (expected checkbox items in Contract)",
         ))
 
-    estimated_files = _extract_estimated_files(content)
-
+    estimated_files_val = _extract_estimated_files(content)
+    plan_mode = _infer_plan_mode(deliverable_count, estimated_files_val)
     valid = len(errors) == 0
 
     return PlanLintResult(
@@ -122,8 +124,19 @@ def lint_plan(plan_path: Path) -> PlanLintResult:
         has_spec=has_spec,
         has_contract=has_contract,
         deliverable_count=deliverable_count,
-        estimated_files=estimated_files,
+        estimated_files=estimated_files_val,
+        plan_mode=plan_mode,
     )
+
+
+def _infer_plan_mode(deliverable_count: int, estimated_files: int | None) -> str:
+    """Infer plan complexity mode from deliverable count and estimated file scope."""
+    files = estimated_files or 0
+    if deliverable_count <= 2 and files <= 5:
+        return "small"
+    if deliverable_count <= 5 and files <= 15:
+        return "medium"
+    return "large"
 
 
 _FILE_COUNT_RE = re.compile(r"~?(\d+)\s*(?:files?|文件)", re.IGNORECASE)

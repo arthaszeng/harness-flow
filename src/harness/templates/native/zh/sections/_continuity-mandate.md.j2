@@ -3,11 +3,11 @@
 ## 连贯性与质量门禁（请先读）
 
 **标准管线：** `/harness-plan` → `/harness-build` → `/harness-ship`。  
-`/harness-ship` **不**负责写业务功能代码 — 它负责测试、**强制 5 角色代码评审**、`harness save-eval`、`harness gate`，以及推送/PR。
+`/harness-ship` **不**负责写业务功能代码 — 它负责测试、**强制自适应代码评审**（FAST/LITE/FULL，由 escalation score 决定强度）、`harness save-eval`、`harness gate`，以及推送/PR。
 
 **在以下情况前禁止结束会话：**
 - **计划 + review gate 通过后：** 必须在**同一对话**内已开始 **`/harness-build`**（不要只交付 `plan.md` 就停）。
 - **build（实现已提交）后：** 必须在**同一对话**内已开始 **`/harness-ship`**（不要停在「测试过了」）。
-- 执行 **`/harness-ship` 时：** 必须完成 **eval**（5 角色 + `harness save-eval`）和 **`harness gate`** — **禁止**因「pytest 全绿」而跳过 eval。
+- 执行 **`/harness-ship` 时：** 必须完成 **eval**（自适应多角色评审 + `harness save-eval`）和 **`harness gate`** — **禁止**因「pytest 全绿」而跳过 eval。
 
 **机械自检（可选）：** 在仓库根目录运行 `harness workflow next`，根据 `workflow-state.json` 输出一行 `HARNESS_NEXT ...` 提示。
