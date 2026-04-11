@@ -53,13 +53,13 @@ Review gate passed. Continue in the **same conversation** with this **two-step**
 1. **`/harness-build`** — implement the contract, run CI, commit implementation.  
    (`/harness-ship` does **not** write feature code.)
 
-2. **`/harness-ship`** — rebase, full tests, **mandatory 5-role code eval**, `harness save-eval`, `harness gate`, bisectable commits, push, PR.
+2. **`/harness-ship`** — rebase, full tests, **adaptive multi-role code eval** (FAST/LITE/FULL based on escalation score), `harness save-eval`, `harness gate`, bisectable commits, push, PR.
 
 **Continuity guarantee**: the plan stage should have updated `workflow-state.json`
 with `phase: contracted` and a `handoff_summary`. After build, ship uses the
 task state **fast path** where applicable — skipping redundant pre-flight from plan.
 
-**Eval is part of ship**, not optional: do not skip 5-role eval or `harness gate` because tests passed.
+**Eval is part of ship**, not optional: do not skip the adaptive code review or `harness gate` because tests passed.
 
 Hard completion rule:
 - Do not stop after plan with only artifacts — start **`/harness-build`** before ending the turn.

@@ -1,4 +1,4 @@
-# Architecture (v4.0.0 — native-only)
+# Architecture (v5.0.0 — performance-optimized native)
 
 This document explains **why** harness-flow is structured the way it is after the native-only refactor. Execution lives in **Cursor**: the Python package bootstraps configuration, generates IDE artifacts, and maintains local state—not an external orchestration loop.
 
@@ -9,14 +9,17 @@ For module-level behavior, read the code and docstrings. For day-to-day usage, s
 ```
 ┌─────────────────────────────────────────────────────────────────┐
 │  harness CLI (Typer)                                             │
-│  init · status · update                                          │
+│  init · status · update · escalation-score · review-score         │
+│  plan-lint · ship-prepare · preflight-bundle · barrier            │
 └────────────────────────────┬────────────────────────────────────┘
                              │
          ┌───────────────────┼───────────────────┐
          ▼                   ▼                   ▼
    .harness-flow/*            core/*              native/skill_gen
    config, vision,      config, state,      Jinja2 → .cursor/
-   state, progress      scanner, ui, …      skills, agents, rules
+   state, barriers,     escalation,         skills, agents, rules
+   progress             barriers, plan_lint,
+                        scanner, ui, …
                              │
                              ▼
                     integrations/
@@ -37,16 +40,23 @@ For module-level behavior, read the code and docstrings. For day-to-day usage, s
 Built with **Typer**. Core commands:
 
 
-| Command              | Purpose                                                                                  |
-| -------------------- | ---------------------------------------------------------------------------------------- |
-| `init`               | Project bootstrap wizard; when config already exists, reinit mode regenerates artifacts. |
-| `gate`               | Check ship-readiness gates for the current task (hard + soft checks).                    |
-| `status`             | Load workflow state and render a Rich dashboard.                                         |
-| `git-preflight`      | Structured git preflight checks with deterministic result codes.                         |
-| `git-prepare-branch` | Create/resume task branch on top of configured trunk.                                    |
-| `git-sync-trunk`     | Sync the current feature branch against configured trunk.                                |
-| `git-post-ship`      | Post-ship lifecycle automation: PR merge check, trunk sync, local branch cleanup.        |
-| `update`             | Check PyPI, optional pip upgrade, config migration hints; no project artifact writes.    |
+| Command                 | Purpose                                                                                  |
+| ----------------------- | ---------------------------------------------------------------------------------------- |
+| `init`                  | Project bootstrap wizard; when config already exists, reinit mode regenerates artifacts. |
+| `gate`                  | Check ship-readiness gates for the current task (hard + soft checks + barriers).         |
+| `status`                | Load workflow state and render a Rich dashboard.                                         |
+| `escalation-score`      | Deterministic escalation score computation (plan or ship phase).                         |
+| `review-score`          | Calibrated review score with weighted averages and repeat penalties.                     |
+| `plan-lint`             | Structural validation of plan.md (sections, deliverables, completeness).                 |
+| `ship-prepare`          | Combined diff-stat + escalation + review dispatch hints in one call.                     |
+| `preflight-bundle`      | 4-in-1 preflight (task resolve + handoff + session + context-budget).                    |
+| `plan-completion-audit` | Cross-reference plan deliverables against git diff for completion status.                |
+| `barrier`               | Async sidecar barrier management (register/complete/check/list).                         |
+| `git-preflight`         | Structured git preflight checks with deterministic result codes.                         |
+| `git-prepare-branch`    | Create/resume task branch on top of configured trunk.                                    |
+| `git-sync-trunk`        | Sync the current feature branch against configured trunk.                                |
+| `git-post-ship`         | Post-ship lifecycle automation: PR merge check, trunk sync, local branch cleanup.        |
+| `update`                | Check PyPI, optional pip upgrade, config migration hints; no project artifact writes.    |
 
 
 ---
@@ -83,6 +93,34 @@ Supports Rich terminal and `--json` output. Exit 0 always (including no-data cas
 
 Queries PyPI for newer versions, runs `**pip install --upgrade harness-flow`** when requested, and runs lightweight **config migration** checks with user-visible warnings. It does **not** write project artifacts; users should run `**harness init --force`** in the target repository when regeneration is needed.
 
+### `escalation.py` (command)
+
+`harness escalation-score compute --phase plan|ship --json` — deterministic escalation score computation. Reads git diff/log + plan metadata, delegates to `core/escalation.py`, returns `{score, level, signals}`. Integrates `trust_engine.escalation_adjustment` at the CLI boundary.
+
+### `review_score.py` (command)
+
+`harness review-score compute --kind plan|code --json` — calibrated review score from stdin JSON. Reads per-role scores, applies repeat penalties via `core/score_calibration.py`, returns `{dimensions, aggregate, calibrated, verdict}`. Stdin schema: `{"roles": [{"role": "...", "score": N, "findings": [...]}]}`.
+
+### `plan_lint.py` (command)
+
+`harness plan-lint --task TASK_ID --json` — structural validation of plan.md. Checks required sections (Spec, Contract, Deliverables, AC), returns `{valid, errors[], plan_mode}`.
+
+### `ship_prepare.py` (command)
+
+`harness ship-prepare --task TASK_ID --json` — combined diff-stat + escalation + review dispatch hints. Pre-computes ship metadata in one call, returns `{diff_stat, escalation, review_dispatch}`.
+
+### `preflight.py` (command)
+
+`harness preflight-bundle --task TASK_ID --phase build|ship --json` — 4-in-1 preflight combining task resolve, handoff read, session read, and context-budget check.
+
+### `plan_audit.py` (command)
+
+`harness plan-completion-audit --task TASK_ID --json` — cross-references plan deliverables against git diff for DONE/PARTIAL/NOT_DONE status per deliverable.
+
+### `barrier.py` (command)
+
+`harness barrier register|complete|check|list` — async sidecar barrier management. Each barrier is an independent JSON file under `task-NNN/barriers/`. Supports `--required` flag for gate integration.
+
 ---
 
 ## Core (`src/harness/core/`)
@@ -92,7 +130,7 @@ Queries PyPI for newer versions, runs `**pip install --upgrade harness-flow`** w
 **Pydantic** models: `ProjectConfig`, `CIConfig`, `ModelsConfig`, `NativeModeConfig`, `WorkflowConfig`, `HarnessConfig`, plus nested integration config (e.g. Memverse).
 
 - `**HarnessConfig` uses `ConfigDict(extra="ignore")`** so older TOML keys do not break loading.
-- `**HarnessConfig.load()**` builds the effective config by deep-merging, then validates:
+- `**HarnessConfig.load()`** builds the effective config by deep-merging, then validates:
   - Start from **project** `.harness-flow/config.toml` (if present).
   - Merge `**~/.harness/config.toml`** under it so **project wins** on conflicts.
   - Merge `**HARNESS_*` environment variables** on top (highest precedence).
@@ -105,7 +143,7 @@ Queries PyPI for newer versions, runs `**pip install --upgrade harness-flow`** w
 Minimal constants only:
 
 - `**ALL_ROLES`** — empty `frozenset` (no routed roles in native-only mode).
-- `**NATIVE_REVIEW_ROLES**` — the five native review roles: `architect`, `product_owner`, `engineer`, `qa`, `project_manager`.
+- `**NATIVE_REVIEW_ROLES`** — the five native review roles: `architect`, `product_owner`, `engineer`, `qa`, `project_manager`.
 - `**SCORING_DIMENSIONS**` — evaluation dimension labels (used by tests for validation).
 - `**DEFAULT_RUNTIME**` — default runtime label (`"cursor"`) for registry/events/tracker.
 
@@ -152,23 +190,54 @@ re-processing full upstream artifacts. Handoff files live at
 `.harness-flow/tasks/task-NNN/handoff-<phase>.json` with `PHASE_ORDER = (plan, build, eval, ship)`.
 Schema uses Pydantic with `extra="ignore"` and versioning for forward compatibility.
 
+### `escalation.py`
+
+Deterministic escalation score computation for plan and ship phases. Replaces
+template-embedded LLM arithmetic with millisecond-level Python logic.
+
+- `compute_plan_escalation()` — scores plan metadata (deliverable count, file
+count, security/schema/API flags, review score, interaction depth, trust adjustment)
+- `compute_ship_escalation()` — scores git diff signals (diff size, file count,
+risk directories, API surface, commit count, trust adjustment)
+- Returns `EscalationResult` with `score`, `level` (FAST/LITE/FULL), and `signals` list
+
+### `barriers.py`
+
+Async sidecar barrier mechanism inspired by Claude Code's per-task JSON pattern.
+Each barrier is an independent JSON file under `task-NNN/barriers/` — no global
+workflow-state mutations, no concurrent write conflicts.
+
+- `register_barrier()` — creates barrier file in PENDING state (atomic write)
+- `complete_barrier()` — updates to terminal state (idempotent, atomic write)
+- `check_barriers()` — directory-level readdir for completion checks
+- Gate integration: `gates.py` calls `_check_barrier_readiness()` to BLOCK
+ship if any `required_for_gate=True` barrier is not DONE
+
+### `plan_lint.py`
+
+Plan.md structural validation (deterministic, no LLM). Checks for required
+sections (Spec, Contract) and sub-sections (Analysis, Approach, Impact, Risks,
+Deliverables, Acceptance Criteria, Out of Scope). Extracts deliverable count
+and estimated file count.
+
 ### `gates.py`
 
 Ship-readiness gate validation. `check_ship_readiness(task_dir)` runs hard checks
-(plan exists, eval exists, eval verdict parseable, eval ship-eligible) and soft
-checks (build exists, eval freshness, workflow-state gate populated). Returns a
-structured `GateVerdict` with per-item results. `write_gate_snapshot` persists the
-verdict to `workflow-state.json` via load-merge-save. Used by `harness gate` CLI.
+(plan exists, eval exists, eval verdict parseable, eval ship-eligible, **barriers
+complete**) and soft checks (build exists, eval freshness, workflow-state gate
+populated). Returns a structured `GateVerdict` with per-item results.
+`write_gate_snapshot` persists the verdict to `workflow-state.json` via
+load-merge-save. Used by `harness gate` CLI.
 
-**Adaptive Ship Gate (template-level):** The ship skill template includes
-`_ship-review-gate.md.j2` which computes an escalation score from code-change
-signals (diff size, file count, risk directories, commit types) and selects one
-of three review intensities:
+**Adaptive Ship Gate (template-level + CLI):** The ship skill template now calls
+`harness ship-prepare` (or `harness escalation-score compute --phase ship`) instead
+of computing signals inline. The CLI reads git diff/log and selects one of three
+review intensities:
 
 
 | Level | Trigger                                                     | Behavior                                         |
 | ----- | ----------------------------------------------------------- | ------------------------------------------------ |
-| FULL  | score ≥ `gate_full_review_min` (default 5)                  | 5-role parallel code review                      |
+| FULL  | score ≥ `gate_full_review_min` (default 5)                  | Full multi-role parallel code review              |
 | LITE  | score in `[gate_summary_confirm_min, gate_full_review_min)` | Engineer + QA only                               |
 | FAST  | score < `gate_summary_confirm_min` (default 3)              | Skip multi-role review; CI + `harness gate` only |
 
@@ -240,7 +309,7 @@ is not persisted to `workflow-state.json`.
 
 ### `progress.py`
 
-`**suggest_next_action`** and `**update_progress**` helpers for markdown progress narratives (e.g. `.harness-flow/progress.md`) aligned with native workflows.
+`**suggest_next_action`** and `**update_progress`** helpers for markdown progress narratives (e.g. `.harness-flow/progress.md`) aligned with native workflows.
 
 ### `scanner.py`
 
@@ -293,7 +362,7 @@ Skills/agents/rules are regenerated according to `init --force` behavior.
 
 ## Templates (`src/harness/templates/`)
 
-- `**config.toml.j2**` — project config emitted by `init`.
+- `**config.toml.j2`** — project config emitted by `init`.
 - `**native/**` — Jinja2 sources for skills, agents, rules, and shared **sections** (e.g. plan/review gates, trust boundary, CI verification).
 - `**vision.md.j2` / `vision.zh.md.j2`** — initial vision stubs.
 
@@ -304,19 +373,21 @@ All user-visible harness **behavior** in the IDE is intended to flow from these 
 ## Integrations (`src/harness/integrations/`)
 
 - `**git_ops.py`** — git helpers (rebase, merge, cleanup) plus structured command results (`GitOperationResult`) for deterministic error handling.
-- `**memverse.py**` — Memverse integration anchor. Actual search/add runs via Cursor MCP tools in the IDE; Python only provides the `integrations.memverse` config which is projected into templates as `memverse_enabled` and `memverse_domain` (Layer 0).
+- `**memverse.py`** — Memverse integration anchor. Actual search/add runs via Cursor MCP tools in the IDE; Python only provides the `integrations.memverse` config which is projected into templates as `memverse_enabled` and `memverse_domain` (Layer 0).
 
 ---
 
 ## Design principles
 
 1. **Cursor IDE is the execution engine** — Harness generates **skills, agents, and rules** that Cursor’s agent runtime executes. No in-package external CLI orchestration of other IDEs.
-2. **Five-role adversarial review** — The five native roles review **plans and code** in parallel; templates encode how dispatch and aggregation behave.
-3. **Fix-First auto-remediation** — Review output is classified into **AUTO-FIX** vs **ASK** before presentation (encoded in generated rules/skills, not in a Python state machine).
-4. **Config cascade** — **Project** and **global** TOML merge with **project overriding global**; `**HARNESS_*` env vars** override both; Pydantic validates the result.
-5. **Backward compatibility** — `**extra="ignore"`** on `HarnessConfig` allows stale keys from older installs to load safely.
-6. **Template-driven generation** — Native artifacts are rendered from **Jinja2**; Python supplies context and file placement only.
-7. **Local-first** — State, config, registry, and logs are **on disk**; PyPI is only needed for **package updates**, not for routine development.
+2. **Deterministic logic offloading** — Arithmetic, scoring, validation, and structural checks run as **millisecond CLI commands** (escalation-score, review-score, plan-lint, ship-prepare, preflight-bundle, plan-completion-audit), freeing LLM context for reasoning tasks only.
+3. **Adaptive multi-role review** — The five native roles review **plans and code** in parallel; **FAST/LITE/FULL** intensity is selected by deterministic escalation score, not hardcoded. FAST skips multi-role review; LITE dispatches Engineer + QA only; FULL uses all five roles.
+4. **Barrier-based async orchestration** — Per-barrier JSON files (atomic write, no global state lock) enable sidecar execution patterns: register → run in background → complete → gate checks.
+5. **Fix-First auto-remediation** — Review output is classified into **AUTO-FIX** vs **ASK** before presentation (encoded in generated rules/skills, not in a Python state machine).
+6. **Config cascade** — **Project** and **global** TOML merge with **project overriding global**; `**HARNESS_`* env vars** override both; Pydantic validates the result.
+7. **Backward compatibility** — `**extra="ignore"`** on `HarnessConfig` allows stale keys from older installs to load safely.
+8. **Template-driven generation** — Native artifacts are rendered from **Jinja2**; Python supplies context and file placement only.
+9. **Local-first** — State, config, registry, and logs are **on disk**; PyPI is only needed for **package updates**, not for routine development.
 
 ---
 
@@ -328,6 +399,7 @@ All user-visible harness **behavior** in the IDE is intended to flow from these 
 - `vision.md` — product/engineering vision for skills.
 - `tasks/`, `archive/` — task artifacts and history (convention from harness workflow docs).
 - `tasks/task-NNN/workflow-state.json` — canonical task-level phase/gate/blocker/artifact state.
+- `tasks/task-NNN/barriers/` — per-barrier JSON files for async sidecar task tracking (atomic writes, gate integration).
 - `tasks/task-NNN/review-outcome.json` — prediction-vs-outcome calibration data (auto-populated by `save_evaluation` and `post_ship`).
 
 **Generated IDE (`.cursor/`)**

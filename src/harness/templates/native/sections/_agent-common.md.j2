@@ -1,0 +1,35 @@
+{# Shared agent sections: Memverse integration + Output contract.
+   Include in each agent template after role-specific content.
+   Set role_slug and role_label before including this section. #}
+{% set _role_slug = role_slug | default("agent") %}
+{% set _role_label = role_label | default("AGENT") %}
+{% if memverse_enabled == "true" %}
+## Memverse Integration
+
+If Memverse MCP is available, call `search_memory` with role-relevant queries.
+Use `domains: "{{ project_name or memverse_domain }}"`, limit 20.
+
+**Do not call `add_memories`** — learning capture is handled by the parent orchestrator.
+
+{% endif %}
+## Output Contract
+
+```
+REVIEW: {{ _role_label }} — mode: [plan-review | code-eval]
+═══════════════════════════════════════════
+Score: N/10
+
+Findings:
+- [CRITICAL] description → suggested fix
+- [WARN] description → suggested fix
+- [INFO] description
+
+Learnings (optional — include only if cross-session insight discovered):
+- [LEARNING] insight
+{% if _role_slug == "product_owner" %}
+Value recommendation: continue | reprioritize | pause/pivot | n/a
+{% elif _role_slug == "project_manager" %}
+Delivery recommendation: continue | reprioritize | pause/pivot | n/a
+{% endif %}
+Verdict: PASS | ISSUES_FOUND
+```

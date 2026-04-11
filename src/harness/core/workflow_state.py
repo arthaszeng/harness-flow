@@ -17,6 +17,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from harness.core.atomic_io import write_text_atomic
 from harness.core.config import HarnessConfig
 from harness.core.state import TaskState
 from harness.core.task_identity import TaskIdentityResolver
@@ -31,11 +32,7 @@ def _now_iso() -> str:
     return datetime.now(timezone.utc).isoformat(timespec="seconds")
 
 
-def _write_text_atomic(path: Path, content: str) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_name(f".{path.name}.tmp")
-    tmp_path.write_text(content, encoding="utf-8")
-    tmp_path.replace(path)
+_write_text_atomic = write_text_atomic
 
 
 def _normalize_artifact_ref(task_dir: Path, ref: str) -> str:

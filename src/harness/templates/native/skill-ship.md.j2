@@ -75,7 +75,14 @@ Analyze the diff so changed code paths have adequate test coverage.
 
 ## Step 3.5: Plan Completion Audit
 
-If `plan.md` exists: extract actionable items; cross-check `git diff {{ trunk_branch }}...HEAD`; classify DONE/PARTIAL/NOT DONE/CHANGED; emit short audit block. NOT DONE → mention in PR; non-blocking.
+Run in parallel with Step 3.4 (coverage audit):
+
+```bash
+harness plan-completion-audit --task TASK_ID --json
+```
+
+Returns `{deliverables: [{id, title, status, evidence}], summary: {done, partial, not_done, changed}}`.
+NOT DONE items → mention in PR body; non-blocking.
 
 ---
 
@@ -83,7 +90,7 @@ If `plan.md` exists: extract actionable items; cross-check `git diff {{ trunk_br
 
 {% include 'sections/_ship-review-gate.md.j2' %}
 
-**Dispatch:** FULL → 5 roles (`harness-architect`, `harness-product-owner`, `harness-engineer`, `harness-qa`, `harness-project-manager`); LITE → Engineer + QA; FAST → skip subagent reviews (gate wrote artifact).
+**Dispatch:** FULL → all roles (`harness-architect`, `harness-product-owner`, `harness-engineer`, `harness-qa`, `harness-project-manager`); LITE → Engineer + QA; FAST → skip subagent reviews (gate wrote artifact).
 
 **MUST read** the protocol at `.cursor/skills/harness/harness-eval/code-review-protocol.md` before proceeding with this step.
 

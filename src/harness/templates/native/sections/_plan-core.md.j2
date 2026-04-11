@@ -24,13 +24,29 @@ Every decision during planning falls into one of three categories:
 - **User Challenge** — Both reviewers agree the user's direction needs reconsideration.
   NEVER auto-decide. Always present to the user with evidence.
 
-### Context Gathering
+### Context Gathering (parallelizable)
+
+Gather context in parallel where possible — these steps have no data dependencies:
 
 1. Read the user's requirement carefully
 2. Read `.harness-flow/config.toml` and `.harness-flow/vision.md` (if they exist)
 3. Scan the project structure: key directories, languages, frameworks, existing patterns
 4. Run `git log --oneline -10` for recent activity context
 5. Determine the next task number: run `harness task next-id` (or `harness task next-id --json` for `{"next_id": "task-NNN", "max_existing": N}`)
+
+Steps 2–5 can be issued as parallel tool calls in a single message.
+
+### Lightweight Plan Mode
+
+After writing the plan, validate its structure with:
+
+```bash
+harness plan-lint --task TASK_ID --json
+```
+
+The CLI returns `{valid, errors[], plan_mode}` where `plan_mode` is `small`, `medium`,
+or `large` based on deliverable count and estimated file scope. Use `plan_mode` to
+calibrate review intensity downstream (e.g. FAST for small plans).
 
 {% include 'sections/_failure-pattern-prereview.md.j2' %}
 

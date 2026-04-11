@@ -98,7 +98,7 @@ def test_reference_files_have_anchors(tmp_path: Path):
     generate_native_artifacts(root, cfg=cfg, lang="en")
     base = root / ".cursor" / "skills" / "harness"
     code_review = (base / "harness-eval" / "code-review-protocol.md").read_text(encoding="utf-8")
-    assert "5-Role" in code_review
+    assert "Adaptive Multi-Role" in code_review
     assert "PR Creation Protocol" in (base / "harness-ship" / "ship-pr-protocol.md").read_text(
         encoding="utf-8"
     )

@@ -1,4 +1,4 @@
-## 代码评审 — 5 角色并行派遣
+## 代码评审 — 自适应多角色派遣
 
 ### 派遣
 
@@ -78,31 +78,41 @@
 5. **方向/治理合成：** 保持角色建议字段并列，不要合并为单一方向字段：
    - Product Owner → `Value recommendation`
    - Project Manager → `Delivery recommendation`
-6. **计算维度评分**（将角色映射到评审维度）：
+6. **收集维度评分**（从子代理响应中收集，映射角色到评审维度）：
    ```
    Design:        [architect score]/10
    Completeness:  [product-owner score]/10
    Quality:       [engineer score]/10
    Regression:    [qa score]/10
    Scope:         [project-manager score]/10
-   ─────────────────────────────────
-   Weighted avg:  [avg]/10
    ```
-7. **确定裁定：**
-   - 全部 PASS 且 avg ≥ {{ pass_threshold }} → `PASS`
-   - 任何 CRITICAL 发现 → `ITERATE`
-   - avg < {{ pass_threshold }} → `ITERATE`
+7. **将分数提交给校准 CLI**（不要手动计算加权平均或裁定——CLI 负责校准、惩罚和裁定）：
 
-### 分数校准规则（提升信号区分度）
+### 分数校准（通过 CLI — 必须执行）
 
-在最终落分前应用以下规则：
-- 跨轮次重复出现的问题签名会降低分数置信度：
-  - 每个重复签名：`-0.30`
-  - 重复惩罚总和上限 `-1.50`
-- 若重复项被标记为 `[HIGH CONFIDENCE]`，额外 `-0.50`。
-- 不改变 PASS/ITERATE 的门禁语义：
-  - 出现 CRITICAL 仍然强制 `ITERATE`
-  - 阈值判断仍使用 `{{ pass_threshold }}`。
+收集维度分数后，使用确定性校准命令：
+
+```bash
+echo '{"roles": [{"role": "architect", "score": N, "findings": [...]}, ...]}' | harness review-score compute --kind code --json
+```
+
+CLI 应用重复惩罚（-0.30/次, 上限 -1.50, HIGH CONFIDENCE 额外 -0.50），
+计算加权平均，返回 `{dimensions, aggregate, calibrated, verdict, has_critical, score_band}`。
+
+**单一真源：** CLI verdict 是建议性的。将校准后的分数和 verdict 写入
+`harness save-eval` body，使 `gates.py` 能从 markdown 中解析 `## Verdict:`。
+Gate 始终以 eval 文件为权威来源。
+
+### Barrier 编排（如适用）
+
+合成完成后，为评审期间运行的 sidecar 任务注册并完成 barrier：
+
+```bash
+harness barrier complete --task TASK_ID --id code-review --status done
+```
+
+如果之前注册了 scope-drift 或 memverse-sync barrier，在各自的 sidecar 工作完成后完成它们。
+Gate（`harness gate`）在允许 ship 前会检查所有 `required_for_gate` barrier。
 
 ### Fix-First 分类
 

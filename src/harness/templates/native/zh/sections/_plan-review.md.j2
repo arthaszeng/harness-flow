@@ -1,9 +1,26 @@
-## 计划评审 — 5 角色并行派遣
+## 计划评审 — 自适应派遣（FAST/LITE/FULL）
 
-### 派遣
+### 基于 Escalation 的评审强度
+
+写完 `plan.md` 后，计算 plan escalation score：
+
+```bash
+harness escalation-score compute --phase plan --deliverables N --estimated-files N [--security] [--schema] [--api] [--review-score X] --json
+```
+
+**评分 >= {{ gate_full_review_min }} → FULL**：全部角色完整评审。
+**评分 {{ gate_summary_confirm_min }}–{{ (gate_full_review_min | int) - 1 }} → LITE**：仅 Architect + Engineer（2 角色）。
+**评分 < {{ gate_summary_confirm_min }} → FAST**：跳过多角色评审，直接保存快速通过的 eval：
+```bash
+harness save-eval --kind plan --task task-NNN --verdict PASS --score {{ pass_threshold }} --body "Plan auto-approved (FAST, escalation score N)"
+```
+
+### 派遣（FULL 模式）
 
 通过 Task 工具**并行启动所有 5 个审查者**，每个使用 `mode: plan-review`。
-发送一条包含所有 5 个 Task 工具调用的消息：
+发送一条包含所有 5 个 Task 工具调用的消息。
+
+**LITE 模式**下，仅从下表派遣 Architect (#1) 和 Engineer (#3)：
 
 | # | 子代理 | 推荐模型 | 必需 Context | 可选 Context |
 |---|--------|---------|-------------|-------------|
@@ -70,27 +87,19 @@
    - Project Manager → `Delivery recommendation`
 6. **解决冲突：** 如果角色之间相互矛盾，呈现双方观点
    并标记为 `[TASTE DECISION]` 交由 review gate 处理
-7. **计算综合评分：**
+7. **使用 CLI 计算综合评分：**
+   ```bash
+   echo '{"roles": [{"role": "architect", "score": N, "findings": [...]}, ...]}' | harness review-score compute --kind plan --json
    ```
-   Architecture:  [architect score]/10
-   Product:       [product-owner score]/10
-   Engineering:   [engineer score]/10
-   Testing:       [qa score]/10
-   Delivery:      [project-manager score]/10
-   ─────────────────────────────────
-   Weighted avg:  [avg]/10
-   ```
-8. **确定裁定：**
-   - 全部 PASS 且 avg ≥ {{ pass_threshold }} → `PLAN_APPROVED`
-   - 任何 CRITICAL 发现 → `PLAN_NEEDS_REVISION`
-   - avg < {{ pass_threshold }} → `PLAN_NEEDS_REVISION`
+   CLI 返回 `{dimensions, aggregate, calibrated, verdict, has_critical}`。
+   直接使用 CLI 的 verdict — 它已应用校准和阈值检查。
 
 ### 重新规划循环（最多 2 次迭代）
 
 如果裁定为 `PLAN_NEEDS_REVISION`：
 
 1. 修复计划文件中所有 CRITICAL 和 WARN 发现
-2. 重新派遣完整的 5 角色评审（相同的并行模式）
+2. 重新派遣完整的多角色评审（相同的并行模式）
 3. 如果相同问题再次出现（收敛保护）→ 接受并记录为 `## Unresolved Concerns`
 4. 2 次迭代后 → 以当前状态进入 review gate
 

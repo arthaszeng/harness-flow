@@ -46,7 +46,7 @@ MESSAGES: dict[str, str] = {
     "native.hint_vision": "    /harness-vision     — 从想法或愿景开始: 探索 → 规划 → 交付（支持头脑风暴循环）",
     "native.hint_plan": "    /harness-plan       — 规划任务后交付（明确任务推荐使用）",
     "native.hint_build": "    /harness-build      — 按计划实现代码",
-    "native.hint_eval": "    /harness-eval       — 5 角色并行代码评审",
+    "native.hint_eval": "    /harness-eval       — 自适应多角色并行代码评审",
     "native.hint_ship": "    /harness-ship       — 直接交付: 测试 → 评审 → 修复 → 提交 → 推送 → PR",
     
     "init.step_label": "步骤 {step}/{total}",
@@ -60,7 +60,7 @@ MESSAGES: dict[str, str] = {
     "init.guide_plan": "规划任务后交付（明确任务推荐使用）",
     "init.guide_default_starter": "推荐首选",
     "init.guide_build": "按计划实现代码",
-    "init.guide_eval": "5 角色并行代码评审",
+    "init.guide_eval": "自适应多角色并行代码评审",
     "init.guide_ship": "直接交付: 测试 → 评审 → 修复 → 提交 → 推送 → PR",
     "init.guide_edit_vision": "编辑 .harness-flow/vision.md 设定项目愿景，",
     "init.guide_use_vision": "然后在 Cursor 中使用 /harness-vision。",

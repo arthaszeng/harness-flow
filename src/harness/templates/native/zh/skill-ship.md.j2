@@ -75,7 +75,14 @@ git fetch origin {{ trunk_branch }} && git rebase origin/{{ trunk_branch }}
 
 ## 步骤 3.5：计划完成度审计
 
-若存在 `plan.md`：提取可执行项；对照 `git diff {{ trunk_branch }}...HEAD`；标 DONE/PARTIAL/NOT DONE/CHANGED；输出简短审计。NOT DONE → 写入 PR；不阻塞。
+与步骤 3.4（覆盖率审计）并行运行：
+
+```bash
+harness plan-completion-audit --task TASK_ID --json
+```
+
+返回 `{deliverables: [{id, title, status, evidence}], summary: {done, partial, not_done, changed}}`。
+NOT DONE 项 → 写入 PR 正文；不阻塞。
 
 ---
 
@@ -83,7 +90,7 @@ git fetch origin {{ trunk_branch }} && git rebase origin/{{ trunk_branch }}
 
 {% include 'sections/_ship-review-gate.md.j2' %}
 
-**派遣：** FULL → 5 角色（`harness-architect`、`harness-product-owner`、`harness-engineer`、`harness-qa`、`harness-project-manager`）；LITE → Engineer + QA；FAST → 不派子代理（gate 已写产物）。
+**派遣：** FULL → 全部角色（`harness-architect`、`harness-product-owner`、`harness-engineer`、`harness-qa`、`harness-project-manager`）；LITE → Engineer + QA；FAST → 不派子代理（gate 已写产物）。
 
 **必须先阅读** `.cursor/skills/harness/harness-eval/code-review-protocol.md` **中的协议再继续此步骤。**
 

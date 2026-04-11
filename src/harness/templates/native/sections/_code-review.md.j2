@@ -1,4 +1,4 @@
-## Code Review — 5-Role Parallel Dispatch
+## Code Review — Adaptive Multi-Role Dispatch
 
 ### Dispatch
 
@@ -82,31 +82,42 @@ After all responses arrive:
    - Product Owner → `Value recommendation`
    - Project Manager → `Delivery recommendation`
    - Do NOT collapse them into one generic direction field
-6. **Compute dimension scores** (map role to evaluation dimension):
+6. **Collect dimension scores** from each subagent (map role to evaluation dimension):
    ```
    Design:        [architect score]/10
    Completeness:  [product-owner score]/10
    Quality:       [engineer score]/10
    Regression:    [qa score]/10
    Scope:         [project-manager score]/10
-   ─────────────────────────────────
-   Weighted avg:  [avg]/10
    ```
-7. **Determine verdict:**
-   - All PASS and avg ≥ {{ pass_threshold }} → `PASS`
-   - Any CRITICAL finding → `ITERATE`
-   - avg < {{ pass_threshold }} → `ITERATE`
+7. **Feed scores to the calibration CLI** (do NOT compute weighted avg or verdict manually — the CLI handles calibration, penalties, and verdict):
 
-### Score Calibration Rules (signal quality)
+### Score Calibration (via CLI — mandatory)
 
-Apply these calibration rules before finalizing dimension scores:
-- Repeated finding signatures across rounds reduce score confidence:
-  - each repeated signature: `-0.30`
-  - cap total repeat penalty at `-1.50`
-- If a repeated finding is tagged `[HIGH CONFIDENCE]`, apply an additional `-0.50`.
-- Keep PASS/ITERATE gate semantics unchanged:
-  - CRITICAL still forces `ITERATE`
-  - threshold check still uses `{{ pass_threshold }}`.
+After collecting dimension scores, use the deterministic calibration command:
+
+```bash
+echo '{"roles": [{"role": "architect", "score": N, "findings": [...]}, ...]}' | harness review-score compute --kind code --json
+```
+
+The CLI applies repeat penalties (-0.30/repeat, cap -1.50, HIGH CONFIDENCE -0.50 extra),
+computes weighted average, and returns `{dimensions, aggregate, calibrated, verdict, has_critical, score_band}`.
+
+**Single truth source:** The CLI verdict is advisory. Write the calibrated score and verdict
+into the `harness save-eval` body so `gates.py` can parse `## Verdict:` from the markdown.
+The gate always reads the eval file as the authoritative source.
+
+### Barrier Orchestration (if applicable)
+
+After synthesis, register and complete barriers for sidecar tasks that ran during review:
+
+```bash
+harness barrier complete --task TASK_ID --id code-review --status done
+```
+
+If scope-drift or memverse-sync barriers were registered earlier, complete them once their
+respective sidecar work finishes. The gate (`harness gate`) checks all `required_for_gate`
+barriers before allowing ship.
 
 ### Fix-First Triage
 

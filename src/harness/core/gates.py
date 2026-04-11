@@ -140,6 +140,43 @@ def _file_exists_and_nonempty(path: Path) -> bool:
         return False
 
 
+def _check_barrier_readiness(task_dir: Path) -> CheckItem | None:
+    """Check barrier completion if barriers/ directory exists.
+
+    Returns None if no barriers directory (backward compatible).
+    Returns BLOCKED if any required barrier is not done.
+    Returns PASS if all required barriers are done.
+    """
+    barriers_dir = task_dir / "barriers"
+    if not barriers_dir.exists():
+        return None
+
+    try:
+        from harness.core.barriers import check_barriers
+
+        result = check_barriers(task_dir, required_only=True)
+        if result.total == 0:
+            return None
+        if result.all_required_done:
+            return CheckItem(
+                "barriers_complete",
+                CheckStatus.PASS,
+                f"{result.done}/{result.total} required barriers done",
+            )
+        not_done = ", ".join(result.required_not_done[:5])
+        return CheckItem(
+            "barriers_complete",
+            CheckStatus.BLOCKED,
+            f"required barriers not done: {not_done}",
+        )
+    except Exception as exc:
+        return CheckItem(
+            "barriers_complete",
+            CheckStatus.WARNING,
+            f"barrier check failed: {exc}",
+        )
+
+
 def check_ship_readiness(
     task_dir: Path,
     *,
@@ -288,6 +325,10 @@ def check_ship_readiness(
             "workflow_state_gate", CheckStatus.WARNING,
             "no workflow-state.json found (legacy task — checks based on files only)",
         ))
+
+    barrier_check = _check_barrier_readiness(task_dir)
+    if barrier_check is not None:
+        checks.append(barrier_check)
 
     blocked = [c for c in checks if c.status == CheckStatus.BLOCKED]
     passed = len(blocked) == 0
