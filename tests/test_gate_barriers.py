@@ -58,7 +58,7 @@ class TestBarrierGateIntegration:
         assert result.status == CheckStatus.BLOCKED
 
     def test_corrupted_json_blocks(self, task_dir):
-        """Test matrix scenario 5: corrupted JSON → gate returns WARNING/BLOCKED."""
+        """Test matrix scenario 5: corrupted JSON → gate returns BLOCKED (fail-closed)."""
         barriers_dir = task_dir / "barriers"
         barriers_dir.mkdir(exist_ok=True)
         (barriers_dir / "bad.json").write_text("NOT VALID JSON {{{")
@@ -66,6 +66,7 @@ class TestBarrierGateIntegration:
         complete_barrier(task_dir, barrier_id="good", status=BarrierStatus.DONE)
         result = _check_barrier_readiness(task_dir)
         assert result is not None
+        assert result.status == CheckStatus.BLOCKED
 
 
 class TestBarrierCLIUnknownTask:

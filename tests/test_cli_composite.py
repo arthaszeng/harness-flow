@@ -43,11 +43,11 @@ class TestShipPrepare:
 
         with patch("harness.integrations.git_ops.run_git", side_effect=mock_run):
             result = runner.invoke(app, ["ship-prepare", "--task", "task-001", "--json"])
-        if result.exit_code == 0:
-            data = json.loads(result.stdout)
-            assert "diff_stat" in data
-            assert "escalation" in data
-            assert "review_dispatch" in data
+        assert result.exit_code == 0, f"ship-prepare failed: {result.stdout}"
+        data = json.loads(result.stdout)
+        assert "diff_stat" in data
+        assert "escalation" in data
+        assert "review_dispatch" in data
 
 
 class TestPreflightBundle:
@@ -106,6 +106,6 @@ class TestPlanCompletionAudit:
         mock_result = type("R", (), {"returncode": 0, "stdout": "src/foo.py\n", "stderr": ""})()
         with patch("harness.integrations.git_ops.run_git", return_value=mock_result):
             result = runner.invoke(app, ["plan-completion-audit", "--task", "task-001", "--json"])
-        if result.exit_code == 0:
-            data = json.loads(result.stdout)
-            assert "deliverables" in data
+        assert result.exit_code == 0, f"plan-audit failed: {result.stdout}"
+        data = json.loads(result.stdout)
+        assert "deliverables" in data
