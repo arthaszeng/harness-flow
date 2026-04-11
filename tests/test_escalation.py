@@ -3,12 +3,18 @@
 from __future__ import annotations
 
 import json
+from unittest.mock import patch
 
+from typer.testing import CliRunner
+
+from harness.cli import app
 from harness.core.escalation import (
     EscalationLevel,
     compute_plan_escalation,
     compute_ship_escalation,
 )
+
+runner = CliRunner()
 
 
 class TestPlanEscalation:
@@ -168,3 +174,73 @@ class TestShipEscalation:
         d = result.to_dict()
         assert isinstance(d["score"], int)
         assert d["level"] in ("FAST", "LITE", "FULL")
+
+
+class TestEscalationCLI:
+    """CLI-layer tests for escalation-score command."""
+
+    def test_plan_json_output(self):
+        result = runner.invoke(app, [
+            "escalation-score", "compute",
+            "--phase", "plan",
+            "--deliverables", "3",
+            "--estimated-files", "5",
+            "--json",
+        ])
+        assert result.exit_code == 0
+        data = json.loads(result.stdout)
+        assert "score" in data
+        assert "level" in data
+        assert "signals" in data
+
+    def test_ship_json_output(self):
+        mock_result = type("R", (), {"returncode": 0, "stdout": "a.py\nb.py\n", "stderr": ""})()
+        stat_result = type("R", (), {"returncode": 0, "stdout": " 2 files changed, 10 insertions(+), 5 deletions(-)\n", "stderr": ""})()
+        log_result = type("R", (), {"returncode": 0, "stdout": "2\n", "stderr": ""})()
+
+        def mock_run(cmd, *a, **kw):
+            cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
+            if "--name-only" in cmd_str:
+                return mock_result
+            if "--stat" in cmd_str:
+                return stat_result
+            if "rev-list" in cmd_str:
+                return log_result
+            return mock_result
+
+        with patch("harness.integrations.git_ops.run_git", side_effect=mock_run):
+            result = runner.invoke(app, [
+                "escalation-score", "compute",
+                "--phase", "ship",
+                "--json",
+            ])
+        assert result.exit_code == 0
+        data = json.loads(result.stdout)
+        assert "score" in data
+        assert "level" in data
+        assert "signals" in data
+
+    def test_unknown_phase_error(self):
+        result = runner.invoke(app, [
+            "escalation-score", "compute",
+            "--phase", "banana",
+            "--json",
+        ])
+        assert result.exit_code == 1
+
+    def test_json_schema_snapshot(self):
+        """Pin the escalation output schema keys."""
+        result = runner.invoke(app, [
+            "escalation-score", "compute",
+            "--phase", "plan",
+            "--deliverables", "5",
+            "--estimated-files", "10",
+            "--json",
+        ])
+        data = json.loads(result.stdout)
+        expected_keys = {"score", "level", "raw_score", "trust_adjustment", "signals"}
+        assert set(data.keys()) == expected_keys
+        assert isinstance(data["signals"], list)
+        if data["signals"]:
+            sig_keys = {"name", "triggered", "points", "detail"}
+            assert set(data["signals"][0].keys()) == sig_keys

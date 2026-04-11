@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+import json
 
+from typer.testing import CliRunner
+
+from harness.cli import app
 from harness.core.plan_lint import lint_plan
+
+runner = CliRunner()
 
 VALID_PLAN = """\
 # Spec
@@ -98,3 +104,60 @@ class TestLintPlan:
         p.write_text(content)
         result = lint_plan(p)
         assert result.estimated_files == 40
+
+
+class TestPlanLintCLI:
+    """CLI-layer tests for plan-lint command."""
+
+    def test_no_task_dir(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        (tmp_path / ".harness-flow").mkdir()
+        result = runner.invoke(app, ["plan-lint", "--json"])
+        assert result.exit_code == 1
+        data = json.loads(result.stdout)
+        assert "error" in data
+
+    def test_valid_plan_json(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        task_dir = tmp_path / ".harness-flow" / "tasks" / "task-001"
+        task_dir.mkdir(parents=True)
+        (task_dir / "plan.md").write_text(VALID_PLAN)
+        (task_dir / "workflow-state.json").write_text(
+            json.dumps({"task_id": "task-001", "phase": "planning"})
+        )
+        result = runner.invoke(app, ["plan-lint", "--task", "task-001", "--json"])
+        assert result.exit_code == 0
+        data = json.loads(result.stdout)
+        assert data["valid"] is True
+        assert "plan_mode" in data
+
+    def test_invalid_plan_json(self, tmp_path, monkeypatch):
+        monkeypatch.chdir(tmp_path)
+        task_dir = tmp_path / ".harness-flow" / "tasks" / "task-001"
+        task_dir.mkdir(parents=True)
+        (task_dir / "plan.md").write_text("# Just text")
+        (task_dir / "workflow-state.json").write_text(
+            json.dumps({"task_id": "task-001", "phase": "planning"})
+        )
+        result = runner.invoke(app, ["plan-lint", "--task", "task-001", "--json"])
+        assert result.exit_code == 0
+        data = json.loads(result.stdout)
+        assert data["valid"] is False
+        assert len(data["errors"]) > 0
+
+    def test_json_schema_snapshot(self, tmp_path, monkeypatch):
+        """Pin the plan-lint output schema keys."""
+        monkeypatch.chdir(tmp_path)
+        task_dir = tmp_path / ".harness-flow" / "tasks" / "task-001"
+        task_dir.mkdir(parents=True)
+        (task_dir / "plan.md").write_text(VALID_PLAN)
+        (task_dir / "workflow-state.json").write_text(
+            json.dumps({"task_id": "task-001", "phase": "planning"})
+        )
+        result = runner.invoke(app, ["plan-lint", "--task", "task-001", "--json"])
+        data = json.loads(result.stdout)
+        expected_keys = {
+            "valid", "errors", "has_spec", "has_contract",
+            "deliverable_count", "estimated_files", "plan_mode",
+        }
+        assert set(data.keys()) == expected_keys

@@ -39,7 +39,7 @@ These barriers are checked by `harness gate` before ship is allowed.
 **Score >= {{ gate_full_review_min }} → FULL REVIEW**
 Dispatch all 5 role reviewers in parallel (Architect, Product Owner, Engineer, QA, Project Manager).
 This is the standard behavior — proceed to the code review dispatch section below.
-Log: `SHIP_GATE: FULL (score N) — dispatching 5-role review`
+Log: `SHIP_GATE: FULL (score N) — dispatching full multi-role review`
 
 **Score {{ gate_summary_confirm_min }}–{{ (gate_full_review_min | int) - 1 }} → LITE REVIEW**
 Dispatch only **2 role reviewers**: **Engineer** and **QA**.

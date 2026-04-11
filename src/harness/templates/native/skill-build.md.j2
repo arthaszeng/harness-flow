@@ -257,6 +257,6 @@ After the implementation commit succeeds and CI is green, **immediately** contin
 with **`/harness-ship`** in the **same** conversation. Do **not** end the turn
 waiting for the user to say "ship" or "continue".
 
-`/harness-ship` runs tests, **mandatory 5-role code eval**, `harness save-eval`,
+`/harness-ship` runs tests, **adaptive multi-role code eval** (FAST/LITE/FULL based on escalation score), `harness save-eval`,
 `harness gate`, push, and PR — it does **not** replace the implementation you
 already committed in Step 6.

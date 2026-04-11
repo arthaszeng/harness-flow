@@ -250,4 +250,4 @@ CI: all tests pass"
 实现提交成功且 CI 通过后，必须在**同一对话**内**立即**继续执行 **`/harness-ship`**。
 不要结束回合等待用户再说「ship」或「继续」。
 
-`/harness-ship` 负责测试、**强制 5 角色代码评审**、`harness save-eval`、`harness gate`、推送与 PR — **不**替代你在步骤 6 已提交的实现代码。
+`/harness-ship` 负责测试、**自适应多角色代码评审**（基于 escalation score 自动选择 FAST/LITE/FULL）、`harness save-eval`、`harness gate`、推送与 PR — **不**替代你在步骤 6 已提交的实现代码。

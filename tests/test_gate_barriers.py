@@ -82,6 +82,9 @@ class TestBarrierCLIUnknownTask:
             "--phase", "ship",
         ])
         assert result.exit_code == 1
+        import json
+        err_data = json.loads(result.stderr or result.output)
+        assert "error" in err_data
 
     def test_check_unknown_task(self, tmp_path, monkeypatch):
         monkeypatch.chdir(tmp_path)
@@ -92,3 +95,6 @@ class TestBarrierCLIUnknownTask:
             "--json",
         ])
         assert result.exit_code == 1
+        import json
+        err_data = json.loads(result.stderr or result.output)
+        assert "error" in err_data

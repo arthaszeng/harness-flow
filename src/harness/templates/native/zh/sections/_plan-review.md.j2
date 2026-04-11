@@ -8,7 +8,7 @@
 harness escalation-score compute --phase plan --deliverables N --estimated-files N [--security] [--schema] [--api] [--review-score X] --json
 ```
 
-**评分 >= {{ gate_full_review_min }} → FULL**：5 角色完整评审。
+**评分 >= {{ gate_full_review_min }} → FULL**：全部角色完整评审。
 **评分 {{ gate_summary_confirm_min }}–{{ (gate_full_review_min | int) - 1 }} → LITE**：仅 Architect + Engineer（2 角色）。
 **评分 < {{ gate_summary_confirm_min }} → FAST**：跳过多角色评审，直接保存快速通过的 eval：
 ```bash
@@ -99,7 +99,7 @@ harness save-eval --kind plan --task task-NNN --verdict PASS --score {{ pass_thr
 如果裁定为 `PLAN_NEEDS_REVISION`：
 
 1. 修复计划文件中所有 CRITICAL 和 WARN 发现
-2. 重新派遣完整的 5 角色评审（相同的并行模式）
+2. 重新派遣完整的多角色评审（相同的并行模式）
 3. 如果相同问题再次出现（收敛保护）→ 接受并记录为 `## Unresolved Concerns`
 4. 2 次迭代后 → 以当前状态进入 review gate
 

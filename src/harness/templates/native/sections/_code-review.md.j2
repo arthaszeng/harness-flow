@@ -82,24 +82,19 @@ After all responses arrive:
    - Product Owner → `Value recommendation`
    - Project Manager → `Delivery recommendation`
    - Do NOT collapse them into one generic direction field
-6. **Compute dimension scores** (map role to evaluation dimension):
+6. **Collect dimension scores** from each subagent (map role to evaluation dimension):
    ```
    Design:        [architect score]/10
    Completeness:  [product-owner score]/10
    Quality:       [engineer score]/10
    Regression:    [qa score]/10
    Scope:         [project-manager score]/10
-   ─────────────────────────────────
-   Weighted avg:  [avg]/10
    ```
-7. **Determine verdict:**
-   - All PASS and avg ≥ {{ pass_threshold }} → `PASS`
-   - Any CRITICAL finding → `ITERATE`
-   - avg < {{ pass_threshold }} → `ITERATE`
+7. **Feed scores to the calibration CLI** (do NOT compute weighted avg or verdict manually — the CLI handles calibration, penalties, and verdict):
 
-### Score Calibration (via CLI)
+### Score Calibration (via CLI — mandatory)
 
-After computing dimension scores, use the deterministic calibration command:
+After collecting dimension scores, use the deterministic calibration command:
 
 ```bash
 echo '{"roles": [{"role": "architect", "score": N, "findings": [...]}, ...]}' | harness review-score compute --kind code --json

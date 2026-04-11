@@ -38,7 +38,7 @@ harness barrier register --task TASK_ID --id scope-drift --phase ship
 **评分 >= {{ gate_full_review_min }} → FULL（完整评审）**
 并行派遣全部 5 个角色审查者（Architect、Product Owner、Engineer、QA、Project Manager）。
 这是标准行为 — 继续到下方的代码评审派遣部分。
-记录：`SHIP_GATE: FULL (score N) — 派遣 5 角色评审`
+记录：`SHIP_GATE: FULL (score N) — 派遣完整多角色评审`
 
 **评分 {{ gate_summary_confirm_min }}–{{ (gate_full_review_min | int) - 1 }} → LITE（轻量评审）**
 仅派遣 **2 个角色审查者**：**Engineer** 和 **QA**。

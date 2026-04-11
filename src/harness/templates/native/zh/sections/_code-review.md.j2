@@ -78,24 +78,19 @@
 5. **方向/治理合成：** 保持角色建议字段并列，不要合并为单一方向字段：
    - Product Owner → `Value recommendation`
    - Project Manager → `Delivery recommendation`
-6. **计算维度评分**（将角色映射到评审维度）：
+6. **收集维度评分**（从子代理响应中收集，映射角色到评审维度）：
    ```
    Design:        [architect score]/10
    Completeness:  [product-owner score]/10
    Quality:       [engineer score]/10
    Regression:    [qa score]/10
    Scope:         [project-manager score]/10
-   ─────────────────────────────────
-   Weighted avg:  [avg]/10
    ```
-7. **确定裁定：**
-   - 全部 PASS 且 avg ≥ {{ pass_threshold }} → `PASS`
-   - 任何 CRITICAL 发现 → `ITERATE`
-   - avg < {{ pass_threshold }} → `ITERATE`
+7. **将分数提交给校准 CLI**（不要手动计算加权平均或裁定——CLI 负责校准、惩罚和裁定）：
 
-### 分数校准（通过 CLI）
+### 分数校准（通过 CLI — 必须执行）
 
-计算维度分数后，使用确定性校准命令：
+收集维度分数后，使用确定性校准命令：
 
 ```bash
 echo '{"roles": [{"role": "architect", "score": N, "findings": [...]}, ...]}' | harness review-score compute --kind code --json

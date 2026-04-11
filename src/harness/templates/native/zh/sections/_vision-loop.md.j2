@@ -92,11 +92,11 @@ Review gate 已通过。对当前 `Active Plan`，请在**同一对话**内按**
 1. **`/harness-build`** — 按合约实现、跑 CI、提交实现。
    （`/harness-ship` **不**负责写业务功能代码。）
 
-2. **`/harness-ship`** — rebase、全量测试、**强制 5 角色代码评审**、`harness save-eval`、`harness gate`、可二分提交、推送、PR。
+2. **`/harness-ship`** — rebase、全量测试、**自适应多角色代码评审**（基于 escalation score 自动选择 FAST/LITE/FULL）、`harness save-eval`、`harness gate`、可二分提交、推送、PR。
 
 **衔接保障**：plan 阶段应将 `workflow-state.json` 更新为 `phase: contracted` 并写入 `handoff_summary`；build 完成后 ship 在适用时走任务状态**快速路径**，减少重复预检。
 
-**eval 属于 ship 的一环**，不可省略：禁止仅因「pytest 全绿」而跳过 5 角色评审与 `harness gate`。
+**eval 属于 ship 的一环**，不可省略：禁止仅因「pytest 全绿」而跳过自适应代码评审与 `harness gate`。
 
 硬性完成规则：
 - 禁止只交付 `plan.md` 就结束回合 —— 须先开始 **`/harness-build`**。

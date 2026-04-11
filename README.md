@@ -25,7 +25,7 @@ AI agents can write code — but they **can't ship products**. They lack navigat
 
 |     | Navigation               | Traffic Rules                 | Dashcam                         |
 | --- | ------------------------ | ----------------------------- | ------------------------------- |
-|     | vision → plan → roadmap  | 5-role review + gates + trust | audit trail + learnings + retro |
+|     | vision → plan → roadmap  | adaptive multi-role review + gates + trust | audit trail + learnings + retro |
 |     | AI knows **where** to go | AI obeys the **rules**        | every decision **recorded**     |
 
 
@@ -36,9 +36,9 @@ AI agents can write code — but they **can't ship products**. They lack navigat
 ```mermaid
 flowchart LR
   Req["Requirement"] --> Plan["Plan"]
-  Plan --> PlanReview["5-role\nplan review"]
+  Plan --> PlanReview["Adaptive\nplan review"]
   PlanReview --> Build["Build + CI"]
-  Build --> CodeReview["5-role\ncode review"]
+  Build --> CodeReview["Adaptive\ncode review"]
   CodeReview --> Ship["Ship → PR"]
 
   PlanReview -.-|"Architect · PO · Engineer · QA · PM"| CodeReview
@@ -85,7 +85,7 @@ harness init
 /harness-plan add input validation to the user registration endpoint
 ```
 
-That's it — plan, build, 5-role review, and PR. One command.
+That's it — plan, build, adaptive multi-role review, and PR. One command.
 
 **What you'll see:** the agent generates a spec + contract, 5 reviewers challenge the plan in parallel, then the agent implements, runs CI, gets code reviewed by the same 5 roles, and opens a PR — all autonomously.
 
@@ -172,7 +172,7 @@ Plans, reviews, build logs, gate results — all persisted per task. Every decis
 
 | Skill             | When to use                       | What it does                                                                              |
 | ----------------- | --------------------------------- | ----------------------------------------------------------------------------------------- |
-| `/harness-plan`   | "I have a requirement"            | Refine plan + 5-role review → auto build/eval/ship/retro                                  |
+| `/harness-plan`   | "I have a requirement"            | Refine plan + adaptive review → auto build/eval/ship/retro                                |
 | `/harness-vision` | "I have an idea" or "a direction" | Explore or clarify → structured vision → roadmap/backlog → iterative build/eval/ship loop |
 
 
@@ -185,7 +185,7 @@ Plans, reviews, build logs, gate results — all persisted per task. Every decis
 | `/harness-learn`       | Memverse knowledge management: store, retrieve, update project learnings         |
 | `/harness-retro`       | Engineering retrospective: commit analytics, hotspot detection, trend tracking   |
 | `/harness-build`       | Implement the contract, run CI, triage failures, write a structured build log    |
-| `/harness-eval`        | 5-role code review (architect + product-owner + engineer + qa + project-manager) |
+| `/harness-eval`        | Adaptive multi-role code review (FAST/LITE/FULL based on escalation score)       |
 | `/harness-ship`        | Full pipeline: test → review → fix → commit → push → PR                          |
 | `/harness-doc-release` | Documentation sync: detect stale docs after code changes                         |
 

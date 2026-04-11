@@ -237,7 +237,7 @@ review intensities:
 
 | Level | Trigger                                                     | Behavior                                         |
 | ----- | ----------------------------------------------------------- | ------------------------------------------------ |
-| FULL  | score ≥ `gate_full_review_min` (default 5)                  | 5-role parallel code review                      |
+| FULL  | score ≥ `gate_full_review_min` (default 5)                  | Full multi-role parallel code review              |
 | LITE  | score in `[gate_summary_confirm_min, gate_full_review_min)` | Engineer + QA only                               |
 | FAST  | score < `gate_summary_confirm_min` (default 3)              | Skip multi-role review; CI + `harness gate` only |
 

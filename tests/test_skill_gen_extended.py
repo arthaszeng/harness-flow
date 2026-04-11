@@ -1,4 +1,4 @@
-"""skill_gen.py 扩展功能测试：角色裁剪、项目语言检测、hook、资源部署、递归组合、5 角色系统"""
+"""skill_gen.py 扩展功能测试：角色裁剪、项目语言检测、hook、资源部署、递归组合、自适应多角色系统"""
 
 from pathlib import Path
 from unittest.mock import patch
@@ -702,7 +702,7 @@ def test_total_skill_count_is_nine(tmp_path: Path):
     assert len(skill_dirs) == 9
 
 
-# --- v3.1: Unified 5-role system + recursive composition ---
+# --- v3.1: Unified multi-role system + recursive composition ---
 
 
 def test_five_role_agents_generated(tmp_path: Path):
@@ -941,7 +941,7 @@ def test_plan_includes_ship_invocation(tmp_path: Path):
     assert "/harness-ship" in content
 
 
-# --- Eval uses new 5-role code review ---
+# --- Eval uses adaptive multi-role code review ---
 
 
 def test_eval_uses_five_role_code_review(tmp_path: Path):
@@ -975,7 +975,7 @@ def test_eval_has_degradation_ladder(tmp_path: Path):
     assert "0/5 respond" in proto
 
 
-# --- Ship uses new 5-role code review ---
+# --- Ship uses adaptive multi-role code review ---
 
 
 def test_ship_step38_uses_five_role_review(tmp_path: Path):
