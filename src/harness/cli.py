@@ -689,3 +689,21 @@ def update(
     """
     from harness.commands.update import run_update
     run_update(check=check, force=force)
+
+
+@app.command()
+def version(
+    as_json: bool = typer.Option(False, "--json", help="JSON output"),
+    verbose: bool = typer.Option(False, "--verbose", help="Verbose human-readable output"),
+) -> None:
+    """Show version and runtime environment info."""
+    import json as json_mod
+
+    from harness.core.version_info import format_version_verbose, get_version_info
+
+    if as_json:
+        typer.echo(json_mod.dumps(get_version_info()))
+    elif verbose:
+        typer.echo(format_version_verbose())
+    else:
+        typer.echo(format_version_verbose())
