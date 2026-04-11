@@ -47,8 +47,6 @@ harness plan-lint --task TASK_ID --json
 CLI 返回 `{valid, errors[], plan_mode}`，其中 `plan_mode` 为 `small`、`medium` 或 `large`，
 基于交付物数量和预计文件规模。使用 `plan_mode` 来校准下游评审强度（如小型计划使用 FAST）。
 
-{% include 'sections/_failure-pattern-prereview.md.j2' %}
-
 ### 生成 Spec + 合约
 
 将输出写入 `.harness-flow/tasks/task-NNN/plan.md`（如需要则创建目录）。
@@ -61,25 +59,50 @@ artifact refs 的 canonical 记录。会话摘要、registry 或 event 日志不
 
 ## System Design Thinking
 
-在写 Analysis 之前，先退后一步进行系统级设计思考。回答以下三个问题：
+在写 Analysis 之前，先搜索历史失败模式，然后用搜索结果来支撑设计思考。
+
+**第 1 步——搜索与本任务领域相关的先验失败模式：**
+
+```bash
+harness search-failures --query "<描述本任务领域的关键词>" --limit 10
+```
+{% if memverse_enabled == "true" %}
+
+同时查询 Memverse 获取更广泛的跨项目模式：
+
+```
+CallMcpTool(
+  server="user-Memverse",
+  toolName="search_memory",
+  arguments={
+    "query": "<描述本任务领域的关键词>",
+    "domains": "{{ memverse_domain }}",
+    "metadata_filter": "{\"type\": \"failure-pattern\"}",
+    "limit": 10
+  }
+)
+```
+{% endif %}
+
+**第 2 步——回答以下三个问题，融入上面搜索到的失败模式：**
 
 ### 核心挑战
 这类系统的第一性原理挑战是什么？不是"需要实现什么功能"，而是"为什么这类系统难做对"。
-（例：webhook 投递系统 → 异步投递的可靠性、退避策略的公平性、投递的幂等保证）
+如果搜索到了失败模式，引用具体的失败来揭示这些挑战。
 
 ### 架构约束
-哪些设计约束是非谈判性的？列出必须满足的约束，每条标注理由：
+哪些设计约束是非谈判性的？每条标注理由。
+如果失败模式提到了具体的违规（例如"直接调用 time.sleep" → 可测试性），将其提升为明确的约束。
+常见约束参考（仅保留与当前任务相关的）：
 - 可测试性（sleep/时间函数可注入，避免测试中的真实等待）
 - 幂等性（相同输入多次执行产生相同结果）
 - 并发安全（多线程/多进程安全，无竞态条件）
 - 可注入性（外部依赖通过接口注入，不硬编码）
 - 优雅关停（进行中的工作能安全完成或回滚）
 
-仅保留与当前任务相关的约束，删除不适用的。
-
 ### 设计陷阱
 这类系统常见的设计陷阱是什么？列出 2-3 个最可能踩到的坑。
-（例：同步投递阻塞发布路径、硬编码 time.sleep 导致测试脆弱、无幂等锁导致重复投递）
+如果失败模式描述了过去的错误，将其列为具体的陷阱，而非通用描述。
 
 ## Analysis
 （需求的技术分析 — 解决什么问题、为什么重要。引用上面的 Design Thinking 结论。）

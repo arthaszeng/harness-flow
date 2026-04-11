@@ -244,7 +244,10 @@ def search_failure_patterns(
     category: str = "",
     limit: int = 20,
 ) -> list[FailurePattern]:
-    """Search failure patterns across all task and archive directories.
+    """Search failure patterns across project-level, task, and archive directories.
+
+    Search order: project-level ``failure-patterns.jsonl`` (in *agents_dir*)
+    first, then per-task directories, then archive directories.
 
     Matching rules:
     - ``query``: normalized substring containment against the pattern signature
@@ -259,8 +262,10 @@ def search_failure_patterns(
     category_lower = category.lower().strip() if category else ""
 
     results: list[FailurePattern] = []
-    for task_dir in iter_task_dirs(agents_dir) + iter_archive_dirs(agents_dir):
-        result = load_failure_patterns(task_dir)
+
+    def _collect(source_dir: Path) -> bool:
+        """Load patterns from *source_dir* and append matches.  Return True when limit reached."""
+        result = load_failure_patterns(source_dir)
         for item in result.items:
             if normalized_query and normalized_query not in item.signature:
                 continue
@@ -268,6 +273,14 @@ def search_failure_patterns(
                 continue
             results.append(item)
             if len(results) >= limit:
-                return results
+                return True
+        return False
+
+    if _collect(agents_dir):
+        return results
+
+    for task_dir in iter_task_dirs(agents_dir) + iter_archive_dirs(agents_dir):
+        if _collect(task_dir):
+            return results
 
     return results

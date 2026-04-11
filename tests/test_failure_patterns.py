@@ -279,6 +279,42 @@ class TestSearchFailurePatterns:
         results = search_failure_patterns(agents_dir)
         assert results == []
 
+    def test_search_includes_project_level(self, tmp_path: Path):
+        """Project-level failure-patterns.jsonl is searched before task dirs."""
+        agents_dir = tmp_path / ".harness-flow"
+        (agents_dir / "tasks" / "task-001").mkdir(parents=True)
+
+        _save(agents_dir / "tasks" / "task-001", task_id="task-001", summary="task-level error")
+        _save(agents_dir, task_id="seed", summary="project-level seed pattern")
+
+        results = search_failure_patterns(agents_dir)
+        assert len(results) == 2
+        assert results[0].task_id == "seed"
+        assert results[1].task_id == "task-001"
+
+    def test_search_project_level_with_query(self, tmp_path: Path):
+        agents_dir = tmp_path / ".harness-flow"
+        agents_dir.mkdir(parents=True)
+
+        _save(agents_dir, task_id="seed", summary="injectable sleep pattern")
+        _save(agents_dir, task_id="seed", summary="idempotency lock missing")
+
+        results = search_failure_patterns(agents_dir, query="injectable sleep")
+        assert len(results) == 1
+        assert "injectable sleep" in results[0].summary
+
+    def test_search_project_level_respects_limit(self, tmp_path: Path):
+        agents_dir = tmp_path / ".harness-flow"
+        (agents_dir / "tasks" / "task-001").mkdir(parents=True)
+
+        for i in range(3):
+            _save(agents_dir, task_id="seed", summary=f"seed error {i}")
+        _save(agents_dir / "tasks" / "task-001", task_id="task-001", summary="task error")
+
+        results = search_failure_patterns(agents_dir, limit=2)
+        assert len(results) == 2
+        assert all(r.task_id == "seed" for r in results)
+
 
 # ---------------------------------------------------------------------------
 # D5: workflow-state sync

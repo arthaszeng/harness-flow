@@ -48,8 +48,6 @@ The CLI returns `{valid, errors[], plan_mode}` where `plan_mode` is `small`, `me
 or `large` based on deliverable count and estimated file scope. Use `plan_mode` to
 calibrate review intensity downstream (e.g. FAST for small plans).
 
-{% include 'sections/_failure-pattern-prereview.md.j2' %}
-
 ### Produce Spec + Contract
 
 Write output to `.harness-flow/tasks/task-NNN/plan.md` (create directory if needed).
@@ -63,25 +61,50 @@ not become parallel gate sources.
 
 ## System Design Thinking
 
-Before writing the Analysis, step back and think at the system level. Answer these three questions:
+Before writing the Analysis, search for historical failure patterns and then use those results to ground your design thinking.
+
+**Step 1 — Search for prior failures relevant to this task:**
+
+```bash
+harness search-failures --query "<keywords describing this task's domain>" --limit 10
+```
+{% if memverse_enabled == "true" %}
+
+Also query Memverse for broader cross-project patterns:
+
+```
+CallMcpTool(
+  server="user-Memverse",
+  toolName="search_memory",
+  arguments={
+    "query": "<keywords describing this task's domain>",
+    "domains": "{{ memverse_domain }}",
+    "metadata_filter": "{\"type\": \"failure-pattern\"}",
+    "limit": 10
+  }
+)
+```
+{% endif %}
+
+**Step 2 — Answer these three questions, incorporating any failure patterns found above:**
 
 ### Core Challenges
 What are the first-principles challenges for this type of system? Not "what features to build" but "why is this type of system hard to get right".
-(e.g., webhook delivery → reliability of async delivery, fairness of backoff strategy, idempotency of delivery)
+If failure patterns were found, reference the specific failures that reveal these challenges.
 
 ### Architectural Constraints
-Which design constraints are non-negotiable? List those that must be satisfied, with rationale:
+Which design constraints are non-negotiable? For each, provide rationale.
+If failure patterns mention specific violations (e.g., "time.sleep called directly" → Testability), promote those to explicit constraints.
+Common constraints to consider (keep only relevant ones):
 - Testability (sleep/time functions injectable to avoid real waits in tests)
 - Idempotency (same input executed multiple times produces same result)
 - Concurrency safety (thread/process safe, no race conditions)
 - Injectability (external dependencies injected via interfaces, not hardcoded)
 - Graceful shutdown (in-flight work can complete safely or roll back)
 
-Keep only constraints relevant to this task; remove inapplicable ones.
-
 ### Design Pitfalls
 What are the common design pitfalls for this type of system? List 2-3 most likely traps.
-(e.g., synchronous delivery blocking the publish path, hardcoded time.sleep making tests brittle, no idempotency lock causing duplicate delivery)
+If failure patterns describe past mistakes, list those as concrete pitfalls rather than generic ones.
 
 ## Analysis
 (Technical analysis of the requirement — what problem is being solved, why it matters. Reference the Design Thinking conclusions above.)
