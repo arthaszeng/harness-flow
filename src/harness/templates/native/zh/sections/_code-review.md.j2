@@ -93,16 +93,20 @@
    - 任何 CRITICAL 发现 → `ITERATE`
    - avg < {{ pass_threshold }} → `ITERATE`
 
-### 分数校准规则（提升信号区分度）
+### 分数校准（通过 CLI）
 
-在最终落分前应用以下规则：
-- 跨轮次重复出现的问题签名会降低分数置信度：
-  - 每个重复签名：`-0.30`
-  - 重复惩罚总和上限 `-1.50`
-- 若重复项被标记为 `[HIGH CONFIDENCE]`，额外 `-0.50`。
-- 不改变 PASS/ITERATE 的门禁语义：
-  - 出现 CRITICAL 仍然强制 `ITERATE`
-  - 阈值判断仍使用 `{{ pass_threshold }}`。
+计算维度分数后，使用确定性校准命令：
+
+```bash
+echo '{"roles": [{"role": "architect", "score": N, "findings": [...]}, ...]}' | harness review-score compute --kind code --json
+```
+
+CLI 应用重复惩罚（-0.30/次, 上限 -1.50, HIGH CONFIDENCE 额外 -0.50），
+计算加权平均，返回 `{dimensions, aggregate, calibrated, verdict, has_critical, score_band}`。
+
+**单一真源：** CLI verdict 是建议性的。将校准后的分数和 verdict 写入
+`harness save-eval` body，使 `gates.py` 能从 markdown 中解析 `## Verdict:`。
+Gate 始终以 eval 文件为权威来源。
 
 ### Fix-First 分类
 

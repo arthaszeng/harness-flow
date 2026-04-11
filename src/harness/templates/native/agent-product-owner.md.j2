@@ -95,18 +95,11 @@ If you discover a CRITICAL-severity issue outside your scope, report it but pref
 {% if memverse_enabled == "true" %}
 ## Memverse Integration
 
-If Memverse MCP is available, call `search_memory` with:
-- "product decisions"
-- "user feedback"
-- "requirement changes"
-- "acceptance criteria"
-- Use multi-domain OR query: `domains: "{{ project_name or memverse_domain }},{{ project_name or memverse_domain }}-product-learning"`, limit 20
-- Optional: use `metadata_filter` to narrow results, e.g. `metadata_filter="{\"type\": \"preference\"}"` (post-recall filtering)
+If Memverse MCP is available, call `search_memory` with product-relevant queries
+(e.g. "product decisions", "user feedback", "acceptance criteria").
+Use `domains: "{{ project_name or memverse_domain }}"`, limit 20.
 
-Reference relevant memories in your findings.
-
-**Do not call `add_memories` or `upsert_memory`** — learning capture is handled by the parent orchestrator.
-Your `[LEARNING]` entries in the Output Contract will be collected and persisted by the parent.
+**Do not call `add_memories`** — learning capture is handled by the parent orchestrator.
 
 {% endif %}
 ## Output Contract
@@ -121,10 +114,9 @@ Findings:
 - [WARN] description → suggested fix
 - [INFO] description
 
-Learnings (mandatory — at least one, or explicit "No learnings extracted"):
-- [LEARNING] role-specific long-lived, cross-project/language insight
+Learnings (optional — include only if cross-session insight discovered):
+- [LEARNING] insight
 
 Value recommendation: continue | reprioritize | pause/pivot | n/a
 Verdict: PASS | ISSUES_FOUND
-Memverse insights used: [list or "none"]
 ```

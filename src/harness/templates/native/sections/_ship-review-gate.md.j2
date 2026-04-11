@@ -1,27 +1,26 @@
 ## Ship Review Gate — Adaptive Code Review Intensity
 
-Before dispatching code reviewers, calculate the **ship escalation score** to determine
-review intensity. This mirrors the plan review gate mechanism but uses code-change signals.
+Before dispatching code reviewers, run the **deterministic escalation CLI** to compute
+review intensity. This replaces manual signal arithmetic with a millisecond-level command.
 
 ### Ship Escalation Score
 
-Compute each signal from `git diff {{ trunk_branch }}..HEAD` and `git log {{ trunk_branch }}..HEAD`:
+Run the pre-computation command (designed to execute while CI runs in background):
 
-| Signal | Condition | Score |
-|--------|-----------|-------|
-| Scale | diff lines (insertions + deletions) > 200 | +2 |
-| Scale | changed files > 10 | +2 |
-| Risk | changes touch `core/`, `commands/`, or `integrations/` directories | +1 |
-| Risk | changes touch auth/security/config files (`config.toml`, `*.env`, `auth*`, `secret*`) | +3 |
-| Risk | files added or deleted (not just modified) | +1 |
-| Type | any commit subject in `{{ trunk_branch }}..HEAD` starts with `feat` | +1 |
-| Type | **all** commit subjects start with `fix`, `docs`, or `chore` | -1 |
-| Quality | plan review aggregate score < {{ pass_threshold }}/10 (missing → 0, does not trigger) | +2 |
+```bash
+harness ship-prepare --task TASK_ID --json
+```
 
-**Default for missing signals:** If a signal cannot be determined (e.g., no plan review score
-exists, or diff stats are unavailable), treat the signal as **not triggered** (contribute 0).
-This avoids inflating the score with speculative risk signals. In practice, real changes
-almost always trigger at least some positive signals (new files, feat commits, etc.).
+This returns `{diff_stat, escalation: {score, level, signals}, review_dispatch: {level, roles}}`.
+
+Alternatively, for escalation score alone:
+
+```bash
+harness escalation-score compute --phase ship --json
+```
+
+The CLI reads `git diff/log` and computes signals (diff size, file count, risk directories,
+API surface, commit count) + trust adjustment automatically.
 
 ### Review Intensity Levels
 

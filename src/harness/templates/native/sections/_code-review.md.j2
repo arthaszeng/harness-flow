@@ -97,16 +97,20 @@ After all responses arrive:
    - Any CRITICAL finding → `ITERATE`
    - avg < {{ pass_threshold }} → `ITERATE`
 
-### Score Calibration Rules (signal quality)
+### Score Calibration (via CLI)
 
-Apply these calibration rules before finalizing dimension scores:
-- Repeated finding signatures across rounds reduce score confidence:
-  - each repeated signature: `-0.30`
-  - cap total repeat penalty at `-1.50`
-- If a repeated finding is tagged `[HIGH CONFIDENCE]`, apply an additional `-0.50`.
-- Keep PASS/ITERATE gate semantics unchanged:
-  - CRITICAL still forces `ITERATE`
-  - threshold check still uses `{{ pass_threshold }}`.
+After computing dimension scores, use the deterministic calibration command:
+
+```bash
+echo '{"roles": [{"role": "architect", "score": N, "findings": [...]}, ...]}' | harness review-score compute --kind code --json
+```
+
+The CLI applies repeat penalties (-0.30/repeat, cap -1.50, HIGH CONFIDENCE -0.50 extra),
+computes weighted average, and returns `{dimensions, aggregate, calibrated, verdict, has_critical, score_band}`.
+
+**Single truth source:** The CLI verdict is advisory. Write the calibrated score and verdict
+into the `harness save-eval` body so `gates.py` can parse `## Verdict:` from the markdown.
+The gate always reads the eval file as the authoritative source.
 
 ### Fix-First Triage
 

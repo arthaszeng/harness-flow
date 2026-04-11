@@ -1,26 +1,25 @@
 ## Ship Review Gate — 自适应代码评审强度
 
-在派遣代码审查者之前，计算 **ship escalation score** 来决定评审强度。
-此机制与 plan review gate 对称，但使用代码变更信号。
+在派遣代码审查者之前，运行**确定性 escalation CLI** 计算评审强度。
+替代手动信号算术，毫秒级完成。
 
 ### Ship Escalation Score
 
-从 `git diff {{ trunk_branch }}..HEAD` 和 `git log {{ trunk_branch }}..HEAD` 计算每个信号：
+运行预计算命令（设计为在 CI 后台运行期间执行）：
 
-| 信号 | 条件 | 评分 |
-|------|------|------|
-| 规模 | diff 行数（增 + 删）> 200 | +2 |
-| 规模 | 变更文件 > 10 | +2 |
-| 风险 | 变更触及 `core/`、`commands/` 或 `integrations/` 目录 | +1 |
-| 风险 | 变更触及认证/安全/配置文件（`config.toml`、`*.env`、`auth*`、`secret*`） | +3 |
-| 风险 | 有文件新增或删除（不仅是修改） | +1 |
-| 类型 | `{{ trunk_branch }}..HEAD` 中任一 commit subject 以 `feat` 开头 | +1 |
-| 类型 | **所有** commit subject 均以 `fix`/`docs`/`chore` 开头 | -1 |
-| 质量 | plan review aggregate < {{ pass_threshold }}/10（缺失时视为 0，不触发） | +2 |
+```bash
+harness ship-prepare --task TASK_ID --json
+```
 
-**缺失信号的默认行为：** 如果某信号无法确定（如无 plan review score 或 diff stat 不可用），
-视为**未触发**（贡献 0 分）。这避免基于推测性风险信号虚增评分。
-实践中，真实变更几乎总会触发一些正向信号（新文件、feat commit 等）。
+返回 `{diff_stat, escalation: {score, level, signals}, review_dispatch: {level, roles}}`。
+
+或仅计算 escalation score：
+
+```bash
+harness escalation-score compute --phase ship --json
+```
+
+CLI 读取 `git diff/log`，计算信号（diff 规模、文件数、风险目录、API 表面、commit 数）+ trust 调整。
 
 ### 评审强度级别
 

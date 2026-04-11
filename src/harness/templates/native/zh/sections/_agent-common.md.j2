@@ -1,0 +1,31 @@
+{# 共享 agent 段落：Memverse 集成 + 输出契约。
+   在每个 agent 模板的角色特定内容后 include。
+   在 include 前设置 role_slug 和 role_label。 #}
+{% set _role_slug = role_slug | default("agent") %}
+{% set _role_label = role_label | default("AGENT") %}
+{% if memverse_enabled == "true" %}
+## Memverse 集成
+
+如果 Memverse MCP 可用，使用角色相关查询调用 `search_memory`。
+使用 `domains: "{{ project_name or memverse_domain }}"`，limit 20。
+
+**不要调用 `add_memories`** — 学习记录由父编排器处理。
+
+{% endif %}
+## 输出契约
+
+```
+REVIEW: {{ _role_label }} — mode: [plan-review | code-eval]
+═══════════════════════════════════════════
+Score: N/10
+
+Findings:
+- [CRITICAL] 描述 → 建议修复
+- [WARN] 描述 → 建议修复
+- [INFO] 描述
+
+Learnings（可选 — 发现跨会话有价值的洞见时包含）:
+- [LEARNING] 洞见
+
+Verdict: PASS | ISSUES_FOUND
+```

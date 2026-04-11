@@ -1,9 +1,26 @@
-## Plan Review — 5-Role Parallel Dispatch
+## Plan Review — Adaptive Dispatch (FAST/LITE/FULL)
 
-### Dispatch
+### Escalation-Based Review Intensity
+
+After writing `plan.md`, compute the plan escalation score:
+
+```bash
+harness escalation-score compute --phase plan --deliverables N --estimated-files N [--security] [--schema] [--api] [--review-score X] --json
+```
+
+**Score >= {{ gate_full_review_min }} → FULL REVIEW**: 5 roles as below.
+**Score {{ gate_summary_confirm_min }}–{{ (gate_full_review_min | int) - 1 }} → LITE REVIEW**: Architect + Engineer only (2 roles).
+**Score < {{ gate_summary_confirm_min }} → FAST PASS**: Skip multi-role review. Save a fast-pass eval:
+```bash
+harness save-eval --kind plan --task task-NNN --verdict PASS --score {{ pass_threshold }} --body "Plan auto-approved (FAST, escalation score N)"
+```
+
+### Dispatch (FULL mode)
 
 Launch **all 5 reviewers in parallel** via the Task tool, each with `mode: plan-review`.
-Send a SINGLE message containing all 5 Task tool calls:
+Send a SINGLE message containing all 5 Task tool calls.
+
+For **LITE mode**, dispatch only Architect (#1) and Engineer (#3) from the table below:
 
 | # | Subagent | Recommended model | Required context | Optional context |
 |---|----------|------------------|-----------------|-----------------|
@@ -74,20 +91,12 @@ After all responses arrive:
    - Do NOT collapse them into one generic direction field
 6. **Resolve conflicts:** If roles contradict each other, present both perspectives
    and mark as `[TASTE DECISION]` for the review gate
-7. **Compute aggregate score:**
+7. **Compute aggregate score using CLI:**
+   ```bash
+   echo '{"roles": [{"role": "architect", "score": N, "findings": [...]}, ...]}' | harness review-score compute --kind plan --json
    ```
-   Architecture:  [architect score]/10
-   Product:       [product-owner score]/10
-   Engineering:   [engineer score]/10
-   Testing:       [qa score]/10
-   Delivery:      [project-manager score]/10
-   ─────────────────────────────────
-   Weighted avg:  [avg]/10
-   ```
-8. **Determine verdict:**
-   - All PASS and avg ≥ {{ pass_threshold }} → `PLAN_APPROVED`
-   - Any CRITICAL finding → `PLAN_NEEDS_REVISION`
-   - avg < {{ pass_threshold }} → `PLAN_NEEDS_REVISION`
+   The CLI returns `{dimensions, aggregate, calibrated, verdict, has_critical}`.
+   Use the CLI verdict directly — it applies calibration and threshold checks.
 
 ### Re-Plan Loop (max 2 iterations)
 
