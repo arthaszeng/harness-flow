@@ -266,25 +266,28 @@ def check_ship_readiness(
             "no verdict parsed",
         ))
 
+    # --- Aggregate score (parsed once, reused for threshold check + display) ---
+
+    agg_score = parse_eval_aggregate_score(eval_content) if eval_content else None
+
     # --- Score vs effective threshold (opt-in via apply_trust_threshold) ---
 
     if effective_threshold is not None:
-        agg = parse_eval_aggregate_score(eval_content) if eval_content else None
-        if agg is not None:
-            if agg >= effective_threshold:
+        if agg_score is not None:
+            if agg_score >= effective_threshold:
                 checks.append(CheckItem(
                     "score_threshold", CheckStatus.PASS,
-                    f"score {agg:.1f} >= effective threshold {effective_threshold:.1f}",
+                    f"score {agg_score:.1f} >= effective threshold {effective_threshold:.1f}",
                 ))
             elif review_gate_mode == "advisory":
                 checks.append(CheckItem(
                     "score_threshold", CheckStatus.WARNING,
-                    f"score {agg:.1f} < effective threshold {effective_threshold:.1f} (advisory — warning only)",
+                    f"score {agg_score:.1f} < effective threshold {effective_threshold:.1f} (advisory — warning only)",
                 ))
             else:
                 checks.append(CheckItem(
                     "score_threshold", CheckStatus.BLOCKED,
-                    f"score {agg:.1f} < effective threshold {effective_threshold:.1f}",
+                    f"score {agg_score:.1f} < effective threshold {effective_threshold:.1f}",
                 ))
         else:
             checks.append(CheckItem(
@@ -366,7 +369,6 @@ def check_ship_readiness(
         reasons = "; ".join(c.reason for c in blocked if c.reason)
         summary = f"blocked: {reasons}"
 
-    agg_score = parse_eval_aggregate_score(eval_content) if eval_content else None
     band = classify_score(agg_score) if agg_score is not None else None
 
     return GateVerdict(
