@@ -42,11 +42,19 @@ def workflow_next_cmd(
         "-t",
         help="Explicit task ID (e.g. task-001). Auto-detects if omitted.",
     ),
+    resume: bool = typer.Option(
+        False,
+        "--resume",
+        help="Output multi-line resume context instead of one-line hint.",
+    ),
 ) -> None:
     """Print one HARNESS_NEXT line from workflow-state.json for agents/scripts."""
-    from harness.commands.workflow_next import run_workflow_next
+    from harness.commands.workflow_next import run_workflow_next, run_workflow_resume
 
-    run_workflow_next(task=task or None)
+    if resume:
+        run_workflow_resume(task=task or None)
+    else:
+        run_workflow_next(task=task or None)
 
 
 app.add_typer(workflow_cli, name="workflow")
@@ -674,6 +682,20 @@ def trust_cmd(
     from harness.commands.trust_cmd import run_trust
 
     run_trust(as_json=as_json)
+
+
+@app.command(name="validate-artifacts")
+def validate_artifacts_cmd(
+    task: str = typer.Option(
+        "", "--task", "-t",
+        help="Task ID (e.g. task-085). Auto-detects if omitted.",
+    ),
+    as_json: bool = typer.Option(True, "--json/--text", help="Output format (default: JSON)"),
+) -> None:
+    """Report artifact dependency status for a task (done/ready/blocked/invalid)."""
+    from harness.commands.validate_artifacts import run_validate_artifacts
+
+    run_validate_artifacts(task=task or None, as_json=as_json)
 
 
 @app.command(name="context-budget")

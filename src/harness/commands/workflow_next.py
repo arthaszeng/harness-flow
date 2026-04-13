@@ -11,6 +11,27 @@ from harness.core.state import TaskState
 from harness.core.workflow_state import WORKFLOW_STATE_FILENAME, resolve_task_dir
 
 
+def run_workflow_resume(*, task: str | None = None) -> None:
+    """Print multi-line resume context from artifact completion state."""
+    from harness.i18n import apply_project_lang_from_cwd
+
+    cwd = Path.cwd()
+    apply_project_lang_from_cwd(cwd)
+    agents_dir = cwd / ".harness-flow"
+    task_dir = resolve_task_dir(agents_dir, explicit_task_id=task or None)
+    if task_dir is None:
+        typer.echo("No task directory found.", err=True)
+        return
+
+    try:
+        from harness.core.artifact_graph import generate_resume_context
+
+        context = generate_resume_context(task_dir)
+        typer.echo(context)
+    except Exception as exc:
+        typer.echo(f"Failed to generate resume context: {exc}", err=True)
+
+
 def run_workflow_next(*, task: str | None = None) -> None:
     """Print one HARNESS_NEXT line; always exits 0 unless Typer raises."""
     from harness.i18n import apply_project_lang_from_cwd
@@ -87,6 +108,9 @@ def run_workflow_next(*, task: str | None = None) -> None:
         return
 
     skill, hint = _suggest(phase)
+    artifact_hint = _artifact_based_hint(task_dir)
+    if artifact_hint:
+        hint = artifact_hint
     _emit(task=tid, phase=phase.value, skill=skill, hint=hint)
 
 
@@ -107,6 +131,19 @@ def _recovery_echo(i18n_key: str) -> None:
     generic = t("workflow_next.recovery.generic")
     if generic != "workflow_next.recovery.generic":
         typer.echo(generic, err=True)
+
+
+def _artifact_based_hint(task_dir: Path) -> str | None:
+    """Generate a hint from artifact graph when task_dir exists."""
+    try:
+        from harness.core.artifact_graph import compute_artifact_report
+
+        report = compute_artifact_report(task_dir)
+        if report.next_actions:
+            return report.next_actions[0]
+    except Exception:
+        pass
+    return None
 
 
 def _suggest(phase: TaskState) -> tuple[str, str]:
