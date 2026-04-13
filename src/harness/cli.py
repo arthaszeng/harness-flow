@@ -676,6 +676,20 @@ def trust_cmd(
     run_trust(as_json=as_json)
 
 
+@app.command(name="validate-artifacts")
+def validate_artifacts_cmd(
+    task: str = typer.Option(
+        "", "--task", "-t",
+        help="Task ID (e.g. task-085). Auto-detects if omitted.",
+    ),
+    as_json: bool = typer.Option(True, "--json/--text", help="Output format (default: JSON)"),
+) -> None:
+    """Report artifact dependency status for a task (done/ready/blocked/invalid)."""
+    from harness.commands.validate_artifacts import run_validate_artifacts
+
+    run_validate_artifacts(task=task or None, as_json=as_json)
+
+
 @app.command(name="context-budget")
 def context_budget_cmd(
     task: str = typer.Option(

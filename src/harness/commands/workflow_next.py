@@ -87,6 +87,9 @@ def run_workflow_next(*, task: str | None = None) -> None:
         return
 
     skill, hint = _suggest(phase)
+    artifact_hint = _artifact_based_hint(task_dir)
+    if artifact_hint:
+        hint = artifact_hint
     _emit(task=tid, phase=phase.value, skill=skill, hint=hint)
 
 
@@ -107,6 +110,19 @@ def _recovery_echo(i18n_key: str) -> None:
     generic = t("workflow_next.recovery.generic")
     if generic != "workflow_next.recovery.generic":
         typer.echo(generic, err=True)
+
+
+def _artifact_based_hint(task_dir: Path) -> str | None:
+    """Generate a hint from artifact graph when task_dir exists."""
+    try:
+        from harness.core.artifact_graph import compute_artifact_report
+
+        report = compute_artifact_report(task_dir)
+        if report.next_actions:
+            return report.next_actions[0]
+    except Exception:
+        pass
+    return None
 
 
 def _suggest(phase: TaskState) -> tuple[str, str]:
