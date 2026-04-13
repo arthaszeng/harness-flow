@@ -42,11 +42,19 @@ def workflow_next_cmd(
         "-t",
         help="Explicit task ID (e.g. task-001). Auto-detects if omitted.",
     ),
+    resume: bool = typer.Option(
+        False,
+        "--resume",
+        help="Output multi-line resume context instead of one-line hint.",
+    ),
 ) -> None:
     """Print one HARNESS_NEXT line from workflow-state.json for agents/scripts."""
-    from harness.commands.workflow_next import run_workflow_next
+    from harness.commands.workflow_next import run_workflow_next, run_workflow_resume
 
-    run_workflow_next(task=task or None)
+    if resume:
+        run_workflow_resume(task=task or None)
+    else:
+        run_workflow_next(task=task or None)
 
 
 app.add_typer(workflow_cli, name="workflow")

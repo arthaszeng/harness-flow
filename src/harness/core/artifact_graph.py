@@ -71,11 +71,17 @@ class ArtifactDef:
         return best[1] if best else None
 
     def file_exists(self, task_dir: Path) -> bool:
+        """Check if the artifact file exists and has non-whitespace content."""
         found = self.find_file(task_dir)
         if found is None:
             return False
         try:
-            return found.stat().st_size > 0
+            size = found.stat().st_size
+            if size == 0:
+                return False
+            with open(found, "rb") as f:
+                head = f.read(64)
+            return bool(head.strip())
         except OSError:
             return False
 
@@ -334,3 +340,46 @@ def suggest_next_actions(artifacts: list[ArtifactInfo]) -> list[str]:
             seen.add(a.id)
 
     return actions
+
+
+def generate_resume_context(task_dir: Path) -> str:
+    """Generate a concise resume context from artifact completion state.
+
+    Returns a multi-line string (max ~500 chars) suitable for agent
+    context injection at session start. Combines artifact status with
+    workflow phase (if available) and next-step suggestions.
+    """
+    report = compute_artifact_report(task_dir, validators={})
+
+    done = [a.id for a in report.artifacts if a.status == ArtifactStatus.DONE]
+    invalid = [a.id for a in report.artifacts if a.status == ArtifactStatus.INVALID]
+
+    lines: list[str] = [f"Task: {report.task_id}"]
+
+    phase_str = _read_workflow_phase(task_dir)
+    if phase_str:
+        lines.append(f"Phase: {phase_str}")
+
+    if done:
+        lines.append(f"Done: {', '.join(done)}")
+    if invalid:
+        lines.append(f"Invalid: {', '.join(invalid)}")
+
+    if report.next_actions:
+        lines.append(f"Next: {report.next_actions[0]}")
+
+    return "\n".join(lines)
+
+
+def _read_workflow_phase(task_dir: Path) -> str:
+    """Best-effort read of workflow phase from workflow-state.json."""
+    import json
+
+    ws_path = task_dir / "workflow-state.json"
+    if not ws_path.exists():
+        return ""
+    try:
+        raw = json.loads(ws_path.read_text(encoding="utf-8"))
+        return raw.get("phase", "")
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError):
+        return ""

@@ -194,10 +194,17 @@ def check_ship_readiness(
     """
     checks: list[CheckItem] = []
 
+    # --- Artifact graph for existence checks (E-2: SSOT for artifact status) ---
+
+    from harness.core.artifact_graph import ArtifactStatus, compute_artifact_report
+
+    artifact_report = compute_artifact_report(task_dir, validators={})
+    _artifact_status = {a.id: a for a in artifact_report.artifacts}
+
     # --- Hard checks ---
 
-    plan_path = task_dir / "plan.md"
-    if _file_exists_and_nonempty(plan_path):
+    plan_art = _artifact_status.get("plan")
+    if plan_art and plan_art.status == ArtifactStatus.DONE:
         checks.append(CheckItem("plan_exists", CheckStatus.PASS))
     else:
         checks.append(CheckItem(
@@ -205,11 +212,11 @@ def check_ship_readiness(
             "plan.md is missing or empty",
         ))
 
-    latest_eval = _latest_numbered_file_from_patterns(
-        task_dir,
-        (CODE_EVAL_ROUND_RE, LEGACY_EVAL_ROUND_RE),
-    )
-    if latest_eval and _file_exists_and_nonempty(latest_eval):
+    eval_art = _artifact_status.get("code-eval")
+    latest_eval = None
+    if eval_art and eval_art.file_path:
+        latest_eval = task_dir / eval_art.file_path
+    if eval_art and eval_art.status == ArtifactStatus.DONE:
         checks.append(CheckItem("eval_exists", CheckStatus.PASS))
     else:
         checks.append(CheckItem(
@@ -297,11 +304,8 @@ def check_ship_readiness(
 
     # --- Soft checks ---
 
-    latest_build = _latest_numbered_file_from_patterns(
-        task_dir,
-        (BUILD_ROUND_RE, LEGACY_BUILD_ROUND_RE),
-    )
-    if latest_build and latest_build.exists():
+    build_art = _artifact_status.get("build-log")
+    if build_art and build_art.status == ArtifactStatus.DONE:
         checks.append(CheckItem("build_exists", CheckStatus.PASS))
     else:
         checks.append(CheckItem(

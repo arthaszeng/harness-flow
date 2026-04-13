@@ -13,6 +13,7 @@ from harness.core.artifact_graph import (
     ArtifactInfo,
     ArtifactStatus,
     compute_artifact_report,
+    generate_resume_context,
     suggest_next_actions,
 )
 
@@ -225,6 +226,39 @@ class TestStandardArtifactDefinitions:
 
         for a in STANDARD_ARTIFACTS:
             dfs(a.id)
+
+
+class TestGenerateResumeContext:
+    def test_empty_task_dir(self, task_dir: Path) -> None:
+        ctx = generate_resume_context(task_dir)
+        assert "task-099" in ctx
+        assert "Next:" in ctx
+
+    def test_with_plan_and_build(self, task_dir: Path) -> None:
+        _write_valid_plan(task_dir)
+        (task_dir / "build-r1.md").write_text("build", encoding="utf-8")
+        ctx = generate_resume_context(task_dir)
+        assert "plan" in ctx.lower()
+        assert "build" in ctx.lower()
+        assert "Done:" in ctx
+
+    def test_with_workflow_state(self, task_dir: Path) -> None:
+        _write_valid_plan(task_dir)
+        ws = {
+            "schema_version": 1,
+            "task_id": "task-099",
+            "phase": "building",
+        }
+        (task_dir / "workflow-state.json").write_text(
+            json.dumps(ws), encoding="utf-8",
+        )
+        ctx = generate_resume_context(task_dir)
+        assert "Phase: building" in ctx
+
+    def test_length_limit(self, task_dir: Path) -> None:
+        _write_valid_plan(task_dir)
+        ctx = generate_resume_context(task_dir)
+        assert len(ctx) <= 500
 
 
 def _write_valid_plan(task_dir: Path) -> None:

@@ -11,6 +11,27 @@ from harness.core.state import TaskState
 from harness.core.workflow_state import WORKFLOW_STATE_FILENAME, resolve_task_dir
 
 
+def run_workflow_resume(*, task: str | None = None) -> None:
+    """Print multi-line resume context from artifact completion state."""
+    from harness.i18n import apply_project_lang_from_cwd
+
+    cwd = Path.cwd()
+    apply_project_lang_from_cwd(cwd)
+    agents_dir = cwd / ".harness-flow"
+    task_dir = resolve_task_dir(agents_dir, explicit_task_id=task or None)
+    if task_dir is None:
+        typer.echo("No task directory found.", err=True)
+        return
+
+    try:
+        from harness.core.artifact_graph import generate_resume_context
+
+        context = generate_resume_context(task_dir)
+        typer.echo(context)
+    except Exception as exc:
+        typer.echo(f"Failed to generate resume context: {exc}", err=True)
+
+
 def run_workflow_next(*, task: str | None = None) -> None:
     """Print one HARNESS_NEXT line; always exits 0 unless Typer raises."""
     from harness.i18n import apply_project_lang_from_cwd

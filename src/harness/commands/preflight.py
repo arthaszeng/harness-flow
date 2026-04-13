@@ -36,8 +36,14 @@ def run_preflight_bundle(
     result["task_id"] = task_dir.name
     result["task_dir"] = str(task_dir)
 
-    plan_path = task_dir / "plan.md"
-    result["has_plan"] = plan_path.exists()
+    from harness.core.artifact_graph import ArtifactStatus, compute_artifact_report
+
+    artifact_report = compute_artifact_report(task_dir, validators={})
+    plan_art = next((a for a in artifact_report.artifacts if a.id == "plan"), None)
+    result["has_plan"] = plan_art is not None and plan_art.status == ArtifactStatus.DONE
+    result["artifact_summary"] = {
+        a.id: a.status.value for a in artifact_report.artifacts
+    }
 
     handoff_data = _read_handoff(task_dir, phase)
     result["handoff"] = handoff_data
